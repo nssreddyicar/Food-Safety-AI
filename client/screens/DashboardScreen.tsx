@@ -65,7 +65,7 @@ export default function DashboardScreen() {
         </ThemedText>
         <ThemedText type="h2">{user?.name || 'Officer'}</ThemedText>
         <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
-          {user?.designation} - {user?.district}
+          {user?.designation}{user?.jurisdiction?.unitName ? ` - ${user.jurisdiction.unitName}` : ''}
         </ThemedText>
       </Animated.View>
 
