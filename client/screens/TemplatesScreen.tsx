@@ -667,33 +667,18 @@ export default function TemplatesScreen() {
               showsVerticalScrollIndicator={true}
               showsHorizontalScrollIndicator={true}
             />
-          ) : previewTemplate ? (
-            <ScrollView 
-              style={styles.webPreview}
-              contentContainerStyle={styles.webPreviewContent}
-              horizontal={true}
-            >
-              <ScrollView>
-                <View 
-                  style={{
-                    backgroundColor: 'white',
-                    width: (previewDims?.width || 210) * 3.7795275591 * zoomLevel,
-                    minHeight: (previewDims?.height || 297) * 3.7795275591 * zoomLevel,
-                    padding: Spacing.lg,
-                    margin: 20,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
-                    elevation: 10,
-                  }}
-                >
-                  <ThemedText style={{ fontSize: previewTemplate.fontSize * zoomLevel }}>
-                    {replacePlaceholders(previewTemplate.content)}
-                  </ThemedText>
-                </View>
-              </ScrollView>
-            </ScrollView>
+          ) : previewTemplate && Platform.OS === 'web' ? (
+            <View style={styles.webPreview}>
+              <iframe
+                srcDoc={generatePreviewHtml(previewTemplate, zoomLevel)}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  backgroundColor: '#4b5563',
+                } as any}
+              />
+            </View>
           ) : null}
 
           {previewDims ? (
