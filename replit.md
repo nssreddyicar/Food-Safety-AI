@@ -156,6 +156,33 @@ The system seeds with a default 6-node workflow with comprehensive input fields:
 Access at `/admin/workflow` to configure workflow nodes, transitions, input fields, and template assignments
 - Use "Load Default Workflow" button to seed/reset the default workflow with enhanced fields
 
+### Prosecution Case Management
+Complete court case tracking system accessible from Profile > Court Cases:
+- **Case List Screen** (CourtCasesScreen.tsx):
+  - Search by case number, respondent, complainant, or court name
+  - Filter by status (Pending, Ongoing, Convicted, Acquitted, Closed)
+  - Visual urgency indicators for upcoming hearings (≤7 days = warning, past due = red)
+  - FAB button to create new cases
+- **Case Details Screen** (CaseDetailsScreen.tsx):
+  - Case information: case number, court, respondent/complainant details
+  - Key dates: registration, first hearing, next hearing, last hearing
+  - Offence details and sections charged
+  - Hearing history with date, notes, images, and status tracking
+  - Add hearing modal with form validation
+- **New Case Screen** (NewCaseScreen.tsx):
+  - Comprehensive form with all case fields
+  - Date pickers for registration and hearing dates
+  - Status dropdown (pending, ongoing, convicted, acquitted, closed)
+  - Link to inspection/sample (optional)
+
+### Court Hearing Tracking
+Each hearing records:
+- Hearing date (required)
+- Status: scheduled, completed, adjourned, cancelled
+- Notes/remarks
+- Image attachments (for orders, documents)
+- Next hearing date (updates case's nextHearingDate)
+
 ## Design System
 - **Primary Color**: #1E40AF (Deep authoritative blue)
 - **Accent Color**: #DC2626 (Urgent red)
