@@ -665,7 +665,7 @@ export function generateReportHTML(data: ReportData): string {
                 <span class="priority-badge ${cat.priority}">${cat.priority}</span>
               </td>
               <td class="count-cell">
-                <span style="color: #6B7280;">${cat.slaDays}d</span>
+                <span style="color: #6B7280;">${cat.slaDefaultDays}d</span>
               </td>
               <td class="count-cell">
                 <span class="count-badge ${cat.counts.overdue > 0 ? 'overdue' : 'zero'}">${cat.counts.overdue}</span>

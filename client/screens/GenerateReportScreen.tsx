@@ -7,6 +7,7 @@ import { useRoute } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Card } from '@/components/Card';
@@ -15,6 +16,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAuthContext } from '@/context/AuthContext';
 import { getApiUrl } from '@/lib/query-client';
 import { generateReportHTML } from '@/lib/report-template';
+import { generateExcelCSV } from '@/lib/excel-template';
 import { TimeSelection, getDateRangeForSelection, getFilterDisplayLabel } from '@/components/TimeFilter';
 import { DashboardMetrics, ActionDashboardData } from '@/types';
 import { Spacing, BorderRadius } from '@/constants/theme';
@@ -34,9 +36,11 @@ export default function GenerateReportScreen() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [actionData, setActionData] = useState<ActionDashboardData | null>(null);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
+  const [excelUri, setExcelUri] = useState<string | null>(null);
 
   const jurisdictionId = user?.jurisdiction?.unitId;
   const timePeriodLabel = getFilterDisplayLabel(timeSelection);
@@ -179,6 +183,65 @@ export default function GenerateReportScreen() {
     }
   };
 
+  const generateExcel = async () => {
+    if (!metrics || !actionData) {
+      Alert.alert('Error', 'Data not loaded yet. Please wait.');
+      return;
+    }
+
+    try {
+      setIsGeneratingExcel(true);
+
+      const csvContent = generateExcelCSV({
+        timePeriod: timePeriodLabel,
+        dateRange,
+        actionData,
+        metrics,
+        officerName: user?.name || 'FSO Officer',
+        jurisdictionName: user?.jurisdiction?.unitName || 'Jurisdiction',
+        generatedAt: new Date().toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      });
+
+      if (Platform.OS === 'web') {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `FSI_Report_${timePeriodLabel.replace(/\s+/g, '_')}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+        setExcelUri('web-csv-success');
+        Alert.alert('Success', 'Excel/CSV file downloaded successfully!');
+      } else {
+        const fileName = `FSI_Report_${timePeriodLabel.replace(/\s+/g, '_')}_${Date.now()}.csv`;
+        const docDir = (FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory || '';
+        const fileUri = `${docDir}${fileName}`;
+        await (FileSystem as any).writeAsStringAsync(fileUri, csvContent);
+        setExcelUri(fileUri);
+        
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'text/csv',
+            dialogTitle: `Share FSI Report - ${timePeriodLabel}`,
+          });
+        }
+        Alert.alert('Success', 'Excel/CSV report generated successfully!');
+      }
+    } catch (error) {
+      console.error('Failed to generate Excel:', error);
+      Alert.alert('Error', 'Failed to generate Excel report. Please try again.');
+    } finally {
+      setIsGeneratingExcel(false);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-IN', {
       day: '2-digit',
@@ -288,14 +351,43 @@ export default function GenerateReportScreen() {
             </Card>
 
             <View style={styles.actions}>
-              <Button
-                onPress={generatePDF}
-                disabled={isGenerating || !metrics || !actionData}
-                style={styles.generateButton}
-                testID="button-generate-pdf"
-              >
-                {isGenerating ? "Generating..." : "Generate PDF Report"}
-              </Button>
+              <View style={styles.formatButtons}>
+                <Pressable
+                  onPress={generatePDF}
+                  disabled={isGenerating || !metrics || !actionData}
+                  style={[
+                    styles.formatButton,
+                    { 
+                      backgroundColor: theme.primary,
+                      opacity: isGenerating || !metrics || !actionData ? 0.5 : 1,
+                    }
+                  ]}
+                  testID="button-generate-pdf"
+                >
+                  <Feather name="file-text" size={20} color="white" />
+                  <ThemedText type="body" style={{ color: 'white', fontWeight: '600' }}>
+                    {isGenerating ? "Generating..." : "PDF Report"}
+                  </ThemedText>
+                </Pressable>
+
+                <Pressable
+                  onPress={generateExcel}
+                  disabled={isGeneratingExcel || !metrics || !actionData}
+                  style={[
+                    styles.formatButton,
+                    { 
+                      backgroundColor: '#059669',
+                      opacity: isGeneratingExcel || !metrics || !actionData ? 0.5 : 1,
+                    }
+                  ]}
+                  testID="button-generate-excel"
+                >
+                  <Feather name="grid" size={20} color="white" />
+                  <ThemedText type="body" style={{ color: 'white', fontWeight: '600' }}>
+                    {isGeneratingExcel ? "Generating..." : "Excel Report"}
+                  </ThemedText>
+                </Pressable>
+              </View>
 
               {pdfUri && Platform.OS !== 'web' ? (
                 <View style={styles.shareActions}>
@@ -305,21 +397,13 @@ export default function GenerateReportScreen() {
                     testID="button-share-pdf"
                   >
                     <Feather name="share-2" size={18} color={theme.primary} />
-                    <ThemedText type="body" style={{ color: theme.primary, fontWeight: '600' }}>Share</ThemedText>
-                  </Pressable>
-                  <Pressable 
-                    onPress={downloadPDF}
-                    style={[styles.secondaryButton, { borderColor: theme.primary }]}
-                    testID="button-download-pdf"
-                  >
-                    <Feather name="download" size={18} color={theme.primary} />
-                    <ThemedText type="body" style={{ color: theme.primary, fontWeight: '600' }}>Download</ThemedText>
+                    <ThemedText type="body" style={{ color: theme.primary, fontWeight: '600' }}>Share PDF</ThemedText>
                   </Pressable>
                 </View>
               ) : null}
             </View>
 
-            {pdfUri ? (
+            {(pdfUri || excelUri) ? (
               <View style={styles.successCard}>
                 <View style={styles.successContent}>
                   <Feather name="check-circle" size={24} color="#059669" />
@@ -328,7 +412,11 @@ export default function GenerateReportScreen() {
                       Report Ready
                     </ThemedText>
                     <ThemedText type="small" style={{ color: '#065F46' }}>
-                      Your PDF report has been generated and is ready to share or download.
+                      {pdfUri && excelUri 
+                        ? 'Both PDF and Excel reports have been generated successfully.'
+                        : pdfUri 
+                          ? 'Your PDF report has been generated and is ready to share.'
+                          : 'Your Excel report has been generated successfully.'}
                     </ThemedText>
                   </View>
                 </View>
@@ -416,6 +504,19 @@ const styles = StyleSheet.create({
   },
   generateButton: {
     width: '100%',
+  },
+  formatButtons: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  formatButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
   },
   shareActions: {
     flexDirection: 'row',

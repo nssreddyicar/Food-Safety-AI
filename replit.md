@@ -123,20 +123,23 @@ Comprehensive action and reminder tracking system with role-based action categor
 - `POST /api/action-categories/seed-defaults` - Load default 21 categories
 - `PUT /api/action-categories/:id` - Update category settings
 
-### PDF Report Generation
-Professional PDF report generation for action dashboard data with time period selection:
+### Report Generation (PDF & Excel)
+Professional report generation for action dashboard data with time period selection:
 
 **Features:**
 - Time period selection with 4 categories: Month, Quarter, Year, Financial Year (Indian April-March format)
 - Report includes: Action Dashboard Summary, Action Categories Breakdown, Statistics Overview, Financial Summary
-- Professional HTML template with gradient styling and color-coded sections
+- Two export formats:
+  - **PDF Report**: Professional HTML template with gradient styling, color-coded sections, and multi-page layout
+  - **Excel Report**: CSV format that can be opened in Excel/Google Sheets with structured data tables
 - Platform-aware generation:
-  - **Mobile (Expo Go)**: Creates actual PDF file with Share/Download buttons
-  - **Web**: Opens print preview in new tab for browser-based PDF save
+  - **Mobile (Expo Go)**: Creates actual files with Share functionality
+  - **Web**: Direct download for both formats
 
 **Files:**
-- `client/screens/GenerateReportScreen.tsx` - Report generation screen
+- `client/screens/GenerateReportScreen.tsx` - Report generation screen with dual format buttons
 - `client/lib/report-template.ts` - HTML template for PDF generation
+- `client/lib/excel-template.ts` - CSV template for Excel generation
 - `client/components/TimeFilter.tsx` - Time period selection component
 
 **Navigation:**
