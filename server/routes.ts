@@ -222,31 +222,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ success: false, error: "Invalid email or password" });
       }
 
-      // Get officer's primary assignment if exists
+      // Get all active assignments for the officer
       const assignments = await db.select().from(officerAssignments).where(
         sql`${officerAssignments.officerId} = ${officer.id} AND ${officerAssignments.status} = 'active'`
       );
       
-      const primaryAssignment = assignments.find((a: any) => a.isPrimary) || assignments[0];
-      
-      let jurisdictionInfo = null;
-      if (primaryAssignment) {
+      // Build full jurisdiction info for each assignment
+      const allJurisdictions = [];
+      for (const assignment of assignments) {
         const [unit] = await db.select().from(jurisdictionUnits).where(
-          sql`${jurisdictionUnits.id} = ${primaryAssignment.jurisdictionId}`
+          sql`${jurisdictionUnits.id} = ${assignment.jurisdictionId}`
         );
         const [role] = await db.select().from(officerRoles).where(
-          sql`${officerRoles.id} = ${primaryAssignment.roleId}`
+          sql`${officerRoles.id} = ${assignment.roleId}`
         );
         const [capacity] = await db.select().from(officerCapacities).where(
-          sql`${officerCapacities.id} = ${primaryAssignment.capacityId}`
+          sql`${officerCapacities.id} = ${assignment.capacityId}`
         );
-        jurisdictionInfo = {
+        allJurisdictions.push({
+          assignmentId: assignment.id,
           unitId: unit?.id,
           unitName: unit?.name,
           roleName: role?.name,
           capacityName: capacity?.name,
-        };
+          isPrimary: assignment.isPrimary,
+        });
       }
+      
+      // Set primary jurisdiction as default active
+      const primaryAssignment = allJurisdictions.find((a: any) => a.isPrimary) || allJurisdictions[0];
 
       // Return officer data (without password)
       const { password: _, ...officerData } = officer;
@@ -255,7 +259,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         officer: {
           ...officerData,
-          jurisdiction: jurisdictionInfo,
+          jurisdiction: primaryAssignment || null,
+          allJurisdictions: allJurisdictions,
         },
       });
     } catch (error) {
