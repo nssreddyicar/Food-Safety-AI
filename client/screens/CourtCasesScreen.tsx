@@ -19,7 +19,7 @@ import { ProsecutionCase } from '@/types';
 import { Spacing, BorderRadius } from '@/constants/theme';
 import { getApiUrl } from '@/lib/query-client';
 
-const emptyImage = require('../../assets/images/empty-inspections.png');
+const emptyImage = require('../../assets/images/inspections-empty.png');
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'All' },
@@ -112,52 +112,53 @@ export default function CourtCasesScreen() {
 
     return (
       <Animated.View entering={FadeInDown.delay(index * 50).duration(300)}>
-        <Pressable onPress={() => navigation.navigate('CaseDetails', { caseId: item.id })}>
-          <Card style={cardStyle}>
-            <View style={styles.caseHeader}>
-              <View style={styles.caseNumberRow}>
-                <Feather name="briefcase" size={16} color={theme.primary} />
-                <ThemedText type="body" style={{ marginLeft: 8, fontWeight: '600' }}>
-                  {item.caseNumber}
-                </ThemedText>
-              </View>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-                <ThemedText type="small" style={{ color: getStatusColor(item.status), textTransform: 'capitalize' }}>
-                  {item.status}
-                </ThemedText>
-              </View>
+        <Card 
+          style={cardStyle} 
+          onPress={() => navigation.navigate('CaseDetails', { caseId: item.id })}
+        >
+          <View style={styles.caseHeader}>
+            <View style={styles.caseNumberRow}>
+              <Feather name="briefcase" size={16} color={theme.primary} />
+              <ThemedText type="body" style={{ marginLeft: 8, fontWeight: '600' }}>
+                {item.caseNumber}
+              </ThemedText>
             </View>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+              <ThemedText type="small" style={{ color: getStatusColor(item.status), textTransform: 'capitalize' }}>
+                {item.status}
+              </ThemedText>
+            </View>
+          </View>
 
-            <View style={styles.caseBody}>
+          <View style={styles.caseBody}>
+            <View style={styles.infoRow}>
+              <Feather name="user" size={14} color={theme.textSecondary} />
+              <ThemedText type="body" style={{ marginLeft: 8, flex: 1 }}>{item.respondentName}</ThemedText>
+            </View>
+            {item.courtName ? (
               <View style={styles.infoRow}>
-                <Feather name="user" size={14} color={theme.textSecondary} />
-                <ThemedText type="body" style={{ marginLeft: 8, flex: 1 }}>{item.respondentName}</ThemedText>
+                <Feather name="home" size={14} color={theme.textSecondary} />
+                <ThemedText type="small" style={{ marginLeft: 8, color: theme.textSecondary, flex: 1 }}>
+                  {item.courtName}{item.courtLocation ? `, ${item.courtLocation}` : ''}
+                </ThemedText>
               </View>
-              {item.courtName ? (
-                <View style={styles.infoRow}>
-                  <Feather name="home" size={14} color={theme.textSecondary} />
-                  <ThemedText type="small" style={{ marginLeft: 8, color: theme.textSecondary, flex: 1 }}>
-                    {item.courtName}{item.courtLocation ? `, ${item.courtLocation}` : ''}
-                  </ThemedText>
-                </View>
-              ) : null}
-            </View>
+            ) : null}
+          </View>
 
-            <View style={styles.caseDates}>
-              <View style={styles.dateColumn}>
-                <ThemedText type="small" style={{ color: theme.textSecondary, fontSize: 10 }}>Next Hearing</ThemedText>
-                <ThemedText type="small" style={{ fontWeight: '500' }}>{formatDate(item.nextHearingDate)}</ThemedText>
-              </View>
-              {daysUntil !== null ? (
-                <View style={[styles.daysBadge, { backgroundColor: isPast ? theme.accent + '15' : isUrgent ? theme.warning + '15' : theme.success + '15' }]}>
-                  <ThemedText type="small" style={{ color: isPast ? theme.accent : isUrgent ? theme.warning : theme.success, fontSize: 11 }}>
-                    {isPast ? `${Math.abs(daysUntil)} days ago` : daysUntil === 0 ? 'Today' : `In ${daysUntil} days`}
-                  </ThemedText>
-                </View>
-              ) : null}
+          <View style={styles.caseDates}>
+            <View style={styles.dateColumn}>
+              <ThemedText type="small" style={{ color: theme.textSecondary, fontSize: 10 }}>Next Hearing</ThemedText>
+              <ThemedText type="small" style={{ fontWeight: '500' }}>{formatDate(item.nextHearingDate)}</ThemedText>
             </View>
-          </Card>
-        </Pressable>
+            {daysUntil !== null ? (
+              <View style={[styles.daysBadge, { backgroundColor: isPast ? theme.accent + '15' : isUrgent ? theme.warning + '15' : theme.success + '15' }]}>
+                <ThemedText type="small" style={{ color: isPast ? theme.accent : isUrgent ? theme.warning : theme.success, fontSize: 11 }}>
+                  {isPast ? `${Math.abs(daysUntil)} days ago` : daysUntil === 0 ? 'Today' : `In ${daysUntil} days`}
+                </ThemedText>
+              </View>
+            ) : null}
+          </View>
+        </Card>
       </Animated.View>
     );
   };

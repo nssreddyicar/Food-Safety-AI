@@ -1771,8 +1771,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create prosecution case
   app.post("/api/prosecution-cases", async (req: Request, res: Response) => {
     try {
+      const { 
+        firstRegistrationDate, 
+        firstHearingDate, 
+        nextHearingDate,
+        lastHearingDate,
+        ...rest 
+      } = req.body;
+
+      const parseDate = (dateStr?: string) => {
+        if (!dateStr || (typeof dateStr === 'string' && !dateStr.trim())) return null;
+        return new Date(dateStr);
+      };
+
+      const values = {
+        ...rest,
+        firstRegistrationDate: parseDate(firstRegistrationDate),
+        firstHearingDate: parseDate(firstHearingDate),
+        nextHearingDate: parseDate(nextHearingDate),
+        lastHearingDate: parseDate(lastHearingDate),
+      };
+
       const [created] = await db.insert(prosecutionCases)
-        .values(req.body)
+        .values(values)
         .returning();
       
       res.json(created);
@@ -1786,9 +1807,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/prosecution-cases/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+      const { 
+        firstRegistrationDate, 
+        firstHearingDate, 
+        nextHearingDate,
+        lastHearingDate,
+        ...rest 
+      } = req.body;
+
+      const parseDate = (dateStr?: string) => {
+        if (!dateStr || (typeof dateStr === 'string' && !dateStr.trim())) return null;
+        return new Date(dateStr);
+      };
+
+      const updateValues: any = { ...rest, updatedAt: new Date() };
+      if (firstRegistrationDate !== undefined) updateValues.firstRegistrationDate = parseDate(firstRegistrationDate);
+      if (firstHearingDate !== undefined) updateValues.firstHearingDate = parseDate(firstHearingDate);
+      if (nextHearingDate !== undefined) updateValues.nextHearingDate = parseDate(nextHearingDate);
+      if (lastHearingDate !== undefined) updateValues.lastHearingDate = parseDate(lastHearingDate);
       
       const [updated] = await db.update(prosecutionCases)
-        .set({ ...req.body, updatedAt: new Date() })
+        .set(updateValues)
         .where(sql`${prosecutionCases.id} = ${id}`)
         .returning();
       
@@ -1824,16 +1863,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create hearing
   app.post("/api/prosecution-hearings", async (req: Request, res: Response) => {
     try {
+      const { hearingDate, nextDate, ...rest } = req.body;
+
+      const parseDate = (dateStr?: string) => {
+        if (!dateStr || (typeof dateStr === 'string' && !dateStr.trim())) return null;
+        return new Date(dateStr);
+      };
+
+      const values = {
+        ...rest,
+        hearingDate: parseDate(hearingDate),
+        nextDate: parseDate(nextDate),
+      };
+
       const [created] = await db.insert(prosecutionHearings)
-        .values(req.body)
+        .values(values)
         .returning();
       
       // Update case's next hearing date if this hearing has a next date
-      if (req.body.nextDate) {
+      if (nextDate && nextDate.trim()) {
         await db.update(prosecutionCases)
           .set({ 
-            nextHearingDate: new Date(req.body.nextDate),
-            lastHearingDate: new Date(req.body.hearingDate),
+            nextHearingDate: new Date(nextDate),
+            lastHearingDate: hearingDate ? new Date(hearingDate) : new Date(),
             updatedAt: new Date()
           })
           .where(sql`${prosecutionCases.id} = ${req.body.caseId}`);
