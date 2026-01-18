@@ -46,8 +46,8 @@ const MODE_OPTIONS = ['Car', 'Bike', 'Bus', 'Train', 'Auto', 'Walking', 'Other']
 
 const TOUR_DIARY_KEY = '@tour_diary';
 
-// Telangana Government Holidays 2026 (month is 0-indexed)
-const TELANGANA_HOLIDAYS_2026: { [key: string]: string } = {
+// Telangana Government Public Holidays 2026 (month is 0-indexed)
+const PUBLIC_HOLIDAYS_2026: { [key: string]: string } = {
   // January
   '2026-0-14': 'Bhogi',
   '2026-0-15': 'Sankranti / Pongal',
@@ -71,7 +71,6 @@ const TELANGANA_HOLIDAYS_2026: { [key: string]: string } = {
   '2026-6-27': 'Muharram',
   // August
   '2026-7-15': 'Independence Day',
-  '2026-7-28': 'Varalakshmi Vratham',
   '2026-7-30': 'Vinayaka Chaturthi',
   // September
   '2026-8-6': 'Sri Krishna Janmashtami',
@@ -82,12 +81,22 @@ const TELANGANA_HOLIDAYS_2026: { [key: string]: string } = {
   '2026-9-19': 'Vijaya Dashami',
   // November
   '2026-10-8': 'Deepavali',
+};
+
+// Optional Holidays 2026 (shown in green)
+const OPTIONAL_HOLIDAYS_2026: { [key: string]: string } = {
+  '2026-7-28': 'Varalakshmi Vratham',
   '2026-10-25': 'Guru Nanak Jayanti',
 };
 
-function getHolidayName(year: number, month: number, day: number): string | null {
+function getPublicHolidayName(year: number, month: number, day: number): string | null {
   const key = `${year}-${month}-${day}`;
-  return TELANGANA_HOLIDAYS_2026[key] || null;
+  return PUBLIC_HOLIDAYS_2026[key] || null;
+}
+
+function getOptionalHolidayName(year: number, month: number, day: number): string | null {
+  const key = `${year}-${month}-${day}`;
+  return OPTIONAL_HOLIDAYS_2026[key] || null;
 }
 
 function getDaysInMonth(year: number, month: number): number {
@@ -235,24 +244,39 @@ export default function TourDiaryScreen() {
                     today.getFullYear() === selectedYear;
     const isSunday = new Date(selectedYear, selectedMonth, day).getDay() === 0;
     const is2ndSaturday = isSecondSaturday(selectedYear, selectedMonth, day);
-    const holidayName = getHolidayName(selectedYear, selectedMonth, day);
-    const isHoliday = isSunday || is2ndSaturday || holidayName !== null;
+    const publicHolidayName = getPublicHolidayName(selectedYear, selectedMonth, day);
+    const optionalHolidayName = getOptionalHolidayName(selectedYear, selectedMonth, day);
+    const isPublicHoliday = isSunday || is2ndSaturday || publicHolidayName !== null;
+    const isOptionalHoliday = optionalHolidayName !== null;
+    
+    let rowBgColor = theme.backgroundDefault;
+    if (isToday) {
+      rowBgColor = Colors.light.primary + '10';
+    } else if (isPublicHoliday) {
+      rowBgColor = '#FEE2E2'; // Light red
+    } else if (isOptionalHoliday) {
+      rowBgColor = '#D1FAE5'; // Light green
+    }
+    
+    const dateColor = isPublicHoliday ? Colors.light.accent : (isOptionalHoliday ? Colors.light.success : theme.text);
+    const holidayName = publicHolidayName || optionalHolidayName;
+    const holidayColor = isOptionalHoliday ? Colors.light.success : Colors.light.accent;
     
     return (
       <View
         key={day}
         style={[
           styles.tableRow,
-          { backgroundColor: isToday ? Colors.light.primary + '10' : (isHoliday ? '#FEE2E2' : theme.backgroundDefault) },
+          { backgroundColor: rowBgColor },
         ]}
       >
         <Text style={[styles.cell, styles.slNoCell, { color: theme.text }]}>{day}</Text>
         <View style={styles.dateCell}>
-          <Text style={[styles.cell, { color: isHoliday ? Colors.light.accent : theme.text }]}>
+          <Text style={[styles.cell, { color: dateColor }]}>
             {day} ({dayName})
           </Text>
           {holidayName ? (
-            <Text style={styles.holidayLabel} numberOfLines={1}>{holidayName}</Text>
+            <Text style={[styles.holidayLabel, { color: holidayColor }]} numberOfLines={1}>{holidayName}</Text>
           ) : null}
         </View>
         <Text style={[styles.cell, styles.fromCell, { color: theme.text }]} numberOfLines={1}>
@@ -545,7 +569,6 @@ const styles = StyleSheet.create({
   },
   holidayLabel: {
     fontSize: 9,
-    color: Colors.light.accent,
     fontWeight: '500',
     paddingHorizontal: Spacing.xs,
   },
