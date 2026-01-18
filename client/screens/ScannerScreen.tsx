@@ -6,8 +6,10 @@ import {
   Pressable,
   Platform,
   Linking,
+  Alert,
 } from 'react-native';
-import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
+import { CameraView, useCameraPermissions, BarcodeScanningResult, CameraType, scanFromURLAsync } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -49,6 +51,8 @@ export default function ScannerScreen() {
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastScannedType, setLastScannedType] = useState('');
+  const [cameraFacing, setCameraFacing] = useState<CameraType>('back');
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
 
   const scanLinePosition = useSharedValue(0);
 
@@ -107,6 +111,86 @@ export default function ScannerScreen() {
     } catch (error) {
       console.error('Error saving note:', error);
       setScanned(false);
+    }
+  };
+
+  const toggleCamera = () => {
+    setCameraFacing(current => current === 'back' ? 'front' : 'back');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const pickImageFromGallery = async () => {
+    if (isProcessingImage) return;
+    
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setIsProcessingImage(true);
+        const imageUri = result.assets[0].uri;
+        
+        try {
+          const scanResults = await scanFromURLAsync(imageUri, [
+            'qr',
+            'ean13',
+            'ean8',
+            'upc_a',
+            'upc_e',
+            'code39',
+            'code93',
+            'code128',
+            'codabar',
+            'itf14',
+            'pdf417',
+            'aztec',
+            'datamatrix',
+          ]);
+          
+          if (scanResults && scanResults.length > 0) {
+            const scannedResult = scanResults[0];
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            
+            // Save the scanned data
+            const existingNotes = await AsyncStorage.getItem(NOTES_STORAGE_KEY);
+            const notes: ScannedNote[] = existingNotes ? JSON.parse(existingNotes) : [];
+            
+            const todayScans = notes.filter(n => {
+              const noteDate = new Date(n.scannedAt).toDateString();
+              return noteDate === new Date().toDateString();
+            });
+            const scanNumber = todayScans.length + 1;
+            const typeLabel = scannedResult.type.toLowerCase().includes('qr') ? 'QR Code' : 'Barcode';
+            
+            const newNote: ScannedNote = {
+              id: Date.now().toString(),
+              data: scannedResult.data,
+              type: scannedResult.type,
+              heading: `${typeLabel} #${scanNumber} (Gallery)`,
+              scannedAt: new Date().toISOString(),
+            };
+            
+            notes.unshift(newNote);
+            await AsyncStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
+            
+            setLastScannedType(typeLabel);
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 2000);
+          } else {
+            Alert.alert('No Code Found', 'No QR code or barcode was detected in the selected image.');
+          }
+        } catch (scanError) {
+          console.error('Error scanning image:', scanError);
+          Alert.alert('Scan Error', 'Could not scan the selected image. Please try another image.');
+        }
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+    } finally {
+      setIsProcessingImage(false);
     }
   };
 
@@ -173,8 +257,8 @@ export default function ScannerScreen() {
     <View style={[styles.container, { backgroundColor: '#000' }]}>
       <CameraView
         style={StyleSheet.absoluteFill}
-        facing="back"
-        enableTorch={flashEnabled}
+        facing={cameraFacing}
+        enableTorch={flashEnabled && cameraFacing === 'back'}
         barcodeScannerSettings={{
           barcodeTypes: [
             'qr',
@@ -243,6 +327,27 @@ export default function ScannerScreen() {
               <Text style={styles.supportedText}>QR, EAN, UPC, Code128, PDF417 & more</Text>
             </View>
           )}
+          
+          <View style={styles.bottomButtons}>
+            <Pressable
+              style={styles.bottomButton}
+              onPress={pickImageFromGallery}
+              disabled={isProcessingImage}
+            >
+              <Feather name="image" size={24} color="#fff" />
+              <Text style={styles.bottomButtonText}>Gallery</Text>
+            </Pressable>
+            
+            <Pressable
+              style={styles.bottomButton}
+              onPress={toggleCamera}
+            >
+              <Feather name="refresh-cw" size={24} color="#fff" />
+              <Text style={styles.bottomButtonText}>
+                {cameraFacing === 'back' ? 'Front' : 'Back'}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </View>
@@ -434,6 +539,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  bottomButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing['3xl'],
+    marginTop: Spacing.xl,
+  },
+  bottomButton: {
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  bottomButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
   },
   modalOverlay: {
     flex: 1,
