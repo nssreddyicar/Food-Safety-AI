@@ -106,9 +106,18 @@ interface DynamicTimelineStepProps {
   onPress: () => void;
   onPreviewTemplate?: (template: DocumentTemplate) => void;
   onDownloadTemplate?: (template: DocumentTemplate) => void;
+  onPreviewImage?: (uri: string) => void;
 }
 
-function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranch, branchLabel, savedData, templates = [], onPress, onPreviewTemplate, onDownloadTemplate }: DynamicTimelineStepProps) {
+function isImageUri(value: any): boolean {
+  if (typeof value !== 'string') return false;
+  return value.startsWith('file://') || 
+         value.startsWith('data:image') || 
+         value.startsWith('content://') ||
+         /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(value);
+}
+
+function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranch, branchLabel, savedData, templates = [], onPress, onPreviewTemplate, onDownloadTemplate, onPreviewImage }: DynamicTimelineStepProps) {
   const { theme } = useTheme();
   const nodeColor = node.color || theme.primary;
   const color = isComplete ? theme.success : isActive ? nodeColor : theme.textSecondary;
@@ -198,15 +207,35 @@ function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranc
               <Feather name="check-circle" size={12} color={theme.success} />
               <ThemedText type="small" style={{ color: theme.success, fontWeight: '600' }}>Update Recorded</ThemedText>
             </View>
-            {Object.entries(savedData).slice(0, 3).map(([key, value]) => (
-              <View key={key} style={styles.savedDataRow}>
-                <ThemedText type="small" style={{ color: theme.textSecondary, textTransform: 'capitalize' }}>
-                  {key.replace(/_/g, ' ')}:
-                </ThemedText>
-                <ThemedText type="small" style={{ color: theme.text }} numberOfLines={1} ellipsizeMode="tail">
-                  {String(value)}
-                </ThemedText>
-              </View>
+            {Object.entries(savedData).slice(0, 5).map(([key, value]) => (
+              isImageUri(value) ? (
+                <View key={key} style={styles.savedDataImageRow}>
+                  <ThemedText type="small" style={{ color: theme.textSecondary, textTransform: 'capitalize' }}>
+                    {key.replace(/_/g, ' ')}:
+                  </ThemedText>
+                  <Pressable 
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      onPreviewImage?.(value);
+                    }}
+                    style={styles.savedImageThumbnailContainer}
+                  >
+                    <Image source={{ uri: value }} style={styles.savedImageThumbnail} resizeMode="cover" />
+                    <View style={[styles.savedImagePreviewIcon, { backgroundColor: theme.primary }]}>
+                      <Feather name="eye" size={10} color="#fff" />
+                    </View>
+                  </Pressable>
+                </View>
+              ) : (
+                <View key={key} style={styles.savedDataRow}>
+                  <ThemedText type="small" style={{ color: theme.textSecondary, textTransform: 'capitalize' }}>
+                    {key.replace(/_/g, ' ')}:
+                  </ThemedText>
+                  <ThemedText type="small" style={{ color: theme.text }} numberOfLines={1} ellipsizeMode="tail">
+                    {String(value)}
+                  </ThemedText>
+                </View>
+              )
             ))}
           </View>
         ) : null}
@@ -244,6 +273,8 @@ export default function SampleDetailsScreen() {
   const [previewTemplate, setPreviewTemplate] = useState<DocumentTemplate | null>(null);
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [previewZoom, setPreviewZoom] = useState(0.5);
+  const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
+  const [imagePreviewModalVisible, setImagePreviewModalVisible] = useState(false);
 
   const sampleId = route.params.sampleId;
 
@@ -568,6 +599,10 @@ export default function SampleDetailsScreen() {
           onPress={() => openNodeModal(node)}
           onPreviewTemplate={handlePreviewTemplate}
           onDownloadTemplate={handleDownload}
+          onPreviewImage={(uri) => {
+            setPreviewImageUri(uri);
+            setImagePreviewModalVisible(true);
+          }}
         />
       );
     });
@@ -590,6 +625,10 @@ export default function SampleDetailsScreen() {
             onPress={() => openNodeModal(item.node)}
             onPreviewTemplate={handlePreviewTemplate}
             onDownloadTemplate={handleDownload}
+            onPreviewImage={(uri) => {
+              setPreviewImageUri(uri);
+              setImagePreviewModalVisible(true);
+            }}
           />
         );
       });
@@ -1325,6 +1364,35 @@ export default function SampleDetailsScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={imagePreviewModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setImagePreviewModalVisible(false)}
+      >
+        <View style={styles.imagePreviewModalContainer}>
+          <Pressable 
+            style={styles.imagePreviewModalBackdrop}
+            onPress={() => setImagePreviewModalVisible(false)}
+          />
+          <View style={styles.imagePreviewModalContent}>
+            {previewImageUri ? (
+              <Image 
+                source={{ uri: previewImageUri }} 
+                style={styles.imagePreviewFull} 
+                resizeMode="contain" 
+              />
+            ) : null}
+            <Pressable 
+              style={styles.imagePreviewCloseBtn}
+              onPress={() => setImagePreviewModalVisible(false)}
+            >
+              <Feather name="x" size={24} color="#fff" />
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1479,6 +1547,62 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.xs,
     flexWrap: 'wrap',
+  },
+  savedDataImageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  savedImageThumbnailContainer: {
+    position: 'relative',
+  },
+  savedImageThumbnail: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.sm,
+  },
+  savedImagePreviewIcon: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  imagePreviewModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imagePreviewModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  imagePreviewModalContent: {
+    width: '90%',
+    height: '80%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imagePreviewFull: {
+    width: '100%',
+    height: '100%',
+    borderRadius: BorderRadius.lg,
+  },
+  imagePreviewCloseBtn: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyWorkflow: {
     alignItems: 'center',
