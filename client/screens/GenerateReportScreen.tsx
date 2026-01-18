@@ -128,6 +128,8 @@ export default function GenerateReportScreen() {
           hour: '2-digit',
           minute: '2-digit',
         }),
+        reportSections,
+        statisticsCards,
       });
 
       if (Platform.OS === 'web') {
@@ -223,6 +225,8 @@ export default function GenerateReportScreen() {
           hour: '2-digit',
           minute: '2-digit',
         }),
+        reportSections,
+        statisticsCards,
       });
 
       if (Platform.OS === 'web') {

@@ -1,4 +1,4 @@
-import { DashboardMetrics, ActionDashboardData, ActionCategory } from '@/types';
+import { DashboardMetrics, ActionDashboardData, ActionCategory, ReportSection, StatisticsCard } from '@/types';
 
 interface ReportData {
   timePeriod: string;
@@ -8,6 +8,8 @@ interface ReportData {
   officerName: string;
   jurisdictionName: string;
   generatedAt: string;
+  reportSections?: ReportSection[];
+  statisticsCards?: StatisticsCard[];
 }
 
 const formatDate = (dateStr: string) => {
@@ -48,7 +50,7 @@ const getGroupColor = (group: string): { bg: string; text: string; border: strin
 };
 
 export function generateReportHTML(data: ReportData): string {
-  const { timePeriod, dateRange, actionData, metrics, officerName, jurisdictionName, generatedAt } = data;
+  const { timePeriod, dateRange, actionData, metrics, officerName, jurisdictionName, generatedAt, reportSections, statisticsCards } = data;
 
   const groupedCategories: Record<string, ActionCategory[]> = {};
   actionData.categories.forEach((cat) => {
@@ -59,6 +61,12 @@ export function generateReportHTML(data: ReportData): string {
   });
 
   const groupOrder = ['legal', 'inspection', 'sampling', 'administrative', 'protocol'];
+
+  const shouldShowSection = (code: string): boolean => {
+    if (!reportSections || reportSections.length === 0) return true;
+    const section = reportSections.find(s => s.code === code);
+    return section ? section.isEnabled && section.showInPdf : true;
+  };
 
   return `
 <!DOCTYPE html>

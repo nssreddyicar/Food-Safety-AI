@@ -1,4 +1,4 @@
-import { DashboardMetrics, ActionDashboardData } from '@/types';
+import { DashboardMetrics, ActionDashboardData, ReportSection, StatisticsCard } from '@/types';
 
 interface ExcelReportData {
   timePeriod: string;
@@ -8,6 +8,8 @@ interface ExcelReportData {
   officerName: string;
   jurisdictionName: string;
   generatedAt: string;
+  reportSections?: ReportSection[];
+  statisticsCards?: StatisticsCard[];
 }
 
 const escapeCSV = (value: string | number): string => {
@@ -38,7 +40,13 @@ const getGroupName = (group: string): string => {
 };
 
 export function generateExcelCSV(data: ExcelReportData): string {
-  const { timePeriod, dateRange, actionData, metrics, officerName, jurisdictionName, generatedAt } = data;
+  const { timePeriod, dateRange, actionData, metrics, officerName, jurisdictionName, generatedAt, reportSections, statisticsCards } = data;
+
+  const shouldShowSection = (code: string): boolean => {
+    if (!reportSections || reportSections.length === 0) return true;
+    const section = reportSections.find(s => s.code === code);
+    return section ? section.isEnabled && section.showInExcel : true;
+  };
   
   const lines: string[] = [];
   
