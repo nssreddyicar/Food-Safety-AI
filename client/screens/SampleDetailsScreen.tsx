@@ -5,6 +5,7 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import { ThemedText } from '@/components/ThemedText';
@@ -155,7 +156,7 @@ function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranc
                 <ThemedText type="small" style={{ color: theme.textSecondary, textTransform: 'capitalize' }}>
                   {key.replace(/_/g, ' ')}:
                 </ThemedText>
-                <ThemedText type="small" style={{ color: theme.text, flex: 1 }}>
+                <ThemedText type="small" style={{ color: theme.text }} numberOfLines={1} ellipsizeMode="tail">
                   {String(value)}
                 </ThemedText>
               </View>
@@ -191,6 +192,8 @@ export default function SampleDetailsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [activeDateField, setActiveDateField] = useState<string | null>(null);
 
   const sampleId = route.params.sampleId;
 
@@ -568,18 +571,93 @@ export default function SampleDetailsScreen() {
           </View>
         );
       case 'date':
+        const formatDateValue = (dateStr: string) => {
+          if (!dateStr) return '';
+          try {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return dateStr;
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+          } catch {
+            return dateStr;
+          }
+        };
+        
+        const parseDateValue = (dateStr: string): Date => {
+          if (!dateStr) return new Date();
+          const parts = dateStr.split('-');
+          if (parts.length === 3 && parts[0].length === 2) {
+            return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+          }
+          const parsed = new Date(dateStr);
+          return isNaN(parsed.getTime()) ? new Date() : parsed;
+        };
+        
         return (
           <View key={field.name} style={styles.formField}>
             <ThemedText type="body" style={styles.fieldLabel}>
               {field.label}{field.required ? ' *' : ''}
             </ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.backgroundRoot }]}
-              value={value}
-              onChangeText={(text) => setFormData(prev => ({ ...prev, [field.name]: text }))}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={theme.textDisabled}
-            />
+            <Pressable
+              style={[styles.dateInput, { borderColor: theme.border, backgroundColor: theme.backgroundRoot }]}
+              onPress={() => {
+                setActiveDateField(field.name);
+                setShowDatePicker(true);
+              }}
+            >
+              <Feather name="calendar" size={18} color={theme.primary} />
+              <ThemedText type="body" style={{ color: value ? theme.text : theme.textDisabled, flex: 1 }}>
+                {value ? formatDateValue(value) : 'DD-MM-YYYY'}
+              </ThemedText>
+            </Pressable>
+            {showDatePicker && activeDateField === field.name ? (
+              Platform.OS === 'web' ? (
+                <View style={styles.webDatePickerContainer}>
+                  <input
+                    type="date"
+                    value={value ? parseDateValue(value).toISOString().split('T')[0] : ''}
+                    onChange={(e) => {
+                      const date = new Date(e.target.value);
+                      const day = String(date.getDate()).padStart(2, '0');
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const year = date.getFullYear();
+                      setFormData(prev => ({ ...prev, [field.name]: `${day}-${month}-${year}` }));
+                      setShowDatePicker(false);
+                      setActiveDateField(null);
+                    }}
+                    style={{
+                      padding: 12,
+                      fontSize: 16,
+                      borderRadius: 8,
+                      border: `1px solid ${theme.border}`,
+                      backgroundColor: theme.backgroundDefault,
+                      color: theme.text,
+                      width: '100%',
+                    }}
+                  />
+                </View>
+              ) : (
+                <DateTimePicker
+                  value={parseDateValue(value)}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(Platform.OS === 'ios');
+                    if (selectedDate) {
+                      const day = String(selectedDate.getDate()).padStart(2, '0');
+                      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                      const year = selectedDate.getFullYear();
+                      setFormData(prev => ({ ...prev, [field.name]: `${day}-${month}-${year}` }));
+                    }
+                    if (Platform.OS !== 'ios') {
+                      setActiveDateField(null);
+                    }
+                  }}
+                />
+              )
+            ) : null}
           </View>
         );
       case 'select':
@@ -1074,7 +1152,8 @@ const styles = StyleSheet.create({
   },
   savedDataRow: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    gap: Spacing.xs,
+    flexWrap: 'wrap',
   },
   emptyWorkflow: {
     alignItems: 'center',
@@ -1210,6 +1289,19 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
+  },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    minHeight: 48,
+  },
+  webDatePickerContainer: {
+    marginTop: Spacing.sm,
   },
   modalFooter: {
     flexDirection: 'row',
