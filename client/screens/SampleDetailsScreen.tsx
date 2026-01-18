@@ -585,16 +585,23 @@ export default function SampleDetailsScreen() {
   };
 
   const getRelevantBranchNodes = () => {
-    if (!sample?.labResult) return [];
-    
     const sortedNodes = [...workflowNodes].sort((a, b) => a.position - b.position);
     const decisionNode = sortedNodes.find(n => n.nodeType === 'decision');
     if (!decisionNode) return [];
 
+    // Try to get labResult from sample first, then from workflow state node data
+    let labResult = sample?.labResult;
+    if (!labResult) {
+      const decisionNodeState = workflowStates.find(s => s.currentNodeId === decisionNode.id);
+      labResult = decisionNodeState?.nodeData?.labResult;
+    }
+    
+    if (!labResult) return [];
+
     const relevantTransitions = workflowTransitions.filter(t => 
       t.fromNodeId === decisionNode.id && 
       t.conditionType === 'lab_result' &&
-      t.conditionValue?.toLowerCase() === sample.labResult?.toLowerCase()
+      t.conditionValue?.toLowerCase() === labResult?.toLowerCase()
     );
 
     return relevantTransitions.map(t => {
