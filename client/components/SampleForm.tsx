@@ -1,13 +1,24 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, Switch } from 'react-native';
+import { View, StyleSheet, Pressable, Switch, Modal, FlatList, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useQuery } from '@tanstack/react-query';
 import { ThemedText } from '@/components/ThemedText';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuthContext } from '@/context/AuthContext';
+import { getApiUrl } from '@/lib/query-client';
 import { Sample, SampleType, PackingType, PRESERVATIVE_TYPES } from '@/types';
-import { Spacing, BorderRadius } from '@/constants/theme';
+import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
+
+interface SampleCodeOption {
+  id: string;
+  fullCode: string;
+  prefix: string;
+  middle: string;
+  suffix: string;
+}
 
 interface SampleFormProps {
   sample: Partial<Sample>;
@@ -21,9 +32,30 @@ interface SampleFormProps {
 
 export function SampleForm({ sample, onUpdate, onRemove, index, officerName, officerDesignation, officerId }: SampleFormProps) {
   const { theme } = useTheme();
+  const { user } = useAuthContext();
   const [showPreservativeDropdown, setShowPreservativeDropdown] = useState(false);
+  const [showCodePicker, setShowCodePicker] = useState(false);
 
   const sampleTypeLabel = sample.sampleType === 'enforcement' ? 'Enforcement Sample' : 'Surveillance Sample';
+  const jurisdictionId = user?.jurisdiction?.unitId;
+
+  const { data: availableCodes = [], isLoading: codesLoading } = useQuery<SampleCodeOption[]>({
+    queryKey: ['/api/sample-codes/available', sample.sampleType, jurisdictionId],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (jurisdictionId) params.set('jurisdictionId', jurisdictionId);
+      const url = new URL(`/api/sample-codes/available/${sample.sampleType}?${params}`, getApiUrl());
+      const response = await fetch(url.toString());
+      return response.json();
+    },
+    enabled: showCodePicker,
+  });
+
+  const handleSelectCode = (code: SampleCodeOption) => {
+    onUpdate({ ...sample, code: code.fullCode });
+    setShowCodePicker(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
@@ -48,12 +80,27 @@ export function SampleForm({ sample, onUpdate, onRemove, index, officerName, off
         onChangeText={(text) => onUpdate({ ...sample, name: text })}
       />
 
-      <Input
-        label="Sample Code"
-        placeholder="Auto-generated"
-        value={sample.code || ''}
-        onChangeText={(text) => onUpdate({ ...sample, code: text })}
-      />
+      <View style={styles.codePickerContainer}>
+        <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}>Sample Code</ThemedText>
+        <Pressable
+          onPress={() => {
+            setShowCodePicker(true);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+          style={[styles.codePickerButton, { backgroundColor: theme.backgroundSecondary, borderColor: sample.code ? theme.primary : theme.border }]}
+        >
+          {sample.code ? (
+            <ThemedText type="body" style={{ fontFamily: 'monospace', letterSpacing: 2, color: theme.primary, fontWeight: '600' }}>
+              {sample.code}
+            </ThemedText>
+          ) : (
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>
+              Select from Code Bank
+            </ThemedText>
+          )}
+          <Feather name="database" size={18} color={sample.code ? theme.primary : theme.textSecondary} />
+        </Pressable>
+      </View>
 
       <Input
         label="Place of Sample Collection"
@@ -284,6 +331,64 @@ export function SampleForm({ sample, onUpdate, onRemove, index, officerName, off
         onChangeText={(text) => onUpdate({ ...sample, remarks: text })}
         multiline
       />
+
+      {/* Code Picker Modal */}
+      <Modal
+        visible={showCodePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCodePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
+            <View style={styles.modalHeader}>
+              <ThemedText type="h3">Select Sample Code</ThemedText>
+              <Pressable onPress={() => setShowCodePicker(false)}>
+                <Feather name="x" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+
+            <View style={[styles.codeTypeBadge, { backgroundColor: sample.sampleType === 'enforcement' ? theme.accent + '15' : theme.success + '15' }]}>
+              <ThemedText type="small" style={{ color: sample.sampleType === 'enforcement' ? theme.accent : theme.success, fontWeight: '600' }}>
+                {sampleTypeLabel} Codes
+              </ThemedText>
+            </View>
+
+            {codesLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={theme.primary} />
+              </View>
+            ) : availableCodes.length > 0 ? (
+              <FlatList
+                data={availableCodes}
+                keyExtractor={(item) => item.id}
+                style={styles.codeList}
+                renderItem={({ item }) => (
+                  <Pressable
+                    onPress={() => handleSelectCode(item)}
+                    style={[styles.codeOption, { borderColor: theme.border }]}
+                  >
+                    <ThemedText type="body" style={{ fontFamily: 'monospace', letterSpacing: 2 }}>
+                      {item.fullCode}
+                    </ThemedText>
+                    <Feather name="check-circle" size={18} color={theme.success} />
+                  </Pressable>
+                )}
+              />
+            ) : (
+              <View style={styles.emptyCodesState}>
+                <Feather name="inbox" size={40} color={theme.textSecondary} />
+                <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center', marginTop: Spacing.md }}>
+                  No available codes for {sampleTypeLabel.toLowerCase()}.
+                </ThemedText>
+                <ThemedText type="small" style={{ color: theme.textSecondary, textAlign: 'center' }}>
+                  Go to Profile → Sample Code Bank to generate codes.
+                </ThemedText>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -387,5 +492,60 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#E5E5E5',
     marginVertical: Spacing.md,
+  },
+  codePickerContainer: {
+    marginBottom: Spacing.sm,
+  },
+  codePickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    height: 48,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  codeTypeBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.lg,
+  },
+  loadingContainer: {
+    padding: Spacing['2xl'],
+    alignItems: 'center',
+  },
+  codeList: {
+    maxHeight: 300,
+  },
+  codeOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderBottomWidth: 1,
+  },
+  emptyCodesState: {
+    alignItems: 'center',
+    padding: Spacing['2xl'],
   },
 });
