@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
-import { officers, districts, inspections, samples, systemSettings, administrativeLevels, jurisdictionUnits, officerRoles, officerCapacities, officerAssignments } from "../shared/schema";
+import { officers, districts, inspections, samples, systemSettings, administrativeLevels, jurisdictionUnits, officerRoles, officerCapacities, officerAssignments, documentTemplates } from "../shared/schema";
 import { desc, asc, count, sql } from "drizzle-orm";
 
 const ADMIN_CREDENTIALS = {
@@ -815,6 +815,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ levels, units });
     } catch (error) {
       res.json({ levels: [], units: [] });
+    }
+  });
+
+  // Document Templates Admin Page
+  app.get("/admin/templates", (req: Request, res: Response) => {
+    const sessionToken = getSessionToken(req);
+    if (!sessionToken || !isValidSession(sessionToken)) {
+      return res.redirect("/admin");
+    }
+    const templatePath = path.resolve(process.cwd(), "server", "templates", "admin-templates.html");
+    const html = fs.readFileSync(templatePath, "utf-8");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  });
+
+  // Document Templates API
+  app.get("/api/admin/templates", async (_req: Request, res: Response) => {
+    try {
+      const allTemplates = await db.select().from(documentTemplates).orderBy(desc(documentTemplates.createdAt));
+      res.json(allTemplates);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch templates" });
+    }
+  });
+
+  app.get("/api/templates", async (_req: Request, res: Response) => {
+    try {
+      const activeTemplates = await db.select().from(documentTemplates)
+        .where(sql`${documentTemplates.status} = 'active'`)
+        .orderBy(asc(documentTemplates.name));
+      res.json(activeTemplates);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch templates" });
+    }
+  });
+
+  app.get("/api/templates/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const [template] = await db.select().from(documentTemplates).where(sql`${documentTemplates.id} = ${id}`);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch template" });
+    }
+  });
+
+  app.post("/api/admin/templates", async (req: Request, res: Response) => {
+    try {
+      const { name, description, category, content, placeholders, pageSize, orientation, marginTop, marginBottom, marginLeft, marginRight, fontFamily, fontSize, showPageNumbers, headerText, footerText, status } = req.body;
+      const [newTemplate] = await db.insert(documentTemplates).values({
+        name,
+        description,
+        category: category || "general",
+        content,
+        placeholders: placeholders || [],
+        pageSize: pageSize || "A4",
+        orientation: orientation || "portrait",
+        marginTop: marginTop || 20,
+        marginBottom: marginBottom || 20,
+        marginLeft: marginLeft || 20,
+        marginRight: marginRight || 20,
+        fontFamily: fontFamily || "Times New Roman",
+        fontSize: fontSize || 12,
+        showPageNumbers: showPageNumbers !== false,
+        headerText,
+        footerText,
+        status: status || "active",
+      }).returning();
+      res.json(newTemplate);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create template" });
+    }
+  });
+
+  app.put("/api/admin/templates/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, description, category, content, placeholders, pageSize, orientation, marginTop, marginBottom, marginLeft, marginRight, fontFamily, fontSize, showPageNumbers, headerText, footerText, status } = req.body;
+      const [updated] = await db.update(documentTemplates)
+        .set({
+          name,
+          description,
+          category,
+          content,
+          placeholders,
+          pageSize,
+          orientation,
+          marginTop,
+          marginBottom,
+          marginLeft,
+          marginRight,
+          fontFamily,
+          fontSize,
+          showPageNumbers,
+          headerText,
+          footerText,
+          status,
+          updatedAt: new Date(),
+        })
+        .where(sql`${documentTemplates.id} = ${id}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update template" });
+    }
+  });
+
+  app.delete("/api/admin/templates/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(documentTemplates).where(sql`${documentTemplates.id} = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete template" });
     }
   });
 
