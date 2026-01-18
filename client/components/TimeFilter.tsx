@@ -1,204 +1,379 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, StyleSheet, ScrollView, Pressable, Modal } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
 import { useTheme } from '@/hooks/useTheme';
 import { Spacing, BorderRadius } from '@/constants/theme';
+import { Feather } from '@expo/vector-icons';
 
-export type TimePeriod = 
-  | 'today'
-  | 'this_week'
-  | 'this_month'
-  | 'this_quarter'
-  | 'this_fy'
-  | 'last_month'
-  | 'last_quarter'
-  | 'last_fy'
-  | 'q1'
-  | 'q2'
-  | 'q3'
-  | 'q4'
-  | 'custom';
+export type FilterCategory = 'month' | 'quarter' | 'year' | 'fy';
 
-interface TimeFilterOption {
-  id: TimePeriod;
-  label: string;
-  shortLabel?: string;
+export interface TimeSelection {
+  category: FilterCategory;
+  value: string;
 }
 
-const TIME_FILTER_OPTIONS: TimeFilterOption[] = [
-  { id: 'this_month', label: 'This Month', shortLabel: 'Month' },
-  { id: 'this_quarter', label: 'This Quarter', shortLabel: 'Quarter' },
-  { id: 'this_fy', label: 'This FY', shortLabel: 'FY' },
-  { id: 'last_month', label: 'Last Month' },
-  { id: 'last_quarter', label: 'Last Quarter' },
-  { id: 'last_fy', label: 'Last FY' },
-  { id: 'q1', label: 'Q1 (Apr-Jun)' },
-  { id: 'q2', label: 'Q2 (Jul-Sep)' },
-  { id: 'q3', label: 'Q3 (Oct-Dec)' },
-  { id: 'q4', label: 'Q4 (Jan-Mar)' },
+const MONTHS = [
+  { id: '01', label: 'January', short: 'Jan' },
+  { id: '02', label: 'February', short: 'Feb' },
+  { id: '03', label: 'March', short: 'Mar' },
+  { id: '04', label: 'April', short: 'Apr' },
+  { id: '05', label: 'May', short: 'May' },
+  { id: '06', label: 'June', short: 'Jun' },
+  { id: '07', label: 'July', short: 'Jul' },
+  { id: '08', label: 'August', short: 'Aug' },
+  { id: '09', label: 'September', short: 'Sep' },
+  { id: '10', label: 'October', short: 'Oct' },
+  { id: '11', label: 'November', short: 'Nov' },
+  { id: '12', label: 'December', short: 'Dec' },
 ];
 
+const QUARTERS = [
+  { id: 'Q1', label: 'Q1 (Apr-Jun)' },
+  { id: 'Q2', label: 'Q2 (Jul-Sep)' },
+  { id: 'Q3', label: 'Q3 (Oct-Dec)' },
+  { id: 'Q4', label: 'Q4 (Jan-Mar)' },
+];
+
+const CATEGORIES: { id: FilterCategory; label: string }[] = [
+  { id: 'month', label: 'Month' },
+  { id: 'quarter', label: 'Quarter' },
+  { id: 'year', label: 'Year' },
+  { id: 'fy', label: 'Financial Year' },
+];
+
+function getYearOptions(): string[] {
+  const currentYear = new Date().getFullYear();
+  return [
+    (currentYear - 2).toString(),
+    (currentYear - 1).toString(),
+    currentYear.toString(),
+    (currentYear + 1).toString(),
+  ];
+}
+
+function getFYOptions(): string[] {
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+  const currentFYStart = currentMonth >= 3 ? currentYear : currentYear - 1;
+  return [
+    `${currentFYStart - 2}-${(currentFYStart - 1).toString().slice(-2)}`,
+    `${currentFYStart - 1}-${currentFYStart.toString().slice(-2)}`,
+    `${currentFYStart}-${(currentFYStart + 1).toString().slice(-2)}`,
+  ];
+}
+
+function getCurrentDefaults(): TimeSelection {
+  const now = new Date();
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  return { category: 'month', value: `${now.getFullYear()}-${month}` };
+}
+
 interface TimeFilterProps {
-  selected: TimePeriod;
-  onSelect: (period: TimePeriod) => void;
+  selected: TimeSelection;
+  onSelect: (selection: TimeSelection) => void;
   compact?: boolean;
 }
 
-export function getDateRangeForPeriod(period: TimePeriod): { startDate: string; endDate: string } {
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth();
-  
-  const getFYYear = () => {
-    return currentMonth >= 3 ? currentYear : currentYear - 1;
-  };
-
+export function getDateRangeForSelection(selection: TimeSelection): { startDate: string; endDate: string } {
   const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
-  switch (period) {
-    case 'today': {
-      return { startDate: formatDate(today), endDate: formatDate(today) };
-    }
-    case 'this_week': {
-      const startOfWeek = new Date(today);
-      startOfWeek.setDate(today.getDate() - today.getDay());
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-      return { startDate: formatDate(startOfWeek), endDate: formatDate(endOfWeek) };
-    }
-    case 'this_month': {
-      const startOfMonth = new Date(currentYear, currentMonth, 1);
-      const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
+  switch (selection.category) {
+    case 'month': {
+      const [year, month] = selection.value.split('-').map(Number);
+      const startOfMonth = new Date(year, month - 1, 1);
+      const endOfMonth = new Date(year, month, 0);
       return { startDate: formatDate(startOfMonth), endDate: formatDate(endOfMonth) };
     }
-    case 'last_month': {
-      const startOfLastMonth = new Date(currentYear, currentMonth - 1, 1);
-      const endOfLastMonth = new Date(currentYear, currentMonth, 0);
-      return { startDate: formatDate(startOfLastMonth), endDate: formatDate(endOfLastMonth) };
-    }
-    case 'this_quarter': {
-      const fyYear = getFYYear();
-      const fyQuarter = currentMonth >= 3 ? Math.floor((currentMonth - 3) / 3) : Math.floor((currentMonth + 9) / 3);
-      const quarterStartMonth = (fyQuarter * 3 + 3) % 12;
-      const quarterStartYear = quarterStartMonth >= 3 ? fyYear : fyYear + 1;
-      const startOfQuarter = new Date(quarterStartYear, quarterStartMonth, 1);
-      const endOfQuarter = new Date(quarterStartYear, quarterStartMonth + 3, 0);
-      return { startDate: formatDate(startOfQuarter), endDate: formatDate(endOfQuarter) };
-    }
-    case 'last_quarter': {
-      const fyYear = getFYYear();
-      const fyQuarter = currentMonth >= 3 ? Math.floor((currentMonth - 3) / 3) : Math.floor((currentMonth + 9) / 3);
-      const lastQuarter = (fyQuarter + 3) % 4;
-      const lastQuarterStartMonth = (lastQuarter * 3 + 3) % 12;
-      let lastQuarterStartYear = lastQuarterStartMonth >= 3 ? fyYear : fyYear + 1;
-      if (lastQuarter >= fyQuarter) lastQuarterStartYear -= 1;
-      const startOfQuarter = new Date(lastQuarterStartYear, lastQuarterStartMonth, 1);
-      const endOfQuarter = new Date(lastQuarterStartYear, lastQuarterStartMonth + 3, 0);
-      return { startDate: formatDate(startOfQuarter), endDate: formatDate(endOfQuarter) };
-    }
-    case 'this_fy': {
-      const fyYear = getFYYear();
-      const startOfFY = new Date(fyYear, 3, 1);
-      const endOfFY = new Date(fyYear + 1, 2, 31);
-      return { startDate: formatDate(startOfFY), endDate: formatDate(endOfFY) };
-    }
-    case 'last_fy': {
-      const fyYear = getFYYear() - 1;
-      const startOfFY = new Date(fyYear, 3, 1);
-      const endOfFY = new Date(fyYear + 1, 2, 31);
-      return { startDate: formatDate(startOfFY), endDate: formatDate(endOfFY) };
-    }
-    case 'q1': {
-      const fyYear = getFYYear();
-      const start = new Date(fyYear, 3, 1);
-      const end = new Date(fyYear, 5, 30);
+    case 'quarter': {
+      const [fyStr, quarter] = selection.value.split('-');
+      const fyYear = parseInt(fyStr);
+      const quarterNum = parseInt(quarter.replace('Q', ''));
+      
+      let startMonth: number, startYear: number;
+      switch (quarterNum) {
+        case 1: startMonth = 3; startYear = fyYear; break;
+        case 2: startMonth = 6; startYear = fyYear; break;
+        case 3: startMonth = 9; startYear = fyYear; break;
+        case 4: startMonth = 0; startYear = fyYear + 1; break;
+        default: startMonth = 3; startYear = fyYear;
+      }
+      
+      const start = new Date(startYear, startMonth, 1);
+      const end = new Date(startYear, startMonth + 3, 0);
       return { startDate: formatDate(start), endDate: formatDate(end) };
     }
-    case 'q2': {
-      const fyYear = getFYYear();
-      const start = new Date(fyYear, 6, 1);
-      const end = new Date(fyYear, 8, 30);
+    case 'year': {
+      const year = parseInt(selection.value);
+      const start = new Date(year, 0, 1);
+      const end = new Date(year, 11, 31);
       return { startDate: formatDate(start), endDate: formatDate(end) };
     }
-    case 'q3': {
-      const fyYear = getFYYear();
-      const start = new Date(fyYear, 9, 1);
-      const end = new Date(fyYear, 11, 31);
+    case 'fy': {
+      const fyStart = parseInt(selection.value.split('-')[0]);
+      const start = new Date(fyStart, 3, 1);
+      const end = new Date(fyStart + 1, 2, 31);
       return { startDate: formatDate(start), endDate: formatDate(end) };
     }
-    case 'q4': {
-      const fyYear = getFYYear();
-      const start = new Date(fyYear + 1, 0, 1);
-      const end = new Date(fyYear + 1, 2, 31);
-      return { startDate: formatDate(start), endDate: formatDate(end) };
-    }
-    default:
+    default: {
+      const today = new Date();
       return { startDate: formatDate(today), endDate: formatDate(today) };
+    }
   }
 }
 
-export function getFilterLabel(period: TimePeriod): string {
-  const option = TIME_FILTER_OPTIONS.find(o => o.id === period);
-  return option?.label || period;
+export function getFilterDisplayLabel(selection: TimeSelection): string {
+  switch (selection.category) {
+    case 'month': {
+      const [year, month] = selection.value.split('-');
+      const monthData = MONTHS.find(m => m.id === month);
+      return `${monthData?.short || month} ${year}`;
+    }
+    case 'quarter': {
+      const [fyYear, quarter] = selection.value.split('-');
+      return `${quarter} FY ${fyYear}-${(parseInt(fyYear) + 1).toString().slice(-2)}`;
+    }
+    case 'year':
+      return selection.value;
+    case 'fy':
+      return `FY ${selection.value}`;
+    default:
+      return '';
+  }
 }
 
 export function TimeFilter({ selected, onSelect, compact = false }: TimeFilterProps) {
   const { theme } = useTheme();
+  const [showPicker, setShowPicker] = useState(false);
+  const [tempCategory, setTempCategory] = useState<FilterCategory>(selected.category);
 
-  const options = compact 
-    ? TIME_FILTER_OPTIONS.slice(0, 3)
-    : TIME_FILTER_OPTIONS;
+  const yearOptions = useMemo(() => getYearOptions(), []);
+  const fyOptions = useMemo(() => getFYOptions(), []);
+
+  const getOptionsForCategory = (category: FilterCategory) => {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+    const currentFYStart = currentMonth >= 3 ? currentYear : currentYear - 1;
+
+    switch (category) {
+      case 'month':
+        const monthOptions: { id: string; label: string }[] = [];
+        yearOptions.forEach(year => {
+          MONTHS.forEach(month => {
+            monthOptions.push({
+              id: `${year}-${month.id}`,
+              label: `${month.short} ${year}`,
+            });
+          });
+        });
+        return monthOptions.reverse();
+      case 'quarter':
+        const quarterOptions: { id: string; label: string }[] = [];
+        fyOptions.forEach(fy => {
+          const fyYear = fy.split('-')[0];
+          QUARTERS.forEach(q => {
+            quarterOptions.push({
+              id: `${fyYear}-${q.id}`,
+              label: `${q.id} (${fy})`,
+            });
+          });
+        });
+        return quarterOptions.reverse();
+      case 'year':
+        return yearOptions.map(y => ({ id: y, label: y })).reverse();
+      case 'fy':
+        return fyOptions.map(fy => ({ id: fy, label: `FY ${fy}` })).reverse();
+      default:
+        return [];
+    }
+  };
+
+  const handleCategorySelect = (category: FilterCategory) => {
+    setTempCategory(category);
+  };
+
+  const handleValueSelect = (value: string) => {
+    onSelect({ category: tempCategory, value });
+    setShowPicker(false);
+  };
+
+  const displayLabel = getFilterDisplayLabel(selected);
 
   return (
-    <ScrollView 
-      horizontal 
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.container}
-    >
-      {options.map((option) => {
-        const isSelected = selected === option.id;
-        return (
-          <Pressable
-            key={option.id}
-            onPress={() => onSelect(option.id)}
-            style={[
-              styles.chip,
-              { 
-                backgroundColor: isSelected ? theme.primary : theme.backgroundRoot,
-                borderColor: isSelected ? theme.primary : theme.border,
-              },
-            ]}
+    <>
+      <Pressable
+        onPress={() => {
+          setTempCategory(selected.category);
+          setShowPicker(true);
+        }}
+        style={[
+          styles.filterButton,
+          { 
+            backgroundColor: theme.backgroundElevated,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        <Feather name="calendar" size={16} color={theme.primary} />
+        <ThemedText type="small" style={styles.filterButtonText}>
+          {displayLabel}
+        </ThemedText>
+        <Feather name="chevron-down" size={16} color={theme.textSecondary} />
+      </Pressable>
+
+      <Modal
+        visible={showPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPicker(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowPicker(false)}
+        >
+          <Pressable 
+            style={[styles.modalContent, { backgroundColor: theme.backgroundRoot }]}
+            onPress={(e) => e.stopPropagation()}
           >
-            <ThemedText 
-              type="small" 
-              style={[
-                styles.chipText,
-                { color: isSelected ? '#FFFFFF' : theme.text }
-              ]}
+            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+              <ThemedText type="defaultSemiBold">Select Time Period</ThemedText>
+              <Pressable onPress={() => setShowPicker(false)}>
+                <Feather name="x" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+
+            <View style={styles.categoryTabs}>
+              {CATEGORIES.map((cat) => {
+                const isSelected = tempCategory === cat.id;
+                return (
+                  <Pressable
+                    key={cat.id}
+                    onPress={() => handleCategorySelect(cat.id)}
+                    style={[
+                      styles.categoryTab,
+                      { 
+                        backgroundColor: isSelected ? theme.primary : 'transparent',
+                        borderColor: isSelected ? theme.primary : theme.border,
+                      },
+                    ]}
+                  >
+                    <ThemedText 
+                      type="small"
+                      style={{ 
+                        color: isSelected ? '#FFFFFF' : theme.text,
+                        fontWeight: isSelected ? '600' : '400',
+                      }}
+                    >
+                      {cat.label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <ScrollView 
+              style={styles.optionsList}
+              showsVerticalScrollIndicator={false}
             >
-              {compact ? (option.shortLabel || option.label) : option.label}
-            </ThemedText>
+              <View style={styles.optionsGrid}>
+                {getOptionsForCategory(tempCategory).map((option) => {
+                  const isSelected = selected.category === tempCategory && selected.value === option.id;
+                  return (
+                    <Pressable
+                      key={option.id}
+                      onPress={() => handleValueSelect(option.id)}
+                      style={[
+                        styles.optionItem,
+                        { 
+                          backgroundColor: isSelected ? theme.primary : theme.backgroundElevated,
+                          borderColor: isSelected ? theme.primary : theme.border,
+                        },
+                      ]}
+                    >
+                      <ThemedText 
+                        type="small"
+                        style={{ 
+                          color: isSelected ? '#FFFFFF' : theme.text,
+                          fontWeight: isSelected ? '600' : '400',
+                          textAlign: 'center',
+                        }}
+                      >
+                        {option.label}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
           </Pressable>
-        );
-      })}
-    </ScrollView>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
+export { getCurrentDefaults };
+
 const styles = StyleSheet.create({
-  container: {
+  filterButton: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.sm,
-    paddingVertical: Spacing.xs,
-  },
-  chip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
   },
-  chipText: {
-    fontSize: 13,
+  filterButtonText: {
+    fontSize: 14,
     fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    maxHeight: '70%',
+    paddingBottom: Spacing.xl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderBottomWidth: 1,
+  },
+  categoryTabs: {
+    flexDirection: 'row',
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  categoryTab: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  optionsList: {
+    maxHeight: 300,
+  },
+  optionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  optionItem: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    minWidth: '30%',
+    flexGrow: 1,
   },
 });

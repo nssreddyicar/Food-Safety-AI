@@ -9,7 +9,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ThemedText } from '@/components/ThemedText';
 import { Card } from '@/components/Card';
 import { StatCardSkeleton } from '@/components/SkeletonLoader';
-import { TimeFilter, TimePeriod, getDateRangeForPeriod, getFilterLabel } from '@/components/TimeFilter';
+import { TimeFilter, TimeSelection, getDateRangeForSelection, getFilterDisplayLabel, getCurrentDefaults } from '@/components/TimeFilter';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthContext } from '@/context/AuthContext';
 import { getApiUrl } from '@/lib/query-client';
@@ -240,13 +240,13 @@ export default function DashboardScreen() {
   const [upcomingCases, setUpcomingCases] = useState<ProsecutionCase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>('this_month');
+  const [timeSelection, setTimeSelection] = useState<TimeSelection>(getCurrentDefaults());
 
   const jurisdictionId = user?.jurisdiction?.unitId;
 
   const loadData = useCallback(async () => {
     try {
-      const dateRange = getDateRangeForPeriod(timePeriod);
+      const dateRange = getDateRangeForSelection(timeSelection);
       
       const metricsUrl = new URL('/api/dashboard/metrics', getApiUrl());
       const actionUrl = new URL('/api/action-dashboard', getApiUrl());
@@ -290,10 +290,10 @@ export default function DashboardScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [jurisdictionId, timePeriod]);
+  }, [jurisdictionId, timeSelection]);
 
-  const handleTimePeriodChange = (period: TimePeriod) => {
-    setTimePeriod(period);
+  const handleTimeSelectionChange = (selection: TimeSelection) => {
+    setTimeSelection(selection);
     setIsLoading(true);
   };
 
@@ -366,17 +366,18 @@ export default function DashboardScreen() {
         }
       >
         <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.header}>
-          <ThemedText type="h1" style={styles.title}>Action Dashboard</ThemedText>
-          <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            {getFilterLabel(timePeriod)} overview
-          </ThemedText>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(120).duration(400)}>
-          <TimeFilter 
-            selected={timePeriod} 
-            onSelect={handleTimePeriodChange}
-          />
+          <View style={styles.headerRow}>
+            <View style={styles.headerText}>
+              <ThemedText type="h1" style={styles.title}>Action Dashboard</ThemedText>
+              <ThemedText type="body" style={{ color: theme.textSecondary }}>
+                {getFilterDisplayLabel(timeSelection)} overview
+              </ThemedText>
+            </View>
+            <TimeFilter 
+              selected={timeSelection} 
+              onSelect={handleTimeSelectionChange}
+            />
+          </View>
         </Animated.View>
 
         {actionData ? (
@@ -661,6 +662,15 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: Spacing.sm,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: Spacing.md,
+  },
+  headerText: {
+    flex: 1,
   },
   title: {
     fontSize: 26,
