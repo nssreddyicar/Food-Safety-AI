@@ -551,6 +551,8 @@ export const actionCategories = pgTable("action_categories", {
   displayOrder: integer("display_order").notNull().default(0),
   isEnabled: boolean("is_enabled").default(true),
   showOnDashboard: boolean("show_on_dashboard").default(true),
+  showInReport: boolean("show_in_report").default(true),
+  reportDisplayOrder: integer("report_display_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -747,3 +749,62 @@ export const seizedArticles = pgTable("seized_articles", {
 });
 
 export type SeizedArticle = typeof seizedArticles.$inferSelect;
+
+// Dashboard Statistics Cards - Admin-configurable statistics cards for mobile dashboard
+export const statisticsCards = pgTable("statistics_cards", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(), // e.g., 'licenses_issued', 'inspections_completed'
+  description: text("description"),
+  icon: text("icon").notNull().default("bar-chart-2"), // Feather icon name
+  color: text("color").notNull().default("#1E40AF"),
+  group: text("group").notNull().default("general"), // 'license', 'inspection', 'sample', 'financial'
+  valueType: text("value_type").notNull().default("count"), // 'count', 'currency', 'percentage'
+  entityType: text("entity_type"), // 'license', 'inspection', 'sample', etc.
+  countQuery: text("count_query"), // Filter or calculation method
+  displayOrder: integer("display_order").notNull().default(0),
+  isEnabled: boolean("is_enabled").default(true),
+  showOnDashboard: boolean("show_on_dashboard").default(true),
+  showInReport: boolean("show_in_report").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type StatisticsCard = typeof statisticsCards.$inferSelect;
+
+// Dashboard Settings - Global dashboard configuration
+export const dashboardSettings = pgTable("dashboard_settings", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  settingKey: text("setting_key").notNull().unique(), // e.g., 'show_action_dashboard', 'stats_columns'
+  settingValue: text("setting_value"),
+  settingType: text("setting_type").notNull().default("string"), // 'string', 'boolean', 'number', 'json'
+  description: text("description"),
+  category: text("category").notNull().default("general"), // 'general', 'action_dashboard', 'statistics', 'report'
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type DashboardSetting = typeof dashboardSettings.$inferSelect;
+
+// Report Layout Configuration - Admin-configurable report sections
+export const reportSections = pgTable("report_sections", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(), // e.g., 'action_summary', 'category_breakdown'
+  description: text("description"),
+  sectionType: text("section_type").notNull(), // 'summary', 'table', 'chart', 'statistics'
+  displayOrder: integer("display_order").notNull().default(0),
+  isEnabled: boolean("is_enabled").default(true),
+  showInPdf: boolean("show_in_pdf").default(true),
+  showInExcel: boolean("show_in_excel").default(true),
+  configuration: jsonb("configuration"), // Section-specific configuration (columns, filters, etc.)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type ReportSection = typeof reportSections.$inferSelect;
