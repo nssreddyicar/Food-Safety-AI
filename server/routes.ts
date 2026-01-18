@@ -1194,13 +1194,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sampleUpdates.labResult = nodeData.labResult;
         }
         if (nodeData.labReportDate) {
-          sampleUpdates.labReportDate = nodeData.labReportDate;
+          // Parse date string (DD-MM-YYYY) to Date object
+          const dateParts = nodeData.labReportDate.split('-');
+          if (dateParts.length === 3) {
+            const parsedDate = new Date(parseInt(dateParts[2]), parseInt(dateParts[1]) - 1, parseInt(dateParts[0]));
+            if (!isNaN(parsedDate.getTime())) {
+              sampleUpdates.labReportDate = parsedDate;
+            }
+          }
         }
         
         if (Object.keys(sampleUpdates).length > 0) {
-          await db.update(samples)
-            .set(sampleUpdates)
-            .where(sql`${samples.id} = ${sampleId}`);
+          try {
+            await db.update(samples)
+              .set(sampleUpdates)
+              .where(sql`${samples.id} = ${sampleId}`);
+          } catch (syncError) {
+            // Sample might not exist in database (stored in AsyncStorage), continue anyway
+            console.log('Sample sync skipped (sample may not exist in DB):', syncError);
+          }
         }
       }
       
