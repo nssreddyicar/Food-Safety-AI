@@ -5,11 +5,13 @@ A government-grade mobile application for Food Safety Officers (FSO) to manage i
 
 ## Current State
 MVP implementation with core features:
-- User authentication (invite-only login)
+- User authentication (invite-only login with database)
 - Dashboard with key metrics and urgent actions
 - Inspection management (create, view, search, filter)
 - Sample tracking with 14-day lab report countdown
 - Officer profile management
+- Multi-jurisdiction support with jurisdiction switching
+- Jurisdiction-bound data (inspections/samples linked to jurisdictions, not officers)
 
 ## Project Architecture
 
@@ -138,7 +140,10 @@ Each sample captures comprehensive information:
 3. Scan QR code with Expo Go to test on device
 
 ## Data Persistence
-Currently using AsyncStorage for local data persistence. Demo data is seeded on first login.
+- AsyncStorage for local data persistence on mobile
+- PostgreSQL database for officer/admin data
+- Inspections and samples are bound to jurisdictions (via jurisdictionId), not individual officers
+- When officers change, historical data remains tied to the jurisdiction for continuity
 
 ## Future Enhancements
 - Backend database integration (PostgreSQL)
