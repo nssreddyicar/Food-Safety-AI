@@ -477,6 +477,33 @@
 
       function generatePreviewContent(data) {
         const content = data.content || '';
+        
+        // Check if content is raw HTML (starts with DOCTYPE, html tag, or contains typical HTML structure)
+        const trimmedContent = content.trim();
+        const isRawHtml = trimmedContent.startsWith('<!DOCTYPE') || 
+                          trimmedContent.startsWith('<html') ||
+                          (trimmedContent.startsWith('<') && (
+                            trimmedContent.includes('<style>') ||
+                            trimmedContent.includes('<div class=') ||
+                            trimmedContent.includes('<table')
+                          ));
+        
+        if (isRawHtml) {
+          // For raw HTML, use srcdoc iframe to completely isolate the template's CSS
+          const escapedContent = content
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;');
+          
+          return `
+            <iframe 
+              srcdoc="${escapedContent}"
+              style="width: 100%; height: 100%; border: none; background: white;"
+              sandbox="allow-same-origin"
+            ></iframe>
+          `;
+        }
+        
+        // Plain text content - use original formatting
         const contentWithBreaks = content.replace(/\n/g, '<br>');
         
         const pageNumberPosition = data.pageNumberPosition || 'center';
@@ -544,9 +571,20 @@
         const widthPx = dims.width * mmToPx;
         const heightPx = dims.height * mmToPx;
         
+        // Check if content is raw HTML - if so, don't apply form margins (template has its own)
+        const trimmedContent = (data.content || '').trim();
+        const isRawHtml = trimmedContent.startsWith('<!DOCTYPE') || 
+                          trimmedContent.startsWith('<html') ||
+                          (trimmedContent.startsWith('<') && (
+                            trimmedContent.includes('<style>') ||
+                            trimmedContent.includes('<div class=') ||
+                            trimmedContent.includes('<table')
+                          ));
+        
         page.style.width = widthPx + 'px';
         page.style.height = heightPx + 'px';
-        page.style.padding = `${data.marginTop * mmToPx}px ${data.marginRight * mmToPx}px ${data.marginBottom * mmToPx}px ${data.marginLeft * mmToPx}px`;
+        // Only apply form margins for plain text, not raw HTML templates
+        page.style.padding = isRawHtml ? '0' : `${data.marginTop * mmToPx}px ${data.marginRight * mmToPx}px ${data.marginBottom * mmToPx}px ${data.marginLeft * mmToPx}px`;
         page.style.transform = `scale(${zoom})`;
         page.innerHTML = generatePreviewContent(data);
         
