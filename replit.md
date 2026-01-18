@@ -12,6 +12,8 @@ MVP implementation with core features:
 - Officer profile management
 - Multi-jurisdiction support with jurisdiction switching
 - Jurisdiction-bound data (inspections/samples linked to jurisdictions, not officers)
+- Document templates with dynamic placeholders and PDF generation
+- Admin panel access control (per-officer configuration)
 
 ## Project Architecture
 
@@ -57,7 +59,8 @@ client/
 │   ├── NewInspectionScreen.tsx
 │   ├── ProfileScreen.tsx
 │   ├── SampleDetailsScreen.tsx
-│   └── SamplesScreen.tsx
+│   ├── SamplesScreen.tsx
+│   └── TemplatesScreen.tsx    # Document templates with PDF download
 └── types/index.ts             # TypeScript types
 ```
 
