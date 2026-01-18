@@ -408,8 +408,26 @@ export default function SampleDetailsScreen() {
   const generatePdfHtml = (template: DocumentTemplate): string => {
     const content = replacePlaceholders(template.content);
     
+    const scrollbarHideCSS = `
+      html, body {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        overflow: hidden;
+      }
+      html::-webkit-scrollbar, body::-webkit-scrollbar {
+        display: none;
+      }
+    `;
+    
     if (template.contentType === 'html') {
-      return content;
+      // Inject scrollbar-hiding CSS into the HTML content
+      if (content.includes('</head>')) {
+        return content.replace('</head>', `<style>${scrollbarHideCSS}</style></head>`);
+      } else if (content.includes('<body')) {
+        return content.replace('<body', `<style>${scrollbarHideCSS}</style><body`);
+      } else {
+        return `<style>${scrollbarHideCSS}</style>${content}`;
+      }
     }
     
     return `<!DOCTYPE html>
@@ -417,7 +435,8 @@ export default function SampleDetailsScreen() {
 <head>
   <meta charset="UTF-8">
   <style>
-    body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }
+    ${scrollbarHideCSS}
+    body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; margin: 0; }
     pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; }
   </style>
 </head>
