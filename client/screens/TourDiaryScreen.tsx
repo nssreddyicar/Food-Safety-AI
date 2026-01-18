@@ -167,13 +167,14 @@ export default function TourDiaryScreen() {
   
   const renderTableHeader = () => (
     <View style={[styles.tableRow, styles.tableHeader, { backgroundColor: Colors.light.primary }]}>
-      <Text style={[styles.headerCell, styles.slNoCell]}>Sl.</Text>
+      <Text style={[styles.headerCell, styles.slNoCell]}>Sl. No</Text>
       <Text style={[styles.headerCell, styles.dateCell]}>Date (Day)</Text>
       <Text style={[styles.headerCell, styles.fromCell]}>From</Text>
       <Text style={[styles.headerCell, styles.toCell]}>To</Text>
-      <Text style={[styles.headerCell, styles.distanceCell]}>Distance</Text>
-      <Text style={[styles.headerCell, styles.modeCell]}>Mode</Text>
-      <Text style={[styles.headerCell, styles.purposeCell]}>Purpose</Text>
+      <Text style={[styles.headerCell, styles.distanceCell]}>Distance{'\n'}(To & Fro)</Text>
+      <Text style={[styles.headerCell, styles.modeCell]}>Mode of{'\n'}Travel</Text>
+      <Text style={[styles.headerCell, styles.purposeCell]}>Purpose of Visit</Text>
+      <Text style={[styles.headerCell, styles.signatureCell]}>Signature</Text>
       <Text style={[styles.headerCell, styles.actionCell]}>Edit</Text>
     </View>
   );
@@ -214,6 +215,9 @@ export default function TourDiaryScreen() {
         </Text>
         <Text style={[styles.cell, styles.purposeCell, { color: theme.text }]} numberOfLines={1}>
           {entry?.purposeOfVisit || '-'}
+        </Text>
+        <Text style={[styles.cell, styles.signatureCell, { color: theme.text }]} numberOfLines={1}>
+          {entry?.signature || '-'}
         </Text>
         <Pressable
           style={styles.actionCell}
@@ -419,7 +423,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   table: {
-    minWidth: 700,
+    minWidth: 800,
   },
   tableRow: {
     flexDirection: 'row',
@@ -462,8 +466,11 @@ const styles = StyleSheet.create({
     width: 70,
   },
   purposeCell: {
-    width: 120,
+    width: 130,
     textAlign: 'left',
+  },
+  signatureCell: {
+    width: 80,
   },
   actionCell: {
     width: 40,
