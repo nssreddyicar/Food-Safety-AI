@@ -406,8 +406,28 @@ export default function DashboardScreen() {
           )}
         </Animated.View>
 
+        <Animated.View entering={FadeInDown.delay(700).duration(400)}>
+          <Card 
+            style={styles.actionDashboardCard}
+            onPress={() => navigation.navigate('ActionDashboard')}
+          >
+            <View style={styles.actionDashboardContent}>
+              <View style={[styles.actionDashboardIcon, { backgroundColor: theme.accent + '15' }]}>
+                <Feather name="grid" size={24} color={theme.accent} />
+              </View>
+              <View style={styles.actionDashboardText}>
+                <ThemedText type="body" style={{ fontWeight: '600' }}>Action Dashboard</ThemedText>
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                  View all pending actions, reminders & SLA tracking
+                </ThemedText>
+              </View>
+              <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            </View>
+          </Card>
+        </Animated.View>
+
         {upcomingCases.length > 0 ? (
-          <Animated.View entering={FadeInDown.delay(700).duration(400)}>
+          <Animated.View entering={FadeInDown.delay(800).duration(400)}>
             <View style={styles.sectionHeaderWithAction}>
               <SectionHeader title="Upcoming Court Dates" icon="calendar" />
               <Pressable 
@@ -419,7 +439,7 @@ export default function DashboardScreen() {
               </Pressable>
             </View>
             {upcomingCases.map((caseData, index) => (
-              <Animated.View key={caseData.id} entering={FadeInDown.delay(750 + index * 50).duration(400)}>
+              <Animated.View key={caseData.id} entering={FadeInDown.delay(850 + index * 50).duration(400)}>
                 <CourtCaseCard
                   caseData={caseData}
                   onPress={() => navigation.navigate('ProfileTab', { screen: 'CaseDetails', params: { caseId: caseData.id } })}
@@ -521,5 +541,23 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: Spacing.md,
     top: '50%',
+  },
+  actionDashboardCard: {
+    marginTop: Spacing.sm,
+  },
+  actionDashboardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  actionDashboardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionDashboardText: {
+    flex: 1,
   },
 });

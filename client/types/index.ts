@@ -276,3 +276,42 @@ export const ACTION_TYPES = [
   'License Cancelled',
   'No Issues Found'
 ];
+
+export type ActionCategoryGroup = 'legal' | 'inspection' | 'sampling' | 'administrative' | 'protocol';
+export type ActionPriority = 'critical' | 'high' | 'normal';
+
+export interface ActionCategoryCounts {
+  total: number;
+  pending: number;
+  overdue: number;
+  dueThisWeek: number;
+  dueToday: number;
+}
+
+export interface ActionCategory {
+  id: string;
+  code: string;
+  name: string;
+  group: ActionCategoryGroup;
+  icon: string;
+  color: string;
+  entityType: string;
+  slaDefaultDays: number;
+  priority: ActionPriority;
+  displayOrder: number;
+  isEnabled: boolean;
+  showOnDashboard: boolean;
+  counts: ActionCategoryCounts;
+}
+
+export interface ActionDashboardTotals {
+  totalItems: number;
+  overdueItems: number;
+  dueThisWeek: number;
+  dueToday: number;
+}
+
+export interface ActionDashboardData {
+  categories: ActionCategory[];
+  totals: ActionDashboardTotals;
+}

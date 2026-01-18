@@ -1,11 +1,13 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import DashboardScreen from "@/screens/DashboardScreen";
+import ActionDashboardScreen from "@/screens/ActionDashboardScreen";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type DashboardStackParamList = {
   Dashboard: undefined;
+  ActionDashboard: undefined;
 };
 
 const Stack = createNativeStackNavigator<DashboardStackParamList>();
@@ -20,6 +22,13 @@ export default function DashboardStackNavigator() {
         component={DashboardScreen}
         options={{
           headerTitle: () => <HeaderTitle title="Food Safety Inspector" />,
+        }}
+      />
+      <Stack.Screen
+        name="ActionDashboard"
+        component={ActionDashboardScreen}
+        options={{
+          headerTitle: "Action Dashboard",
         }}
       />
     </Stack.Navigator>
