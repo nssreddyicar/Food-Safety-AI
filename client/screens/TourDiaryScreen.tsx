@@ -8,6 +8,7 @@ import {
   TextInput,
   Modal,
   Platform,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -309,22 +310,40 @@ export default function TourDiaryScreen() {
               
               <View style={styles.formGroup}>
                 <Text style={[styles.label, { color: theme.textSecondary }]}>One-way Distance (km)</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                  placeholder="e.g., 25"
-                  placeholderTextColor={theme.textSecondary}
-                  keyboardType="numeric"
-                  value={editForm.oneWayDistance || ''}
-                  onChangeText={(text) => {
-                    const oneWay = parseFloat(text) || 0;
-                    const toFro = oneWay * 2;
-                    setEditForm({ 
-                      ...editForm, 
-                      oneWayDistance: text,
-                      distance: toFro > 0 ? toFro.toString() : '' 
-                    });
-                  }}
-                />
+                <View style={styles.distanceInputRow}>
+                  <TextInput
+                    style={[styles.input, styles.distanceInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                    placeholder="e.g., 25"
+                    placeholderTextColor={theme.textSecondary}
+                    keyboardType="numeric"
+                    value={editForm.oneWayDistance || ''}
+                    onChangeText={(text) => {
+                      const oneWay = parseFloat(text) || 0;
+                      const toFro = oneWay * 2;
+                      setEditForm({ 
+                        ...editForm, 
+                        oneWayDistance: text,
+                        distance: toFro > 0 ? toFro.toString() : '' 
+                      });
+                    }}
+                  />
+                  <Pressable
+                    style={[styles.distanceFetchButton, { backgroundColor: Colors.light.primary }]}
+                    onPress={() => {
+                      if (Platform.OS === 'web') {
+                        alert('Distance calculation requires Google Maps API integration. Please enter distance manually.');
+                      } else {
+                        Alert.alert(
+                          'Calculate Distance',
+                          'Automatic distance calculation requires Google Maps API integration. For now, please enter the one-way distance manually.',
+                          [{ text: 'OK' }]
+                        );
+                      }
+                    }}
+                  >
+                    <Feather name="map-pin" size={20} color="#fff" />
+                  </Pressable>
+                </View>
                 {editForm.distance ? (
                   <Text style={[styles.calculatedDistance, { color: Colors.light.success }]}>
                     To & Fro Distance: {editForm.distance} km
@@ -532,6 +551,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginTop: Spacing.xs,
+  },
+  distanceInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  distanceInput: {
+    flex: 1,
+  },
+  distanceFetchButton: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
     borderWidth: 1,
