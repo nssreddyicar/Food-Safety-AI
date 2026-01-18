@@ -222,12 +222,21 @@ export default function TemplatesScreen() {
     
     // Check if content is raw HTML - render it directly
     if (isRawHtmlContent(processedContent)) {
-      const dims = getPageDimensions(template.pageSize, template.orientation);
-      const mmToPx = 3.7795275591;
-      const pageWidthPx = dims.width * mmToPx * scale;
-      const pageHeightPx = dims.height * mmToPx * scale;
+      // Extract styles from raw HTML
+      let extractedStyles = '';
+      const styleMatches = processedContent.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+      for (const match of styleMatches) {
+        extractedStyles += match[1];
+      }
       
-      // For raw HTML, wrap it to scale and center in the viewport
+      // Extract body content if full HTML document
+      let bodyContent = processedContent;
+      const bodyMatch = processedContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      if (bodyMatch) {
+        bodyContent = bodyMatch[1];
+      }
+      
+      // For raw HTML, extract and rebuild with proper scaling
       return `
         <!DOCTYPE html>
         <html>
@@ -235,26 +244,32 @@ export default function TemplatesScreen() {
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-              * { box-sizing: border-box; }
+              /* Original template styles */
+              ${extractedStyles}
+              
+              /* Preview wrapper styles */
               html, body { 
-                margin: 0;
-                padding: 0;
-                background: #4b5563; 
-                display: flex; 
-                justify-content: center; 
-                align-items: flex-start;
-                padding: 20px;
-                min-height: 100vh;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #4b5563 !important; 
+                display: flex !important; 
+                justify-content: center !important; 
+                align-items: flex-start !important;
+                padding: 20px !important;
+                min-height: 100vh !important;
+                width: auto !important;
+                height: auto !important;
               }
-              .preview-wrapper {
+              .preview-scale-wrapper {
                 transform: scale(${scale});
                 transform-origin: top center;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
               }
             </style>
           </head>
           <body>
-            <div class="preview-wrapper">
-              ${processedContent}
+            <div class="preview-scale-wrapper">
+              ${bodyContent}
             </div>
           </body>
         </html>
