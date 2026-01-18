@@ -30,11 +30,13 @@ export default function DashboardScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const jurisdictionId = user?.jurisdiction?.unitId;
+
   const loadData = useCallback(async () => {
     try {
       const [statsData, actionsData] = await Promise.all([
-        storage.getDashboardStats(),
-        storage.getUrgentActions(),
+        storage.getDashboardStats(jurisdictionId),
+        storage.getUrgentActions(jurisdictionId),
       ]);
       setStats(statsData);
       setUrgentActions(actionsData);
@@ -44,7 +46,7 @@ export default function DashboardScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [jurisdictionId]);
 
   useFocusEffect(
     useCallback(() => {

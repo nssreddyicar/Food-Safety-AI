@@ -230,6 +230,7 @@ export default function NewInspectionScreen() {
         fsoId: user?.id || '',
         fsoName: user?.name || '',
         district: user?.district || '',
+        jurisdictionId: user?.jurisdiction?.unitId,
       };
 
       await storage.addInspection(inspection);

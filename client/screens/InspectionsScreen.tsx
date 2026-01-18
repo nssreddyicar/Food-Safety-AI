@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { FAB } from '@/components/FAB';
 import { InspectionCardSkeleton } from '@/components/SkeletonLoader';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuthContext } from '@/context/AuthContext';
 import { storage } from '@/lib/storage';
 import { Inspection, InspectionStatus } from '@/types';
 import { Spacing } from '@/constants/theme';
@@ -32,6 +33,7 @@ export default function InspectionsScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
+  const { user } = useAuthContext();
 
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [filteredInspections, setFilteredInspections] = useState<Inspection[]>([]);
@@ -40,9 +42,11 @@ export default function InspectionsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
+  const jurisdictionId = user?.jurisdiction?.unitId;
+
   const loadData = useCallback(async () => {
     try {
-      const data = await storage.getInspections();
+      const data = await storage.getInspections(jurisdictionId);
       setInspections(data);
       filterInspections(data, searchQuery, statusFilter);
     } catch (error) {
@@ -51,7 +55,7 @@ export default function InspectionsScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, statusFilter, jurisdictionId]);
 
   useFocusEffect(
     useCallback(() => {

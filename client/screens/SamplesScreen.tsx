@@ -11,6 +11,7 @@ import { SampleCard } from '@/components/SampleCard';
 import { EmptyState } from '@/components/EmptyState';
 import { SampleCardSkeleton } from '@/components/SkeletonLoader';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuthContext } from '@/context/AuthContext';
 import { storage } from '@/lib/storage';
 import { Sample } from '@/types';
 import { Spacing } from '@/constants/theme';
@@ -28,6 +29,7 @@ export default function SamplesScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
+  const { user } = useAuthContext();
 
   const [samples, setSamples] = useState<Sample[]>([]);
   const [filteredSamples, setFilteredSamples] = useState<Sample[]>([]);
@@ -35,9 +37,11 @@ export default function SamplesScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
 
+  const jurisdictionId = user?.jurisdiction?.unitId;
+
   const loadData = useCallback(async () => {
     try {
-      const data = await storage.getSamples();
+      const data = await storage.getSamples(jurisdictionId);
       setSamples(data);
       filterSamples(data, statusFilter);
     } catch (error) {
@@ -46,7 +50,7 @@ export default function SamplesScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, jurisdictionId]);
 
   useFocusEffect(
     useCallback(() => {
