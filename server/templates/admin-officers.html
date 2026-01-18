@@ -131,6 +131,11 @@
             <input type="text" class="form-input" id="designation" placeholder="e.g., Senior FSO" />
           </div>
           <div class="form-group">
+            <label class="form-label">Login Password</label>
+            <input type="password" class="form-input" id="password" placeholder="Enter password (leave blank to keep existing)" />
+            <small style="color: #6b7280; font-size: 12px; margin-top: 4px; display: block;">Minimum 6 characters. Leave blank when editing to keep current password.</small>
+          </div>
+          <div class="form-group">
             <label class="form-label">Status</label>
             <select class="form-select" id="status">
               <option value="active">Active</option>
@@ -201,12 +206,14 @@
           document.getElementById('phone').value = officer.phone || '';
           document.getElementById('role').value = officer.role;
           document.getElementById('designation').value = officer.designation || '';
+          document.getElementById('password').value = '';
           document.getElementById('status').value = officer.status;
           editingId = officer.id;
         } else {
           title.textContent = 'Add Officer';
           form.reset();
           document.getElementById('officer-id').value = '';
+          document.getElementById('password').value = '';
           editingId = null;
         }
         
@@ -237,6 +244,7 @@
       document.getElementById('officer-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         
+        const password = document.getElementById('password').value;
         const data = {
           name: document.getElementById('name').value,
           email: document.getElementById('email').value,
@@ -245,6 +253,13 @@
           designation: document.getElementById('designation').value,
           status: document.getElementById('status').value,
         };
+        
+        if (password && password.length >= 6) {
+          data.password = password;
+        } else if (password && password.length > 0 && password.length < 6) {
+          alert('Password must be at least 6 characters');
+          return;
+        }
 
         try {
           const url = editingId ? `/api/admin/officers/${editingId}` : '/api/admin/officers';

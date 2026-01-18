@@ -173,7 +173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/officers", async (req: Request, res: Response) => {
     try {
-      const { name, email, phone, role, designation, districtId, status } = req.body;
+      const { name, email, phone, role, designation, districtId, status, password } = req.body;
       const [newOfficer] = await db.insert(officers).values({
         name,
         email,
@@ -182,6 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         designation,
         districtId,
         status: status || "active",
+        password: password || null,
       }).returning();
       res.json(newOfficer);
     } catch (error: any) {
@@ -196,9 +197,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/admin/officers/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { name, email, phone, role, designation, districtId, status } = req.body;
+      const { name, email, phone, role, designation, districtId, status, password } = req.body;
+      const updateData: any = { name, email, phone, role, designation, districtId, status, updatedAt: new Date() };
+      if (password) {
+        updateData.password = password;
+      }
       const [updated] = await db.update(officers)
-        .set({ name, email, phone, role, designation, districtId, status, updatedAt: new Date() })
+        .set(updateData)
         .where(sql`${officers.id} = ${id}`)
         .returning();
       res.json(updated);
