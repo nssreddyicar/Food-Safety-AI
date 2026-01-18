@@ -329,7 +329,7 @@
                     <button type="button" class="zoom-btn" onclick="zoomOut()" title="Zoom Out">
                       <svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
                     </button>
-                    <span class="zoom-level" id="zoom-level">50%</span>
+                    <span class="zoom-level" id="zoom-level">40%</span>
                     <button type="button" class="zoom-btn" onclick="zoomIn()" title="Zoom In">
                       <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                     </button>
@@ -400,7 +400,7 @@
       let templates = [];
       let editingId = null;
       let previewTimeout = null;
-      let currentZoom = 0.5;
+      let currentZoom = 0.4;
       let fullscreenZoom = 0.5;
 
       const pageSizes = {
@@ -726,8 +726,8 @@
         const title = document.getElementById('modal-title');
         const form = document.getElementById('template-form');
         
-        currentZoom = 0.5;
-        document.getElementById('zoom-level').textContent = '50%';
+        currentZoom = 0.4;
+        document.getElementById('zoom-level').textContent = '40%';
         
         if (template) {
           title.textContent = 'Edit Template';
