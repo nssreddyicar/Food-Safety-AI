@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
-import { officers, districts, inspections, samples, systemSettings, administrativeLevels, jurisdictionUnits, officerRoles, officerCapacities, officerAssignments, documentTemplates, workflowNodes, workflowTransitions, sampleWorkflowState, sampleCodes, sampleCodeAuditLog } from "../shared/schema";
+import { officers, districts, inspections, samples, systemSettings, administrativeLevels, jurisdictionUnits, officerRoles, officerCapacities, officerAssignments, documentTemplates, workflowNodes, workflowTransitions, sampleWorkflowState, sampleCodes, sampleCodeAuditLog, fboLicenses, fboRegistrations, grievances, fswActivities, adjudicationCases, prosecutionCases, prosecutionHearings } from "../shared/schema";
 import { desc, asc, count, sql } from "drizzle-orm";
 
 const ADMIN_CREDENTIALS = {
@@ -1601,6 +1601,294 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch sample code statistics" });
+    }
+  });
+
+  // ==================== DASHBOARD METRICS ====================
+
+  // Get comprehensive dashboard metrics
+  app.get("/api/dashboard/metrics", async (req: Request, res: Response) => {
+    try {
+      const { jurisdictionId } = req.query;
+      
+      const jurisdictionFilter = jurisdictionId 
+        ? sql`jurisdiction_id = ${jurisdictionId}` 
+        : sql`1=1`;
+
+      // Licenses counts
+      const [licensesTotal] = await db.select({ count: count() }).from(fboLicenses)
+        .where(jurisdictionFilter);
+      const [licensesActive] = await db.select({ count: count() }).from(fboLicenses)
+        .where(sql`${jurisdictionFilter} AND status = 'active'`);
+      const [licensesAmount] = await db.select({ 
+        total: sql`COALESCE(SUM(fee_amount), 0)` 
+      }).from(fboLicenses).where(jurisdictionFilter);
+
+      // Registrations counts
+      const [registrationsTotal] = await db.select({ count: count() }).from(fboRegistrations)
+        .where(jurisdictionFilter);
+      const [registrationsActive] = await db.select({ count: count() }).from(fboRegistrations)
+        .where(sql`${jurisdictionFilter} AND status = 'active'`);
+      const [registrationsAmount] = await db.select({ 
+        total: sql`COALESCE(SUM(fee_amount), 0)` 
+      }).from(fboRegistrations).where(jurisdictionFilter);
+
+      // Inspections counts (by license vs registration)
+      const [inspectionsTotal] = await db.select({ count: count() }).from(inspections)
+        .where(jurisdictionFilter);
+      const [inspectionsLicense] = await db.select({ count: count() }).from(inspections)
+        .where(sql`${jurisdictionFilter} AND fbo_details->>'licenseType' = 'license'`);
+      const [inspectionsRegistration] = await db.select({ count: count() }).from(inspections)
+        .where(sql`${jurisdictionFilter} AND fbo_details->>'licenseType' = 'registration'`);
+
+      // Grievances counts
+      const [grievancesTotal] = await db.select({ count: count() }).from(grievances)
+        .where(jurisdictionFilter);
+      const [grievancesOnline] = await db.select({ count: count() }).from(grievances)
+        .where(sql`${jurisdictionFilter} AND source = 'online'`);
+      const [grievancesOffline] = await db.select({ count: count() }).from(grievances)
+        .where(sql`${jurisdictionFilter} AND source = 'offline'`);
+      const [grievancesPending] = await db.select({ count: count() }).from(grievances)
+        .where(sql`${jurisdictionFilter} AND status = 'pending'`);
+
+      // FSW Activities
+      const [fswTesting] = await db.select({ count: count() }).from(fswActivities)
+        .where(sql`${jurisdictionFilter} AND activity_type = 'testing'`);
+      const [fswTraining] = await db.select({ count: count() }).from(fswActivities)
+        .where(sql`${jurisdictionFilter} AND activity_type = 'training'`);
+      const [fswAwareness] = await db.select({ count: count() }).from(fswActivities)
+        .where(sql`${jurisdictionFilter} AND activity_type = 'awareness'`);
+
+      // Adjudication cases
+      const [adjudicationTotal] = await db.select({ count: count() }).from(adjudicationCases)
+        .where(jurisdictionFilter);
+      const [adjudicationPending] = await db.select({ count: count() }).from(adjudicationCases)
+        .where(sql`${jurisdictionFilter} AND status = 'pending'`);
+
+      // Prosecution cases
+      const [prosecutionTotal] = await db.select({ count: count() }).from(prosecutionCases)
+        .where(jurisdictionFilter);
+      const [prosecutionPending] = await db.select({ count: count() }).from(prosecutionCases)
+        .where(sql`${jurisdictionFilter} AND status IN ('pending', 'ongoing')`);
+
+      res.json({
+        licenses: {
+          total: licensesTotal?.count || 0,
+          active: licensesActive?.count || 0,
+          amount: licensesAmount?.total || 0,
+        },
+        registrations: {
+          total: registrationsTotal?.count || 0,
+          active: registrationsActive?.count || 0,
+          amount: registrationsAmount?.total || 0,
+        },
+        inspections: {
+          total: inspectionsTotal?.count || 0,
+          license: inspectionsLicense?.count || 0,
+          registration: inspectionsRegistration?.count || 0,
+        },
+        grievances: {
+          total: grievancesTotal?.count || 0,
+          online: grievancesOnline?.count || 0,
+          offline: grievancesOffline?.count || 0,
+          pending: grievancesPending?.count || 0,
+        },
+        fsw: {
+          testing: fswTesting?.count || 0,
+          training: fswTraining?.count || 0,
+          awareness: fswAwareness?.count || 0,
+        },
+        adjudication: {
+          total: adjudicationTotal?.count || 0,
+          pending: adjudicationPending?.count || 0,
+        },
+        prosecution: {
+          total: prosecutionTotal?.count || 0,
+          pending: prosecutionPending?.count || 0,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard metrics:', error);
+      res.status(500).json({ error: "Failed to fetch dashboard metrics" });
+    }
+  });
+
+  // ==================== PROSECUTION CASES ====================
+
+  // Get all prosecution cases
+  app.get("/api/prosecution-cases", async (req: Request, res: Response) => {
+    try {
+      const { jurisdictionId, status, limit = '50', offset = '0' } = req.query;
+      
+      const conditions: any[] = [];
+      if (jurisdictionId) {
+        conditions.push(sql`${prosecutionCases.jurisdictionId} = ${jurisdictionId}`);
+      }
+      if (status) {
+        conditions.push(sql`${prosecutionCases.status} = ${status}`);
+      }
+      
+      const whereClause = conditions.length > 0 
+        ? sql.join(conditions, sql` AND `)
+        : sql`1=1`;
+      
+      const cases = await db.select().from(prosecutionCases)
+        .where(whereClause)
+        .orderBy(desc(prosecutionCases.nextHearingDate))
+        .limit(parseInt(limit as string))
+        .offset(parseInt(offset as string));
+      
+      res.json(cases);
+    } catch (error) {
+      console.error('Error fetching prosecution cases:', error);
+      res.status(500).json({ error: "Failed to fetch prosecution cases" });
+    }
+  });
+
+  // Get single prosecution case with hearings
+  app.get("/api/prosecution-cases/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      
+      const [caseData] = await db.select().from(prosecutionCases)
+        .where(sql`${prosecutionCases.id} = ${id}`);
+      
+      if (!caseData) {
+        return res.status(404).json({ error: "Case not found" });
+      }
+
+      const hearings = await db.select().from(prosecutionHearings)
+        .where(sql`${prosecutionHearings.caseId} = ${id}`)
+        .orderBy(desc(prosecutionHearings.hearingDate));
+
+      res.json({ case: caseData, hearings });
+    } catch (error) {
+      console.error('Error fetching prosecution case:', error);
+      res.status(500).json({ error: "Failed to fetch prosecution case" });
+    }
+  });
+
+  // Create prosecution case
+  app.post("/api/prosecution-cases", async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(prosecutionCases)
+        .values(req.body)
+        .returning();
+      
+      res.json(created);
+    } catch (error) {
+      console.error('Error creating prosecution case:', error);
+      res.status(500).json({ error: "Failed to create prosecution case" });
+    }
+  });
+
+  // Update prosecution case
+  app.put("/api/prosecution-cases/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      
+      const [updated] = await db.update(prosecutionCases)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(sql`${prosecutionCases.id} = ${id}`)
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Case not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating prosecution case:', error);
+      res.status(500).json({ error: "Failed to update prosecution case" });
+    }
+  });
+
+  // ==================== PROSECUTION HEARINGS ====================
+
+  // Get hearings for a case
+  app.get("/api/prosecution-cases/:caseId/hearings", async (req: Request, res: Response) => {
+    try {
+      const { caseId } = req.params;
+      
+      const hearings = await db.select().from(prosecutionHearings)
+        .where(sql`${prosecutionHearings.caseId} = ${caseId}`)
+        .orderBy(desc(prosecutionHearings.hearingDate));
+      
+      res.json(hearings);
+    } catch (error) {
+      console.error('Error fetching hearings:', error);
+      res.status(500).json({ error: "Failed to fetch hearings" });
+    }
+  });
+
+  // Create hearing
+  app.post("/api/prosecution-hearings", async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(prosecutionHearings)
+        .values(req.body)
+        .returning();
+      
+      // Update case's next hearing date if this hearing has a next date
+      if (req.body.nextDate) {
+        await db.update(prosecutionCases)
+          .set({ 
+            nextHearingDate: new Date(req.body.nextDate),
+            lastHearingDate: new Date(req.body.hearingDate),
+            updatedAt: new Date()
+          })
+          .where(sql`${prosecutionCases.id} = ${req.body.caseId}`);
+      }
+      
+      res.json(created);
+    } catch (error) {
+      console.error('Error creating hearing:', error);
+      res.status(500).json({ error: "Failed to create hearing" });
+    }
+  });
+
+  // Update hearing
+  app.put("/api/prosecution-hearings/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      
+      const [updated] = await db.update(prosecutionHearings)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(sql`${prosecutionHearings.id} = ${id}`)
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Hearing not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating hearing:', error);
+      res.status(500).json({ error: "Failed to update hearing" });
+    }
+  });
+
+  // Get upcoming court dates across all cases
+  app.get("/api/upcoming-hearings", async (req: Request, res: Response) => {
+    try {
+      const { jurisdictionId, days = '30' } = req.query;
+      
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + parseInt(days as string));
+      
+      let whereClause = sql`${prosecutionCases.nextHearingDate} IS NOT NULL AND ${prosecutionCases.nextHearingDate} <= ${futureDate} AND ${prosecutionCases.status} IN ('pending', 'ongoing')`;
+      
+      if (jurisdictionId) {
+        whereClause = sql`${whereClause} AND ${prosecutionCases.jurisdictionId} = ${jurisdictionId}`;
+      }
+      
+      const cases = await db.select().from(prosecutionCases)
+        .where(whereClause)
+        .orderBy(asc(prosecutionCases.nextHearingDate));
+      
+      res.json(cases);
+    } catch (error) {
+      console.error('Error fetching upcoming hearings:', error);
+      res.status(500).json({ error: "Failed to fetch upcoming hearings" });
     }
   });
 

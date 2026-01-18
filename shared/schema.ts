@@ -349,3 +349,185 @@ export const sampleCodeAuditLog = pgTable("sample_code_audit_log", {
 });
 
 export type SampleCodeAuditLog = typeof sampleCodeAuditLog.$inferSelect;
+
+// FBO Licenses - License records for Food Business Operators
+export const fboLicenses = pgTable("fbo_licenses", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  licenseNumber: text("license_number").notNull().unique(),
+  fboName: text("fbo_name").notNull(),
+  fboAddress: text("fbo_address"),
+  fboType: text("fbo_type"), // Manufacturing, Trading, Restaurant, etc.
+  licenseCategory: text("license_category").notNull(), // Central, State, Registration
+  issueDate: timestamp("issue_date"),
+  expiryDate: timestamp("expiry_date"),
+  feeAmount: integer("fee_amount").default(0),
+  feePaidDate: timestamp("fee_paid_date"),
+  status: text("status").notNull().default("active"), // active, expired, suspended, cancelled
+  jurisdictionId: varchar("jurisdiction_id"),
+  officerId: varchar("officer_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type FboLicense = typeof fboLicenses.$inferSelect;
+
+// FBO Registrations - Registration records (smaller establishments)
+export const fboRegistrations = pgTable("fbo_registrations", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  registrationNumber: text("registration_number").notNull().unique(),
+  fboName: text("fbo_name").notNull(),
+  fboAddress: text("fbo_address"),
+  fboType: text("fbo_type"),
+  issueDate: timestamp("issue_date"),
+  expiryDate: timestamp("expiry_date"),
+  feeAmount: integer("fee_amount").default(0),
+  feePaidDate: timestamp("fee_paid_date"),
+  status: text("status").notNull().default("active"),
+  jurisdictionId: varchar("jurisdiction_id"),
+  officerId: varchar("officer_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type FboRegistration = typeof fboRegistrations.$inferSelect;
+
+// Grievances - Consumer complaints and grievances
+export const grievances = pgTable("grievances", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  grievanceNumber: text("grievance_number").notNull().unique(),
+  complainantName: text("complainant_name").notNull(),
+  complainantContact: text("complainant_contact"),
+  complainantAddress: text("complainant_address"),
+  subject: text("subject").notNull(),
+  description: text("description"),
+  category: text("category"), // Food Safety, Hygiene, Adulteration, etc.
+  source: text("source").notNull().default("offline"), // online, offline
+  fboName: text("fbo_name"),
+  fboAddress: text("fbo_address"),
+  receivedDate: timestamp("received_date").defaultNow(),
+  dueDate: timestamp("due_date"),
+  resolvedDate: timestamp("resolved_date"),
+  status: text("status").notNull().default("pending"), // pending, investigating, resolved, closed
+  resolution: text("resolution"),
+  jurisdictionId: varchar("jurisdiction_id"),
+  assignedOfficerId: varchar("assigned_officer_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type Grievance = typeof grievances.$inferSelect;
+
+// FSW Activities - Food Safety Worker testing, training, awareness
+export const fswActivities = pgTable("fsw_activities", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  activityType: text("activity_type").notNull(), // testing, training, awareness
+  activityDate: timestamp("activity_date").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  location: text("location"),
+  participantCount: integer("participant_count").default(0),
+  targetAudience: text("target_audience"),
+  conductedBy: text("conducted_by"),
+  duration: text("duration"), // e.g., "2 hours", "1 day"
+  status: text("status").notNull().default("completed"),
+  images: jsonb("images"), // Array of image URLs
+  remarks: text("remarks"),
+  jurisdictionId: varchar("jurisdiction_id"),
+  officerId: varchar("officer_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type FswActivity = typeof fswActivities.$inferSelect;
+
+// Adjudication Cases - Administrative adjudication
+export const adjudicationCases = pgTable("adjudication_cases", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  caseNumber: text("case_number").notNull().unique(),
+  respondentName: text("respondent_name").notNull(),
+  respondentAddress: text("respondent_address"),
+  complainantName: text("complainant_name").notNull(),
+  offenceDetails: text("offence_details"),
+  sampleId: varchar("sample_id"),
+  inspectionId: varchar("inspection_id"),
+  filingDate: timestamp("filing_date"),
+  adjudicatorName: text("adjudicator_name"),
+  penaltyAmount: integer("penalty_amount"),
+  orderDate: timestamp("order_date"),
+  status: text("status").notNull().default("pending"), // pending, hearing, decided, appealed, closed
+  outcome: text("outcome"), // penalty, warning, dismissed
+  remarks: text("remarks"),
+  jurisdictionId: varchar("jurisdiction_id"),
+  officerId: varchar("officer_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type AdjudicationCase = typeof adjudicationCases.$inferSelect;
+
+// Prosecution Cases - Court cases for serious violations
+export const prosecutionCases = pgTable("prosecution_cases", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  caseNumber: text("case_number").notNull().unique(),
+  courtName: text("court_name"),
+  courtLocation: text("court_location"),
+  respondentName: text("respondent_name").notNull(),
+  respondentAddress: text("respondent_address"),
+  complainantName: text("complainant_name").notNull(),
+  complainantDesignation: text("complainant_designation"),
+  offenceDetails: text("offence_details"),
+  sectionsCharged: text("sections_charged"), // e.g., "Section 59 of FSS Act"
+  sampleId: varchar("sample_id"),
+  inspectionId: varchar("inspection_id"),
+  firstRegistrationDate: timestamp("first_registration_date"),
+  firstHearingDate: timestamp("first_hearing_date"),
+  nextHearingDate: timestamp("next_hearing_date"),
+  lastHearingDate: timestamp("last_hearing_date"),
+  status: text("status").notNull().default("pending"), // pending, ongoing, convicted, acquitted, closed
+  outcome: text("outcome"),
+  sentenceDetails: text("sentence_details"),
+  fineAmount: integer("fine_amount"),
+  jurisdictionId: varchar("jurisdiction_id"),
+  officerId: varchar("officer_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type ProsecutionCase = typeof prosecutionCases.$inferSelect;
+
+// Prosecution Case Hearings - Individual hearing records
+export const prosecutionHearings = pgTable("prosecution_hearings", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  caseId: varchar("case_id").notNull(),
+  hearingDate: timestamp("hearing_date").notNull(),
+  hearingType: text("hearing_type"), // first_registration, first_hearing, regular, arguments, judgment
+  courtRoom: text("court_room"),
+  judgeName: text("judge_name"),
+  attendees: text("attendees"),
+  proceedings: text("proceedings"),
+  orderPassed: text("order_passed"),
+  nextDate: timestamp("next_date"),
+  nextDatePurpose: text("next_date_purpose"),
+  notes: text("notes"),
+  images: jsonb("images"), // Array of image URLs for uploaded documents
+  status: text("status").notNull().default("scheduled"), // scheduled, completed, adjourned, cancelled
+  createdByOfficerId: varchar("created_by_officer_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type ProsecutionHearing = typeof prosecutionHearings.$inferSelect;
