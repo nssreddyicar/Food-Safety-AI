@@ -206,8 +206,62 @@ export default function TemplatesScreen() {
     return { width: size.width, height: size.height, label: size.label };
   };
 
+  const isRawHtmlContent = (content: string): boolean => {
+    const trimmed = content.trim();
+    return trimmed.startsWith('<!DOCTYPE') || 
+           trimmed.startsWith('<html') ||
+           (trimmed.startsWith('<') && (
+             trimmed.includes('<style>') ||
+             trimmed.includes('<div class=') ||
+             trimmed.includes('<table')
+           ));
+  };
+
   const generatePreviewHtml = (template: DocumentTemplate, scale: number = 1): string => {
     const processedContent = replacePlaceholders(template.content);
+    
+    // Check if content is raw HTML - render it directly
+    if (isRawHtmlContent(processedContent)) {
+      const dims = getPageDimensions(template.pageSize, template.orientation);
+      const mmToPx = 3.7795275591;
+      const pageWidthPx = dims.width * mmToPx * scale;
+      const pageHeightPx = dims.height * mmToPx * scale;
+      
+      // For raw HTML, wrap it to scale and center in the viewport
+      return `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              * { box-sizing: border-box; }
+              html, body { 
+                margin: 0;
+                padding: 0;
+                background: #4b5563; 
+                display: flex; 
+                justify-content: center; 
+                align-items: flex-start;
+                padding: 20px;
+                min-height: 100vh;
+              }
+              .preview-wrapper {
+                transform: scale(${scale});
+                transform-origin: top center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="preview-wrapper">
+              ${processedContent}
+            </div>
+          </body>
+        </html>
+      `;
+    }
+    
+    // Plain text content - use standard formatting
     const contentWithLineBreaks = processedContent.replace(/\n/g, '<br>');
     
     const pageNumberPosition = template.pageNumberPosition || 'center';
@@ -310,6 +364,37 @@ export default function TemplatesScreen() {
 
   const generatePdfHtml = (template: DocumentTemplate): string => {
     const processedContent = replacePlaceholders(template.content);
+    
+    // Check if content is raw HTML - use it directly for PDF
+    if (isRawHtmlContent(processedContent)) {
+      // For raw HTML templates, use the content as-is (it already has proper styling)
+      // Just add @page rule for print sizing if not present
+      if (processedContent.includes('@page')) {
+        return processedContent;
+      }
+      
+      // Insert @page rule for proper print sizing
+      const pageRule = `
+        @page {
+          size: ${template.pageSize} ${template.orientation};
+          margin: 0;
+        }
+        @media print {
+          html, body { background: white; }
+        }
+      `;
+      
+      // Insert style into existing HTML
+      if (processedContent.includes('<style>')) {
+        return processedContent.replace('<style>', `<style>${pageRule}`);
+      } else if (processedContent.includes('</head>')) {
+        return processedContent.replace('</head>', `<style>${pageRule}</style></head>`);
+      }
+      
+      return processedContent;
+    }
+    
+    // Plain text content - use standard formatting
     const contentWithLineBreaks = processedContent.replace(/\n/g, '<br>');
     
     const pageNumberPosition = template.pageNumberPosition || 'center';
