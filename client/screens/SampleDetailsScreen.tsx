@@ -219,10 +219,7 @@ export default function SampleDetailsScreen() {
 
   const saveWorkflowStateMutation = useMutation({
     mutationFn: async ({ nodeId, nodeData }: { nodeId: string; nodeData: Record<string, any> }) => {
-      return apiRequest(`/api/samples/${sampleId}/workflow-state`, {
-        method: 'POST',
-        body: JSON.stringify({ nodeId, nodeData }),
-      });
+      return apiRequest('POST', `/api/samples/${sampleId}/workflow-state`, { nodeId, nodeData });
     },
     onSuccess: () => {
       refetchWorkflowStates();
