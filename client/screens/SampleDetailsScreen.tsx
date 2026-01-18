@@ -114,6 +114,7 @@ function isImageUri(value: any): boolean {
   return value.startsWith('file://') || 
          value.startsWith('data:image') || 
          value.startsWith('content://') ||
+         value.startsWith('blob:') ||
          /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(value);
 }
 
