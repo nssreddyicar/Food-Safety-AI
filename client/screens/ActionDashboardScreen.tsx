@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -15,27 +15,25 @@ import { ActionDashboardData, ActionCategory, ActionCategoryGroup } from '@/type
 import { Spacing, BorderRadius } from '@/constants/theme';
 
 const GROUP_INFO: Record<ActionCategoryGroup, { name: string; icon: keyof typeof Feather.glyphMap; color: string }> = {
-  legal: { name: 'Legal & Court', icon: 'briefcase', color: '#DC2626' },
-  inspection: { name: 'Inspections & Enforcement', icon: 'clipboard', color: '#1E40AF' },
-  sampling: { name: 'Sampling & Laboratory', icon: 'thermometer', color: '#059669' },
-  administrative: { name: 'Administrative', icon: 'file-text', color: '#7C3AED' },
-  protocol: { name: 'Protocol & Duties', icon: 'shield', color: '#D97706' },
+  legal: { name: 'LEGAL & COURT', icon: 'briefcase', color: '#D97706' },
+  inspection: { name: 'INSPECTIONS & ENFORCEMENT', icon: 'search', color: '#1E40AF' },
+  sampling: { name: 'SAMPLING & LABORATORY', icon: 'thermometer', color: '#059669' },
+  administrative: { name: 'ADMINISTRATIVE', icon: 'folder', color: '#7C3AED' },
+  protocol: { name: 'PROTOCOL & DUTIES', icon: 'shield', color: '#DC2626' },
 };
 
 interface SummaryCardProps {
   title: string;
   value: number;
-  icon: keyof typeof Feather.glyphMap;
   color: string;
   bgColor: string;
 }
 
-function SummaryCard({ title, value, icon, color, bgColor }: SummaryCardProps) {
+function SummaryCard({ title, value, color, bgColor }: SummaryCardProps) {
   return (
     <View style={[styles.summaryCard, { backgroundColor: bgColor }]}>
-      <Feather name={icon} size={20} color={color} />
-      <ThemedText type="h2" style={{ color, marginTop: Spacing.xs }}>{value}</ThemedText>
-      <ThemedText type="small" style={{ color, fontSize: 11 }}>{title}</ThemedText>
+      <ThemedText type="h1" style={[styles.summaryValue, { color }]}>{value}</ThemedText>
+      <ThemedText type="small" style={[styles.summaryLabel, { color }]}>{title}</ThemedText>
     </View>
   );
 }
@@ -47,8 +45,6 @@ interface CategoryCardProps {
 
 function CategoryCard({ category, onPress }: CategoryCardProps) {
   const { theme } = useTheme();
-  const hasOverdue = category.counts.overdue > 0;
-  const hasDueToday = category.counts.dueToday > 0;
   
   const getFeatherIcon = (iconName: string): keyof typeof Feather.glyphMap => {
     const iconMap: Record<string, keyof typeof Feather.glyphMap> = {
@@ -77,49 +73,20 @@ function CategoryCard({ category, onPress }: CategoryCardProps) {
     return iconMap[iconName] || 'folder';
   };
 
-  const cardStyle = hasOverdue 
-    ? { ...styles.categoryCard, ...styles.categoryCardUrgent } 
-    : styles.categoryCard;
-
   return (
-    <Card style={cardStyle} onPress={onPress}>
-      <View style={styles.categoryHeader}>
-        <View style={[styles.categoryIcon, { backgroundColor: category.color + '15' }]}>
-          <Feather name={getFeatherIcon(category.icon)} size={20} color={category.color} />
+    <Card style={styles.categoryCard} onPress={onPress}>
+      <View style={styles.categoryRow}>
+        <View style={[styles.categoryIcon, { backgroundColor: category.color + '20' }]}>
+          <Feather name={getFeatherIcon(category.icon)} size={18} color={category.color} />
         </View>
-        <View style={styles.categoryInfo}>
+        <View style={styles.categoryContent}>
           <ThemedText type="body" style={styles.categoryName}>{category.name}</ThemedText>
-          <View style={styles.categoryMeta}>
-            <ThemedText type="small" style={{ color: theme.textSecondary }}>
-              {category.counts.pending} pending
-            </ThemedText>
-            {hasOverdue ? (
-              <View style={[styles.badge, { backgroundColor: theme.accent + '20' }]}>
-                <ThemedText type="small" style={{ color: theme.accent, fontSize: 10 }}>
-                  {category.counts.overdue} overdue
-                </ThemedText>
-              </View>
-            ) : null}
-            {hasDueToday && !hasOverdue ? (
-              <View style={[styles.badge, { backgroundColor: theme.warning + '20' }]}>
-                <ThemedText type="small" style={{ color: theme.warning, fontSize: 10 }}>
-                  {category.counts.dueToday} today
-                </ThemedText>
-              </View>
-            ) : null}
-          </View>
-        </View>
-        <View style={styles.countContainer}>
-          <ThemedText type="h2" style={{ color: hasOverdue ? theme.accent : theme.text }}>
-            {category.counts.total}
+          <ThemedText type="small" style={{ color: theme.textSecondary }}>
+            {category.counts.pending} pending · {category.counts.overdue} overdue
           </ThemedText>
         </View>
+        <ThemedText type="h2" style={styles.categoryCount}>{category.counts.total}</ThemedText>
       </View>
-      {category.priority === 'critical' ? (
-        <View style={[styles.priorityIndicator, { backgroundColor: theme.accent }]} />
-      ) : category.priority === 'high' ? (
-        <View style={[styles.priorityIndicator, { backgroundColor: theme.warning }]} />
-      ) : null}
     </Card>
   );
 }
@@ -219,45 +186,45 @@ export default function ActionDashboardScreen() {
           />
         }
       >
-        <Animated.View entering={FadeInDown.delay(100).duration(400)}>
-          <ThemedText type="h2">Action Dashboard</ThemedText>
-          <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
-            {user?.jurisdiction?.unitName || 'All Jurisdictions'}
+        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.header}>
+          <ThemedText type="h1" style={styles.title}>Action Dashboard</ThemedText>
+          <ThemedText type="body" style={{ color: theme.textSecondary }}>
+            Today's overview
           </ThemedText>
         </Animated.View>
 
         {data ? (
           <>
             <Animated.View entering={FadeInDown.delay(200).duration(400)}>
-              <View style={styles.summaryRow}>
-                <SummaryCard
-                  title="Overdue"
-                  value={data.totals.overdueItems}
-                  icon="alert-circle"
-                  color="#DC2626"
-                  bgColor="#FEE2E2"
-                />
-                <SummaryCard
-                  title="Due Today"
-                  value={data.totals.dueToday}
-                  icon="clock"
-                  color="#D97706"
-                  bgColor="#FEF3C7"
-                />
-                <SummaryCard
-                  title="This Week"
-                  value={data.totals.dueThisWeek}
-                  icon="calendar"
-                  color="#1E40AF"
-                  bgColor="#DBEAFE"
-                />
-                <SummaryCard
-                  title="Total"
-                  value={data.totals.totalItems}
-                  icon="layers"
-                  color="#059669"
-                  bgColor="#D1FAE5"
-                />
+              <View style={styles.summaryGrid}>
+                <View style={styles.summaryRow}>
+                  <SummaryCard
+                    title="Overdue"
+                    value={data.totals.overdueItems}
+                    color="#DC2626"
+                    bgColor="#FEE2E2"
+                  />
+                  <SummaryCard
+                    title="Due Today"
+                    value={data.totals.dueToday}
+                    color="#92400E"
+                    bgColor="#FEF3C7"
+                  />
+                </View>
+                <View style={styles.summaryRow}>
+                  <SummaryCard
+                    title="This Week"
+                    value={data.totals.dueThisWeek}
+                    color="#1E40AF"
+                    bgColor="#DBEAFE"
+                  />
+                  <SummaryCard
+                    title="Total Actions"
+                    value={data.totals.totalItems}
+                    color="#065F46"
+                    bgColor="#D1FAE5"
+                  />
+                </View>
               </View>
             </Animated.View>
 
@@ -270,25 +237,20 @@ export default function ActionDashboardScreen() {
                 <Animated.View 
                   key={group} 
                   entering={FadeInDown.delay(300 + groupIndex * 100).duration(400)}
+                  style={styles.groupContainer}
                 >
                   <View style={styles.groupHeader}>
-                    <View style={[styles.groupIcon, { backgroundColor: groupInfo.color + '15' }]}>
-                      <Feather name={groupInfo.icon} size={16} color={groupInfo.color} />
-                    </View>
-                    <ThemedText type="h3" style={{ color: theme.textSecondary }}>
+                    <Feather name={groupInfo.icon} size={14} color={theme.textSecondary} />
+                    <ThemedText type="small" style={styles.groupTitle}>
                       {groupInfo.name}
                     </ThemedText>
                   </View>
-                  {categories.map((category, catIndex) => (
-                    <Animated.View 
+                  {categories.map((category) => (
+                    <CategoryCard
                       key={category.id}
-                      entering={FadeInDown.delay(350 + groupIndex * 100 + catIndex * 50).duration(400)}
-                    >
-                      <CategoryCard
-                        category={category}
-                        onPress={() => handleCategoryPress(category)}
-                      />
-                    </Animated.View>
+                      category={category}
+                      onPress={() => handleCategoryPress(category)}
+                    />
                   ))}
                 </Animated.View>
               );
@@ -319,7 +281,18 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.lg,
-    gap: Spacing.lg,
+  },
+  header: {
+    marginBottom: Spacing.lg,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  summaryGrid: {
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -328,71 +301,67 @@ const styles = StyleSheet.create({
   summaryCard: {
     flex: 1,
     borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.md,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryValue: {
+    fontSize: 32,
+    fontWeight: '700',
+    lineHeight: 38,
+  },
+  summaryLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  groupContainer: {
+    marginBottom: Spacing.md,
   },
   groupHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-    marginTop: Spacing.md,
-    marginBottom: Spacing.xs,
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
+    paddingLeft: 4,
   },
-  groupIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: BorderRadius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
+  groupTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    color: '#6B7280',
   },
   categoryCard: {
     marginBottom: Spacing.sm,
-    overflow: 'hidden',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
   },
-  categoryCardUrgent: {
-    borderLeftWidth: 3,
-    borderLeftColor: '#DC2626',
-  },
-  categoryHeader: {
+  categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
   },
   categoryIcon: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: BorderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: Spacing.md,
   },
-  categoryInfo: {
+  categoryContent: {
     flex: 1,
   },
   categoryName: {
-    fontWeight: '600',
     fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
   },
-  categoryMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginTop: 2,
-  },
-  badge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.full,
-  },
-  countContainer: {
-    alignItems: 'flex-end',
-  },
-  priorityIndicator: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  categoryCount: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#374151',
+    marginLeft: Spacing.md,
   },
   loadingContainer: {
     padding: Spacing.xl,
