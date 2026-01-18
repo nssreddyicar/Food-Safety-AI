@@ -468,40 +468,65 @@ export default function TourDiaryScreen() {
                 ))}
               </View>
             ) : (
-              <ScrollView style={styles.datePickerScroll} showsVerticalScrollIndicator={false}>
-                <View style={styles.datePickerGrid}>
-                  {Array.from({ length: pickerDaysInMonth }, (_, i) => i + 1).map((day) => {
-                    const dayName = getDayName(pickerYear, pickerMonth, day);
-                    const isSunday = new Date(pickerYear, pickerMonth, day).getDay() === 0;
-                    const is2ndSat = isSecondSaturday(pickerYear, pickerMonth, day);
-                    const publicHoliday = getPublicHolidayName(pickerYear, pickerMonth, day);
-                    const optionalHoliday = getOptionalHolidayName(pickerYear, pickerMonth, day);
-                    const isHoliday = isSunday || is2ndSat || publicHoliday;
-                    const isOptional = optionalHoliday !== null;
-                    
-                    return (
-                      <Pressable
-                        key={day}
-                        style={[
-                          styles.datePickerDay,
-                          { 
-                            backgroundColor: isHoliday ? '#FEE2E2' : (isOptional ? '#D1FAE5' : theme.backgroundSecondary),
-                            borderColor: theme.border,
-                          },
-                        ]}
-                        onPress={() => selectDateAndOpen(day)}
-                      >
-                        <Text style={[styles.datePickerDayNum, { color: isHoliday ? Colors.light.accent : (isOptional ? Colors.light.success : theme.text) }]}>
-                          {day}
-                        </Text>
-                        <Text style={[styles.datePickerDayName, { color: theme.textSecondary }]}>
-                          {dayName}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
+              <View style={styles.calendarContainer}>
+                <View style={styles.calendarHeader}>
+                  {DAYS_OF_WEEK.map((day, index) => (
+                    <Text 
+                      key={day} 
+                      style={[
+                        styles.calendarHeaderDay, 
+                        { color: index === 0 ? Colors.light.accent : theme.textSecondary }
+                      ]}
+                    >
+                      {day}
+                    </Text>
+                  ))}
                 </View>
-              </ScrollView>
+                <View style={styles.calendarGrid}>
+                  {(() => {
+                    const firstDayOfMonth = new Date(pickerYear, pickerMonth, 1).getDay();
+                    const cells = [];
+                    
+                    for (let i = 0; i < firstDayOfMonth; i++) {
+                      cells.push(
+                        <View key={`empty-${i}`} style={styles.calendarDayEmpty} />
+                      );
+                    }
+                    
+                    for (let day = 1; day <= pickerDaysInMonth; day++) {
+                      const isSunday = new Date(pickerYear, pickerMonth, day).getDay() === 0;
+                      const is2ndSat = isSecondSaturday(pickerYear, pickerMonth, day);
+                      const publicHoliday = getPublicHolidayName(pickerYear, pickerMonth, day);
+                      const optionalHoliday = getOptionalHolidayName(pickerYear, pickerMonth, day);
+                      const isHoliday = isSunday || is2ndSat || publicHoliday;
+                      const isOptional = optionalHoliday !== null;
+                      const isToday = day === today.getDate() && pickerMonth === today.getMonth() && pickerYear === today.getFullYear();
+                      
+                      cells.push(
+                        <Pressable
+                          key={day}
+                          style={[
+                            styles.calendarDay,
+                            { 
+                              backgroundColor: isToday ? Colors.light.primary : (isHoliday ? '#FEE2E2' : (isOptional ? '#D1FAE5' : 'transparent')),
+                            },
+                          ]}
+                          onPress={() => selectDateAndOpen(day)}
+                        >
+                          <Text style={[
+                            styles.calendarDayNum, 
+                            { color: isToday ? '#fff' : (isHoliday ? Colors.light.accent : (isOptional ? Colors.light.success : theme.text)) }
+                          ]}>
+                            {day}
+                          </Text>
+                        </Pressable>
+                      );
+                    }
+                    
+                    return cells;
+                  })()}
+                </View>
+              </View>
             )}
             
             <Pressable
@@ -780,29 +805,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  datePickerScroll: {
-    maxHeight: 350,
+  calendarContainer: {
+    marginBottom: Spacing.md,
   },
-  datePickerGrid: {
+  calendarHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    justifyContent: 'center',
+    justifyContent: 'space-around',
+    marginBottom: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
   },
-  datePickerDay: {
-    width: 60,
-    height: 60,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  datePickerDayNum: {
-    fontSize: 18,
+  calendarHeaderDay: {
+    width: 40,
+    textAlign: 'center',
+    fontSize: 12,
     fontWeight: '600',
   },
-  datePickerDayName: {
-    fontSize: 11,
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calendarDay: {
+    width: '14.28%',
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: BorderRadius.full,
+  },
+  calendarDayEmpty: {
+    width: '14.28%',
+    aspectRatio: 1,
+  },
+  calendarDayNum: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   datePickerCancel: {
     marginTop: Spacing.lg,
