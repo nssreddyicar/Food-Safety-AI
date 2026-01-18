@@ -162,6 +162,90 @@ export interface DashboardStats {
   completedThisMonth: number;
 }
 
+export interface DashboardMetrics {
+  licenses: {
+    total: number;
+    active: number;
+    amount: number;
+  };
+  registrations: {
+    total: number;
+    active: number;
+    amount: number;
+  };
+  inspections: {
+    total: number;
+    license: number;
+    registration: number;
+  };
+  grievances: {
+    total: number;
+    online: number;
+    offline: number;
+    pending: number;
+  };
+  fsw: {
+    testing: number;
+    training: number;
+    awareness: number;
+  };
+  adjudication: {
+    total: number;
+    pending: number;
+  };
+  prosecution: {
+    total: number;
+    pending: number;
+  };
+}
+
+export interface ProsecutionCase {
+  id: string;
+  caseNumber: string;
+  courtName?: string;
+  courtLocation?: string;
+  respondentName: string;
+  respondentAddress?: string;
+  complainantName: string;
+  complainantDesignation?: string;
+  offenceDetails?: string;
+  sectionsCharged?: string;
+  sampleId?: string;
+  inspectionId?: string;
+  firstRegistrationDate?: string;
+  firstHearingDate?: string;
+  nextHearingDate?: string;
+  lastHearingDate?: string;
+  status: 'pending' | 'ongoing' | 'convicted' | 'acquitted' | 'closed';
+  outcome?: string;
+  sentenceDetails?: string;
+  fineAmount?: number;
+  jurisdictionId?: string;
+  officerId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProsecutionHearing {
+  id: string;
+  caseId: string;
+  hearingDate: string;
+  hearingType?: string;
+  courtRoom?: string;
+  judgeName?: string;
+  attendees?: string;
+  proceedings?: string;
+  orderPassed?: string;
+  nextDate?: string;
+  nextDatePurpose?: string;
+  notes?: string;
+  images?: string[];
+  status: 'scheduled' | 'completed' | 'adjourned' | 'cancelled';
+  createdByOfficerId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface UrgentAction {
   id: string;
   type: 'sample_deadline' | 'report_pending' | 'notice_due';
