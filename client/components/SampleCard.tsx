@@ -36,13 +36,22 @@ export function SampleCard({ sample, onPress }: SampleCardProps) {
       ]}
     >
       <View style={styles.header}>
-        <View style={[styles.iconContainer, { backgroundColor: theme.primary + '20' }]}>
-          <Feather name="droplet" size={18} color={theme.primary} />
+        <View style={[styles.iconContainer, { backgroundColor: sample.sampleType === 'enforcement' ? theme.accent + '20' : theme.primary + '20' }]}>
+          <Feather name={sample.sampleType === 'enforcement' ? 'shield' : 'eye'} size={18} color={sample.sampleType === 'enforcement' ? theme.accent : theme.primary} />
         </View>
         <View style={styles.headerContent}>
-          <ThemedText type="h4" numberOfLines={1}>
-            {sample.name}
-          </ThemedText>
+          <View style={styles.titleRow}>
+            <ThemedText type="h4" numberOfLines={1} style={{ flex: 1 }}>
+              {sample.name}
+            </ThemedText>
+            {sample.sampleType ? (
+              <View style={[styles.typeBadge, { backgroundColor: sample.sampleType === 'enforcement' ? theme.accent + '15' : theme.primary + '15' }]}>
+                <ThemedText type="small" style={{ color: sample.sampleType === 'enforcement' ? theme.accent : theme.primary, fontSize: 10, fontWeight: '600' }}>
+                  {sample.sampleType === 'enforcement' ? 'ENF' : 'SRV'}
+                </ThemedText>
+              </View>
+            ) : null}
+          </View>
           <ThemedText type="small" style={{ color: theme.textSecondary }}>
             {sample.code}
           </ThemedText>
@@ -110,6 +119,16 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
     gap: Spacing.xs,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  typeBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
   },
   countdown: {
     alignItems: 'center',

@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { View, StyleSheet, TextInput, Switch, Pressable, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, Pressable, Switch, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useNavigation } from '@react-navigation/native';
@@ -9,14 +9,16 @@ import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollV
 import { ThemedText } from '@/components/ThemedText';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
+import { SampleForm } from '@/components/SampleForm';
+import { WitnessForm } from '@/components/WitnessForm';
+import { ActionForm } from '@/components/ActionForm';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthContext } from '@/context/AuthContext';
 import { storage } from '@/lib/storage';
-import { Inspection, Deviation } from '@/types';
+import { Inspection, Deviation, Sample, Witness, ActionTaken, SampleType } from '@/types';
 import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
 
 const INSPECTION_TYPES = ['Routine', 'Special Drive', 'Complaint Based', 'VVIP', 'Initiatives'];
-const ACTION_OPTIONS = ['Warning Issued', 'Improvement Notice', 'Seizure', 'Prosecution Initiated', 'No Issues Found'];
 const DEVIATION_CATEGORIES = ['Hygiene', 'Labelling', 'Storage', 'Documentation', 'Adulteration', 'Other'];
 
 export default function NewInspectionScreen() {
@@ -41,10 +43,10 @@ export default function NewInspectionScreen() {
   const [proprietorPhone, setProprietorPhone] = useState('');
   
   const [deviations, setDeviations] = useState<Deviation[]>([]);
-  const [selectedActions, setSelectedActions] = useState<string[]>([]);
+  const [actions, setActions] = useState<Partial<ActionTaken>[]>([]);
   const [sampleLifted, setSampleLifted] = useState(false);
-  const [sampleName, setSampleName] = useState('');
-  const [samplePlace, setSamplePlace] = useState('');
+  const [samples, setSamples] = useState<Partial<Sample>[]>([]);
+  const [witnesses, setWitnesses] = useState<Partial<Witness>[]>([]);
 
   const handleAddDeviation = () => {
     const newDeviation: Deviation = {
@@ -66,13 +68,74 @@ export default function NewInspectionScreen() {
     setDeviations(deviations.map((d) => (d.id === id ? { ...d, [field]: value } : d)));
   };
 
-  const toggleAction = (action: string) => {
-    if (selectedActions.includes(action)) {
-      setSelectedActions(selectedActions.filter((a) => a !== action));
-    } else {
-      setSelectedActions([...selectedActions, action]);
-    }
-    Haptics.selectionAsync();
+  const handleAddAction = () => {
+    const newAction: Partial<ActionTaken> = {
+      id: `action_${Date.now()}`,
+      actionType: '',
+      description: '',
+      images: [],
+    };
+    setActions([...actions, newAction]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleRemoveAction = (id: string) => {
+    setActions(actions.filter((a) => a.id !== id));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleUpdateAction = (id: string, updatedAction: Partial<ActionTaken>) => {
+    setActions(actions.map((a) => (a.id === id ? updatedAction : a)));
+  };
+
+  const handleAddSample = (sampleType: SampleType) => {
+    const sampleCode = `${user?.district?.substring(0, 3).toUpperCase() || 'XXX'}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
+    const newSample: Partial<Sample> = {
+      id: `sample_${Date.now()}`,
+      sampleType,
+      name: '',
+      code: sampleCode,
+      liftedDate: new Date().toISOString(),
+      liftedPlace: '',
+      officerId: user?.id || '',
+      officerName: user?.name || '',
+      officerDesignation: user?.designation || '',
+      cost: 0,
+      quantityInGrams: 0,
+      preservativeAdded: false,
+      packingType: 'loose',
+    };
+    setSamples([...samples, newSample]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleRemoveSample = (id: string) => {
+    setSamples(samples.filter((s) => s.id !== id));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleUpdateSample = (id: string, updatedSample: Partial<Sample>) => {
+    setSamples(samples.map((s) => (s.id === id ? updatedSample : s)));
+  };
+
+  const handleAddWitness = () => {
+    const newWitness: Partial<Witness> = {
+      id: `witness_${Date.now()}`,
+      name: '',
+      address: '',
+      phone: '',
+    };
+    setWitnesses([...witnesses, newWitness]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleRemoveWitness = (id: string) => {
+    setWitnesses(witnesses.filter((w) => w.id !== id));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleUpdateWitness = (id: string, updatedWitness: Partial<Witness>) => {
+    setWitnesses(witnesses.map((w) => (w.id === id ? updatedWitness : w)));
   };
 
   const handleSaveDraft = async () => {
@@ -109,21 +172,49 @@ export default function NewInspectionScreen() {
           isSameAsFBO: proprietorSame,
         },
         deviations,
-        actionsTaken: selectedActions,
-        sampleLifted,
-        samples: sampleLifted && sampleName
-          ? [
-              {
-                id: `sample_${Date.now()}`,
-                inspectionId: `insp_${Date.now()}`,
-                name: sampleName,
-                code: `${user?.district?.substring(0, 3).toUpperCase() || 'XXX'}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-                liftedDate: new Date().toISOString(),
-                liftedPlace: samplePlace,
-              },
-            ]
-          : [],
-        witnesses: [],
+        actionsTaken: actions.filter(a => a.actionType).map(a => ({
+          id: a.id || `action_${Date.now()}`,
+          actionType: a.actionType || '',
+          description: a.description || '',
+          images: a.images || [],
+          countdownDate: a.countdownDate,
+          remarks: a.remarks,
+        })),
+        sampleLifted: samples.length > 0,
+        samples: samples.filter(s => s.name).map(s => ({
+          id: s.id || `sample_${Date.now()}`,
+          inspectionId: `insp_${Date.now()}`,
+          sampleType: s.sampleType || 'enforcement',
+          name: s.name || '',
+          code: s.code || '',
+          liftedDate: s.liftedDate || new Date().toISOString(),
+          liftedPlace: s.liftedPlace || '',
+          officerId: s.officerId || user?.id || '',
+          officerName: s.officerName || user?.name || '',
+          officerDesignation: s.officerDesignation || user?.designation || '',
+          cost: s.cost || 0,
+          quantityInGrams: s.quantityInGrams || 0,
+          preservativeAdded: s.preservativeAdded || false,
+          preservativeType: s.preservativeType,
+          packingType: s.packingType || 'loose',
+          manufacturerDetails: s.manufacturerDetails,
+          distributorDetails: s.distributorDetails,
+          repackerDetails: s.repackerDetails,
+          relabellerDetails: s.relabellerDetails,
+          mfgDate: s.mfgDate,
+          useByDate: s.useByDate,
+          lotBatchNumber: s.lotBatchNumber,
+          remarks: s.remarks,
+        })),
+        witnesses: witnesses.filter(w => w.name).map(w => ({
+          id: w.id || `witness_${Date.now()}`,
+          name: w.name || '',
+          address: w.address || '',
+          phone: w.phone || '',
+          aadhaarNumber: w.aadhaarNumber,
+          aadhaarImage: w.aadhaarImage,
+          signature: w.signature,
+        })),
         fsoId: user?.id || '',
         fsoName: user?.name || '',
         district: user?.district || '',
@@ -257,44 +348,112 @@ export default function NewInspectionScreen() {
         </View>
 
         <View style={styles.section}>
-          <ThemedText type="h3">Actions Taken</ThemedText>
-          <View style={styles.actionsGrid}>
-            {ACTION_OPTIONS.map((action) => {
-              const isSelected = selectedActions.includes(action);
-              return (
-                <Pressable
-                  key={action}
-                  onPress={() => toggleAction(action)}
-                  style={[
-                    styles.actionChip,
-                    { borderColor: isSelected ? theme.primary : theme.border, backgroundColor: isSelected ? theme.primary + '15' : 'transparent' },
-                  ]}
-                >
-                  <Feather name={isSelected ? 'check-square' : 'square'} size={16} color={isSelected ? theme.primary : theme.textSecondary} />
-                  <ThemedText type="small" style={isSelected ? { color: theme.primary } : undefined}>{action}</ThemedText>
-                </Pressable>
-              );
-            })}
+          <View style={styles.sectionHeader}>
+            <ThemedText type="h3">Actions Taken</ThemedText>
+            <Pressable onPress={handleAddAction} style={[styles.addButton, { borderColor: theme.primary }]}>
+              <Feather name="plus" size={16} color={theme.primary} />
+              <ThemedText type="small" style={{ color: theme.primary }}>Add Action</ThemedText>
+            </Pressable>
           </View>
+          
+          {actions.length === 0 ? (
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>No actions added</ThemedText>
+          ) : null}
+          
+          {actions.map((action, index) => (
+            <ActionForm
+              key={action.id}
+              action={action}
+              onUpdate={(updated) => handleUpdateAction(action.id!, updated)}
+              onRemove={() => handleRemoveAction(action.id!)}
+              index={index}
+            />
+          ))}
         </View>
 
         <View style={styles.section}>
-          <View style={styles.switchRow}>
-            <ThemedText type="h3">Sample Lifted</ThemedText>
-            <Switch
-              value={sampleLifted}
-              onValueChange={setSampleLifted}
-              trackColor={{ false: theme.border, true: theme.primary }}
-              thumbColor="#FFFFFF"
-            />
+          <View style={styles.sectionHeader}>
+            <ThemedText type="h3">Samples Lifted</ThemedText>
           </View>
           
-          {sampleLifted ? (
+          {samples.length === 0 ? (
+            <View style={[styles.addSampleContainer, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+              <ThemedText type="small" style={{ color: theme.textSecondary, textAlign: 'center', marginBottom: Spacing.md }}>
+                No samples added. Add enforcement or surveillance samples.
+              </ThemedText>
+              <View style={styles.addSampleButtons}>
+                <Pressable
+                  onPress={() => handleAddSample('enforcement')}
+                  style={[styles.addSampleButton, { backgroundColor: theme.accent + '15', borderColor: theme.accent }]}
+                >
+                  <Feather name="shield" size={18} color={theme.accent} />
+                  <ThemedText type="small" style={{ color: theme.accent, fontWeight: '600' }}>Add Enforcement Sample</ThemedText>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleAddSample('surveillance')}
+                  style={[styles.addSampleButton, { backgroundColor: theme.primary + '15', borderColor: theme.primary }]}
+                >
+                  <Feather name="eye" size={18} color={theme.primary} />
+                  <ThemedText type="small" style={{ color: theme.primary, fontWeight: '600' }}>Add Surveillance Sample</ThemedText>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
             <>
-              <Input label="Sample Name" placeholder="e.g., Cooking Oil Sample" value={sampleName} onChangeText={setSampleName} />
-              <Input label="Place of Lifting" placeholder="e.g., Kitchen Area" value={samplePlace} onChangeText={setSamplePlace} />
+              {samples.map((sample, index) => (
+                <SampleForm
+                  key={sample.id}
+                  sample={sample}
+                  onUpdate={(updated) => handleUpdateSample(sample.id!, updated)}
+                  onRemove={() => handleRemoveSample(sample.id!)}
+                  index={index}
+                  officerName={user?.name || ''}
+                  officerDesignation={user?.designation || ''}
+                  officerId={user?.id || ''}
+                />
+              ))}
+              <View style={styles.addMoreSamplesRow}>
+                <Pressable
+                  onPress={() => handleAddSample('enforcement')}
+                  style={[styles.addMoreButton, { borderColor: theme.accent }]}
+                >
+                  <Feather name="plus" size={14} color={theme.accent} />
+                  <ThemedText type="small" style={{ color: theme.accent }}>Enforcement</ThemedText>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleAddSample('surveillance')}
+                  style={[styles.addMoreButton, { borderColor: theme.primary }]}
+                >
+                  <Feather name="plus" size={14} color={theme.primary} />
+                  <ThemedText type="small" style={{ color: theme.primary }}>Surveillance</ThemedText>
+                </Pressable>
+              </View>
             </>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <ThemedText type="h3">Witness Details</ThemedText>
+            <Pressable onPress={handleAddWitness} style={[styles.addButton, { borderColor: theme.primary }]}>
+              <Feather name="plus" size={16} color={theme.primary} />
+              <ThemedText type="small" style={{ color: theme.primary }}>Add Witness</ThemedText>
+            </Pressable>
+          </View>
+          
+          {witnesses.length === 0 ? (
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>No witnesses added</ThemedText>
           ) : null}
+          
+          {witnesses.map((witness, index) => (
+            <WitnessForm
+              key={witness.id}
+              witness={witness}
+              onUpdate={(updated) => handleUpdateWitness(witness.id!, updated)}
+              onRemove={() => handleRemoveWitness(witness.id!)}
+              index={index}
+            />
+          ))}
         </View>
 
         <View style={styles.buttonRow}>
@@ -377,18 +536,37 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  addSampleContainer: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  addSampleButtons: {
     gap: Spacing.sm,
   },
-  actionChip: {
+  addSampleButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  addMoreSamplesRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    justifyContent: 'center',
+  },
+  addMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.full,
     borderWidth: 1,
   },
   buttonRow: {
