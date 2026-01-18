@@ -262,6 +262,7 @@ export const workflowNodes = pgTable("workflow_nodes", {
   isStartNode: boolean("is_start_node").default(false),
   isEndNode: boolean("is_end_node").default(false),
   autoAdvanceCondition: text("auto_advance_condition"), // e.g., "days_elapsed:14"
+  editFreezeHours: integer("edit_freeze_hours").default(48), // Hours after which node becomes non-editable
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

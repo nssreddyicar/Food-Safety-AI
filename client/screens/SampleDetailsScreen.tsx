@@ -53,6 +53,7 @@ interface WorkflowNode {
   isStartNode: boolean;
   isEndNode: boolean;
   autoAdvanceCondition?: string;
+  editFreezeHours?: number;
   status: string;
 }
 
@@ -387,21 +388,33 @@ export default function SampleDetailsScreen() {
       return { editable: true }; // Node not completed yet, always editable
     }
     
+    // Get node-specific freeze hours, fall back to global setting
+    const node = workflowNodes.find(n => n.id === nodeId);
+    const nodeEditHours = node?.editFreezeHours ?? workflowSettings?.nodeEditHours ?? 48;
+    
+    // Special cases: 0 = always editable, -1 = never editable
+    if (nodeEditHours === 0) {
+      return { editable: true };
+    }
+    if (nodeEditHours === -1) {
+      return { editable: false, reason: 'This node is locked and cannot be edited after submission.' };
+    }
+    
     const completedAt = new Date(nodeState.completedAt);
     const now = new Date();
     const hoursSinceCompletion = (now.getTime() - completedAt.getTime()) / (1000 * 60 * 60);
-    const editHours = workflowSettings?.nodeEditHours ?? 48;
     
-    if (hoursSinceCompletion > editHours) {
+    if (hoursSinceCompletion > nodeEditHours) {
       const hoursAgo = Math.round(hoursSinceCompletion);
+      const freezeLabel = nodeEditHours < 24 ? `${nodeEditHours} hours` : `${Math.round(nodeEditHours / 24)} day(s)`;
       return { 
         editable: false, 
-        reason: `This node was completed ${hoursAgo} hours ago. Editing is only allowed within ${editHours} hours of completion.` 
+        reason: `This node was completed ${hoursAgo} hours ago. Editing is only allowed within ${freezeLabel} of completion.` 
       };
     }
     
     return { editable: true };
-  }, [workflowStates, workflowSettings, getStateForNode]);
+  }, [workflowStates, workflowSettings, workflowNodes, getStateForNode]);
 
   const openNodeModal = (node: WorkflowNode) => {
     const { editable, reason } = isNodeEditable(node.id);

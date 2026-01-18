@@ -255,6 +255,21 @@
           <input type="text" id="nodeAutoAdvance" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., days_elapsed:14">
           <p class="text-xs text-gray-500 mt-1">Automatically move to next node when condition is met</p>
         </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Edit Freeze Time</label>
+          <select id="nodeEditFreezeHours" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="0">No freeze (always editable)</option>
+            <option value="6">6 hours after update</option>
+            <option value="12">12 hours after update</option>
+            <option value="24">1 day after update</option>
+            <option value="48" selected>2 days after update</option>
+            <option value="72">3 days after update</option>
+            <option value="168">1 week after update</option>
+            <option value="-1">Never editable (locked immediately)</option>
+          </select>
+          <p class="text-xs text-gray-500 mt-1">How long officers can edit this node after submitting data</p>
+        </div>
       </div>
       <div class="p-6 border-t border-gray-200 flex justify-end gap-3">
         <button onclick="closeNodeModal()" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
@@ -539,11 +554,12 @@
                 <span class="text-lg font-bold">${node.position}</span>
               </div>
               <div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   <h3 class="font-semibold text-gray-900">${node.name}</h3>
                   ${node.isStartNode ? '<span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Start</span>' : ''}
                   ${node.isEndNode ? '<span class="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">End</span>' : ''}
                   <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">${node.nodeType}</span>
+                  <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">${getFreezeLabel(node.editFreezeHours ?? 48)}</span>
                 </div>
                 <p class="text-sm text-gray-500">${node.description || 'No description'}</p>
               </div>
@@ -662,9 +678,21 @@
       renderInputFields();
       document.getElementById('inputFieldEditor').classList.add('hidden');
       document.getElementById('nodeAutoAdvance').value = '';
+      document.getElementById('nodeEditFreezeHours').value = '48';
       document.querySelectorAll('.template-checkbox').forEach(cb => cb.checked = false);
       document.getElementById('nodeModal').classList.remove('hidden');
       document.getElementById('nodeModal').classList.add('flex');
+    }
+
+    function getFreezeLabel(hours) {
+      if (hours === 0) return 'Always editable';
+      if (hours === -1) return 'Never editable';
+      if (hours < 24) return hours + 'h freeze';
+      if (hours === 24) return '1 day freeze';
+      if (hours === 48) return '2 days freeze';
+      if (hours === 72) return '3 days freeze';
+      if (hours === 168) return '1 week freeze';
+      return (hours / 24) + ' days freeze';
     }
 
     function editNode(id) {
@@ -684,6 +712,7 @@
       renderInputFields();
       document.getElementById('inputFieldEditor').classList.add('hidden');
       document.getElementById('nodeAutoAdvance').value = node.autoAdvanceCondition || '';
+      document.getElementById('nodeEditFreezeHours').value = node.editFreezeHours ?? 48;
       document.querySelectorAll('.template-checkbox').forEach(cb => {
         cb.checked = node.templateIds && node.templateIds.includes(cb.value);
       });
@@ -713,6 +742,7 @@
         inputFields: currentInputFields,
         templateIds: selectedTemplates,
         autoAdvanceCondition: document.getElementById('nodeAutoAdvance').value || null,
+        editFreezeHours: parseInt(document.getElementById('nodeEditFreezeHours').value),
         status: 'active'
       };
       try {
@@ -833,7 +863,8 @@
           nodeType: 'action', 
           icon: 'package', 
           color: '#1E40AF', 
-          isStartNode: true, 
+          isStartNode: true,
+          editFreezeHours: 24,
           inputFields: [
             { name: 'liftedDate', type: 'date', label: 'Lifted Date', required: true },
             { name: 'liftedPlace', type: 'text', label: 'Place of Lifting', required: true },
@@ -847,7 +878,8 @@
           position: 1, 
           nodeType: 'action', 
           icon: 'truck', 
-          color: '#7C3AED', 
+          color: '#7C3AED',
+          editFreezeHours: 24,
           inputFields: [
             { name: 'dispatchDate', type: 'date', label: 'Dispatch Date', required: true },
             { name: 'dispatchMode', type: 'select', label: 'Dispatch Mode', options: ['Hand Delivery', 'Courier', 'Speed Post', 'Registered Post'] },
@@ -863,7 +895,8 @@
           position: 2, 
           nodeType: 'decision', 
           icon: 'file-text', 
-          color: '#059669', 
+          color: '#059669',
+          editFreezeHours: 48,
           inputFields: [
             { name: 'labReportDate', type: 'date', label: 'Lab Report Date', required: true },
             { name: 'labReportNumber', type: 'text', label: 'Lab Report Number', required: true },
@@ -883,6 +916,7 @@
           icon: 'check-circle', 
           color: '#10B981', 
           isEndNode: true,
+          editFreezeHours: 72,
           inputFields: [
             { name: 'closureDate', type: 'date', label: 'Closure Date' },
             { name: 'closureRemarks', type: 'textarea', label: 'Closure Remarks' }
@@ -894,7 +928,8 @@
           position: 4, 
           nodeType: 'action', 
           icon: 'alert-triangle', 
-          color: '#DC2626', 
+          color: '#DC2626',
+          editFreezeHours: 48,
           inputFields: [
             { name: 'prosecutionDate', type: 'date', label: 'Prosecution Start Date', required: true },
             { name: 'caseNumber', type: 'text', label: 'Case Number' },
@@ -908,7 +943,8 @@
           position: 5, 
           nodeType: 'action', 
           icon: 'shield', 
-          color: '#F59E0B', 
+          color: '#F59E0B',
+          editFreezeHours: 48,
           inputFields: [
             { name: 'noticeDate', type: 'date', label: 'Notice Date', required: true },
             { name: 'noticeNumber', type: 'text', label: 'Notice Number', required: true },
