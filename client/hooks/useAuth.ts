@@ -59,6 +59,7 @@ export function useAuth() {
         employeeId: data.officer.employeeId || '',
         jurisdiction: data.officer.jurisdiction,
         allJurisdictions: data.officer.allJurisdictions || [],
+        showAdminPanel: data.officer.showAdminPanel || false,
       };
 
       await storage.setUser(officerUser);
