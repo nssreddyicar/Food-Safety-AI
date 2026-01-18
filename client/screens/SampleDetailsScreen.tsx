@@ -850,34 +850,35 @@ export default function SampleDetailsScreen() {
             <ThemedText type="body" style={styles.fieldLabel}>
               {field.label}{field.required ? ' *' : ''}
             </ThemedText>
-            {value ? (
-              <View style={styles.imagePreviewContainer}>
-                <Image source={{ uri: value }} style={styles.imagePreview} resizeMode="cover" />
-                <Pressable 
-                  style={[styles.removeImageButton, { backgroundColor: theme.accent }]}
-                  onPress={removeImage}
-                >
-                  <Feather name="x" size={16} color="#fff" />
-                </Pressable>
-              </View>
-            ) : (
-              <View style={styles.imageButtonsContainer}>
+            <View style={styles.imagePreviewContainer}>
+              {value ? (
+                <View style={styles.imagePreviewWrapper}>
+                  <Image source={{ uri: value }} style={styles.imagePreview} resizeMode="cover" />
+                  <Pressable 
+                    style={[styles.removeImageButton, { backgroundColor: theme.accent }]}
+                    onPress={removeImage}
+                  >
+                    <Feather name="x" size={12} color="#fff" />
+                  </Pressable>
+                </View>
+              ) : null}
+              <View style={styles.imageThumbnailButtons}>
                 <Pressable
-                  style={[styles.imageButton, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]}
+                  style={[styles.imageThumbnailButton, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]}
                   onPress={takePhoto}
                 >
-                  <Feather name="camera" size={20} color={theme.primary} />
-                  <ThemedText type="small" style={{ color: theme.primary, marginTop: 4 }}>Camera</ThemedText>
+                  <Feather name="camera" size={18} color={theme.primary} />
+                  <ThemedText type="small" style={{ color: theme.primary, fontSize: 10, marginTop: 2 }}>Camera</ThemedText>
                 </Pressable>
                 <Pressable
-                  style={[styles.imageButton, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]}
+                  style={[styles.imageThumbnailButton, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]}
                   onPress={pickImage}
                 >
-                  <Feather name="image" size={20} color={theme.primary} />
-                  <ThemedText type="small" style={{ color: theme.primary, marginTop: 4 }}>Gallery</ThemedText>
+                  <Feather name="image" size={18} color={theme.primary} />
+                  <ThemedText type="small" style={{ color: theme.primary, fontSize: 10, marginTop: 2 }}>Gallery</ThemedText>
                 </Pressable>
               </View>
-            )}
+            </View>
           </View>
         );
       default:
@@ -1665,24 +1666,41 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   imagePreviewContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  imagePreviewWrapper: {
     position: 'relative',
-    borderRadius: BorderRadius.md,
-    overflow: 'hidden',
   },
   imagePreview: {
-    width: '100%',
-    height: 200,
+    width: 64,
+    height: 64,
     borderRadius: BorderRadius.md,
   },
   removeImageButton: {
     position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  imageThumbnailButtons: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  imageThumbnailButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
   },
   nodeTemplatesContainer: {
     marginTop: Spacing.sm,
