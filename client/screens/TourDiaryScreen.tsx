@@ -53,6 +53,20 @@ function getDayName(year: number, month: number, day: number): string {
   return DAYS_OF_WEEK[date.getDay()];
 }
 
+function isSecondSaturday(year: number, month: number, day: number): boolean {
+  const date = new Date(year, month, day);
+  if (date.getDay() !== 6) return false;
+  
+  let saturdayCount = 0;
+  for (let d = 1; d <= day; d++) {
+    const checkDate = new Date(year, month, d);
+    if (checkDate.getDay() === 6) {
+      saturdayCount++;
+    }
+  }
+  return saturdayCount === 2;
+}
+
 export default function TourDiaryScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -171,17 +185,19 @@ export default function TourDiaryScreen() {
                     today.getMonth() === selectedMonth && 
                     today.getFullYear() === selectedYear;
     const isSunday = new Date(selectedYear, selectedMonth, day).getDay() === 0;
+    const is2ndSaturday = isSecondSaturday(selectedYear, selectedMonth, day);
+    const isHoliday = isSunday || is2ndSaturday;
     
     return (
       <View
         key={day}
         style={[
           styles.tableRow,
-          { backgroundColor: isToday ? Colors.light.primary + '10' : (isSunday ? '#FEE2E2' : theme.backgroundDefault) },
+          { backgroundColor: isToday ? Colors.light.primary + '10' : (isHoliday ? '#FEE2E2' : theme.backgroundDefault) },
         ]}
       >
         <Text style={[styles.cell, styles.slNoCell, { color: theme.text }]}>{day}</Text>
-        <Text style={[styles.cell, styles.dateCell, { color: isSunday ? Colors.light.accent : theme.text }]}>
+        <Text style={[styles.cell, styles.dateCell, { color: isHoliday ? Colors.light.accent : theme.text }]}>
           {day} ({dayName})
         </Text>
         <Text style={[styles.cell, styles.fromCell, { color: theme.text }]} numberOfLines={1}>
