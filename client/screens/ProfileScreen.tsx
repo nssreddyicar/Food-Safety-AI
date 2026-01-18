@@ -208,6 +208,20 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <ThemedText type="h4" style={styles.sectionTitle}>
+          Prosecution
+        </ThemedText>
+        <View style={[styles.menuGroup, Shadows.sm]}>
+          <MenuItem 
+            icon="briefcase" 
+            label="Court Cases" 
+            value="Track prosecution cases & hearings"
+            onPress={() => navigation.navigate('CourtCases')} 
+          />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="h4" style={styles.sectionTitle}>
           Settings
         </ThemedText>
         <View style={[styles.menuGroup, Shadows.sm]}>
