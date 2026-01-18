@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Platform, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Platform, Modal, TextInput, KeyboardAvoidingView, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useRoute, RouteProp } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
+import * as ImagePicker from 'expo-image-picker';
 import { ThemedText } from '@/components/ThemedText';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useTheme } from '@/hooks/useTheme';
@@ -30,7 +31,7 @@ interface DocumentTemplate {
 
 interface InputField {
   name: string;
-  type: 'text' | 'date' | 'select' | 'textarea' | 'number';
+  type: 'text' | 'date' | 'select' | 'textarea' | 'number' | 'image';
   label: string;
   required?: boolean;
   options?: string[];
@@ -703,6 +704,79 @@ export default function SampleDetailsScreen() {
             />
           </View>
         );
+      case 'image':
+        const pickImage = async () => {
+          const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!permissionResult.granted) {
+            Alert.alert('Permission Required', 'Please allow access to your photo library to upload images.');
+            return;
+          }
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.8,
+          });
+          if (!result.canceled && result.assets[0]) {
+            setFormData(prev => ({ ...prev, [field.name]: result.assets[0].uri }));
+          }
+        };
+        
+        const takePhoto = async () => {
+          const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+          if (!permissionResult.granted) {
+            Alert.alert('Permission Required', 'Please allow access to your camera to take photos.');
+            return;
+          }
+          const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.8,
+          });
+          if (!result.canceled && result.assets[0]) {
+            setFormData(prev => ({ ...prev, [field.name]: result.assets[0].uri }));
+          }
+        };
+        
+        const removeImage = () => {
+          setFormData(prev => ({ ...prev, [field.name]: '' }));
+        };
+        
+        return (
+          <View key={field.name} style={styles.formField}>
+            <ThemedText type="body" style={styles.fieldLabel}>
+              {field.label}{field.required ? ' *' : ''}
+            </ThemedText>
+            {value ? (
+              <View style={styles.imagePreviewContainer}>
+                <Image source={{ uri: value }} style={styles.imagePreview} resizeMode="cover" />
+                <Pressable 
+                  style={[styles.removeImageButton, { backgroundColor: theme.accent }]}
+                  onPress={removeImage}
+                >
+                  <Feather name="x" size={16} color="#fff" />
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.imageButtonsContainer}>
+                <Pressable
+                  style={[styles.imageButton, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]}
+                  onPress={takePhoto}
+                >
+                  <Feather name="camera" size={20} color={theme.primary} />
+                  <ThemedText type="small" style={{ color: theme.primary, marginTop: 4 }}>Camera</ThemedText>
+                </Pressable>
+                <Pressable
+                  style={[styles.imageButton, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]}
+                  onPress={pickImage}
+                >
+                  <Feather name="image" size={20} color={theme.primary} />
+                  <ThemedText type="small" style={{ color: theme.primary, marginTop: 4 }}>Gallery</ThemedText>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        );
       default:
         return (
           <View key={field.name} style={styles.formField}>
@@ -1326,5 +1400,38 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
+  },
+  imageButtonsContainer: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  imageButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  imagePreviewContainer: {
+    position: 'relative',
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+  },
+  imagePreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: BorderRadius.md,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: Spacing.sm,
+    right: Spacing.sm,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
