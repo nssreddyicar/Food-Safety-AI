@@ -30,6 +30,7 @@
       .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; display: inline-block; }
       .status-active { background: #d1fae5; color: #059669; }
       .status-inactive { background: #fee2e2; color: #dc2626; }
+      .admin-badge { background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; margin-top: 6px; }
       .role-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; background: #dbeafe; color: #1E40AF; display: inline-block; }
       .action-btns { display: flex; gap: 8px; }
       .action-btn { padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; border: none; }
@@ -306,7 +307,10 @@
               </td>
               <td>${formatDate(officer.dateOfJoining)}</td>
               <td>${renderAssignments(officerAssignments)}</td>
-              <td><span class="status-badge status-${officer.status}">${officer.status}</span></td>
+              <td>
+                <span class="status-badge status-${officer.status}">${officer.status}</span>
+                ${officer.showAdminPanel ? '<div class="admin-badge">Admin Access</div>' : ''}
+              </td>
               <td>
                 <div class="action-btns">
                   <button class="action-btn edit-btn" onclick="editOfficer('${officer.id}')">Edit</button>
