@@ -91,16 +91,39 @@ server/
 - Create new inspections with dynamic form
 - Inspection types: Routine, Special Drive, Complaint Based, VVIP, Initiatives
 - FBO and Proprietor details
-- Deviations tracking
-- Actions taken (Warning, Notice, Seizure, etc.)
-- Sample lifting
+- Deviations tracking with severity levels
+- Actions taken with:
+  - Dropdown selection (Warning, Improvement Notice, Seizure Order, Prohibition Order, Prosecution, License actions)
+  - Text description input
+  - Image upload support (up to 5 images per action)
+  - Countdown/due date tracking
+- Sample lifting with two sample types:
+  - **Enforcement Sample** - For regulatory enforcement
+  - **Surveillance Sample** - For monitoring purposes
+- Witness details with Aadhaar and signature capture
 - Save as draft or submit
+
+### Sample Details (Enhanced)
+Each sample captures comprehensive information:
+- Sample name, code (auto-generated), collection place
+- Date and officer details (auto-filled)
+- Sample cost and quantity in grams
+- Preservative information (yes/no with type selection)
+- Packing type (Packed/Loose)
+- For packed samples:
+  - Manufacturer details (name, address, license)
+  - Distributor details (optional)
+  - Repacker details (optional)
+  - Relabeller details (optional)
+  - Manufacturing date, expiry date
+  - Lot/batch number
 
 ### Sample Tracking
 - 14-day countdown from dispatch to lab report deadline
 - Status tracking: Pending → Dispatched → Lab Report
 - Visual urgency indicators (red for overdue, amber for < 3 days)
 - Filter by status
+- Sample type badges (ENF/SRV)
 
 ## Design System
 - **Primary Color**: #1E40AF (Deep authoritative blue)

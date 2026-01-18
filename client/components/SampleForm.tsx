@@ -23,19 +23,6 @@ export function SampleForm({ sample, onUpdate, onRemove, index, officerName, off
   const { theme } = useTheme();
   const [showPreservativeDropdown, setShowPreservativeDropdown] = useState(false);
 
-  const handleImagePick = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images',
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      onUpdate({ ...sample, acknowledgementImage: result.assets[0].uri });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  };
-
   const sampleTypeLabel = sample.sampleType === 'enforcement' ? 'Enforcement Sample' : 'Surveillance Sample';
 
   return (
