@@ -4,11 +4,8 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  TextInput,
-  Modal,
   Platform,
   Linking,
-  Alert,
 } from 'react-native';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { Feather } from '@expo/vector-icons';
@@ -39,52 +36,51 @@ export default function ScannerScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
-  const [scannedData, setScannedData] = useState<{ data: string; type: string } | null>(null);
-  const [heading, setHeading] = useState('');
-  const [modalVisible, setModalVisible] = useState(false);
   const [flashEnabled, setFlashEnabled] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [lastScannedType, setLastScannedType] = useState('');
 
-  const handleBarCodeScanned = (result: BarcodeScanningResult) => {
+  const handleBarCodeScanned = async (result: BarcodeScanningResult) => {
     if (scanned) return;
     setScanned(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setScannedData({ data: result.data, type: result.type });
-    setHeading('');
-    setModalVisible(true);
-  };
-
-  const saveNote = async () => {
-    if (!scannedData) return;
-
+    
+    // Auto-save the scanned data
     try {
       const existingNotes = await AsyncStorage.getItem(NOTES_STORAGE_KEY);
       const notes: ScannedNote[] = existingNotes ? JSON.parse(existingNotes) : [];
       
+      // Generate auto heading based on type and count
+      const todayScans = notes.filter(n => {
+        const noteDate = new Date(n.scannedAt).toDateString();
+        return noteDate === new Date().toDateString();
+      });
+      const scanNumber = todayScans.length + 1;
+      const typeLabel = result.type.toLowerCase().includes('qr') ? 'QR Code' : 'Barcode';
+      
       const newNote: ScannedNote = {
         id: Date.now().toString(),
-        data: scannedData.data,
-        type: scannedData.type,
-        heading: heading.trim() || 'Untitled Scan',
+        data: result.data,
+        type: result.type,
+        heading: `${typeLabel} #${scanNumber}`,
         scannedAt: new Date().toISOString(),
       };
       
       notes.unshift(newNote);
       await AsyncStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
       
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setModalVisible(false);
-      setScannedData(null);
-      setScanned(false);
+      setLastScannedType(typeLabel);
+      setShowSuccess(true);
+      
+      // Hide success message after 2 seconds and allow new scan
+      setTimeout(() => {
+        setShowSuccess(false);
+        setScanned(false);
+      }, 2000);
     } catch (error) {
       console.error('Error saving note:', error);
-      Alert.alert('Error', 'Failed to save note');
+      setScanned(false);
     }
-  };
-
-  const cancelScan = () => {
-    setModalVisible(false);
-    setScannedData(null);
-    setScanned(false);
   };
 
   if (!permission) {
@@ -204,83 +200,19 @@ export default function ScannerScreen() {
         </View>
 
         <View style={[styles.bottomInfo, { paddingBottom: tabBarHeight + Spacing.lg }]}>
-          <View style={styles.supportedCodes}>
-            <Feather name="check-circle" size={16} color="#fff" />
-            <Text style={styles.supportedText}>QR, EAN, UPC, Code128, PDF417 & more</Text>
-          </View>
+          {showSuccess ? (
+            <View style={styles.successToast}>
+              <Feather name="check-circle" size={20} color={Colors.light.success} />
+              <Text style={styles.successText}>{lastScannedType} saved!</Text>
+            </View>
+          ) : (
+            <View style={styles.supportedCodes}>
+              <Feather name="check-circle" size={16} color="#fff" />
+              <Text style={styles.supportedText}>QR, EAN, UPC, Code128, PDF417 & more</Text>
+            </View>
+          )}
         </View>
       </View>
-
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={cancelScan}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Save Scanned Data</Text>
-              <Pressable onPress={cancelScan}>
-                <Feather name="x" size={24} color={theme.textSecondary} />
-              </Pressable>
-            </View>
-
-            <View style={styles.scannedInfo}>
-              <View style={[styles.codeTypeTag, { backgroundColor: Colors.light.primary + '20' }]}>
-                <Feather name="code" size={14} color={Colors.light.primary} />
-                <Text style={[styles.codeTypeText, { color: Colors.light.primary }]}>
-                  {scannedData?.type?.toUpperCase() || 'CODE'}
-                </Text>
-              </View>
-              <Text style={[styles.scannedDataText, { color: theme.text }]} numberOfLines={3}>
-                {scannedData?.data}
-              </Text>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={[styles.label, { color: theme.textSecondary }]}>Heading / Title</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                placeholder="Enter a title for this scan"
-                placeholderTextColor={theme.textSecondary}
-                value={heading}
-                onChangeText={setHeading}
-                autoFocus
-              />
-            </View>
-
-            <View style={styles.dateInfo}>
-              <Feather name="calendar" size={14} color={theme.textSecondary} />
-              <Text style={[styles.dateText, { color: theme.textSecondary }]}>
-                {new Date().toLocaleDateString('en-IN', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </Text>
-            </View>
-
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={[styles.modalButton, styles.cancelButton, { borderColor: theme.border }]}
-                onPress={cancelScan}
-              >
-                <Text style={[styles.cancelButtonText, { color: theme.text }]}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.modalButton, styles.saveButton, { backgroundColor: Colors.light.primary }]}
-                onPress={saveNote}
-              >
-                <Feather name="save" size={18} color="#fff" />
-                <Text style={styles.saveButtonText}>Save Note</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -439,6 +371,20 @@ const styles = StyleSheet.create({
   supportedText: {
     color: '#fff',
     fontSize: 12,
+  },
+  successToast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.light.success,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.full,
+  },
+  successText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
