@@ -161,8 +161,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).send(html);
   });
 
-  app.post("/api/admin/login", (req: Request, res: Response) => {
+  app.post("/api/admin/login", async (req: Request, res: Response) => {
     const { username, password } = req.body;
+    
+    // Check super admin credentials first
     if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
       const token = generateSessionToken();
       const expires = Date.now() + 24 * 60 * 60 * 1000;
@@ -175,6 +177,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       return res.json({ success: true, message: "Login successful" });
     }
+    
+    // Check if it's an officer with admin panel access
+    try {
+      const [officer] = await db.select().from(officers)
+        .where(sql`${officers.email} = ${username} AND ${officers.status} = 'active'`);
+      
+      if (officer && officer.password === password && officer.showAdminPanel) {
+        const token = generateSessionToken();
+        const expires = Date.now() + 24 * 60 * 60 * 1000;
+        adminSessions.set(token, { expires });
+        res.cookie("admin_session", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          maxAge: 24 * 60 * 60 * 1000,
+          sameSite: "lax",
+        });
+        return res.json({ success: true, message: "Login successful" });
+      }
+    } catch (error) {
+      console.error("Officer admin login check failed:", error);
+    }
+    
     return res.status(401).json({ success: false, message: "Invalid username or password" });
   });
 
