@@ -22,11 +22,13 @@ import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
 interface DocumentTemplate {
   id: string;
   name: string;
+  description?: string;
   category: string;
-  contentType: 'plain_text' | 'html';
   content: string;
   pageSize: string;
   orientation: string;
+  fontFamily?: string;
+  fontSize?: number;
   createdAt: string;
 }
 
@@ -419,7 +421,19 @@ export default function SampleDetailsScreen() {
       }
     `;
     
-    if (template.contentType === 'html') {
+    // Auto-detect if content is HTML by checking for HTML tags
+    const trimmedContent = content.trim();
+    const isHtml = trimmedContent.startsWith('<!DOCTYPE') || 
+                   trimmedContent.startsWith('<html') ||
+                   (trimmedContent.startsWith('<') && (
+                     trimmedContent.includes('<style>') ||
+                     trimmedContent.includes('<style ') ||
+                     trimmedContent.includes('<div') ||
+                     trimmedContent.includes('<table') ||
+                     trimmedContent.includes('<head>')
+                   ));
+    
+    if (isHtml) {
       // Inject scrollbar-hiding CSS into the HTML content
       if (content.includes('</head>')) {
         return content.replace('</head>', `<style>${scrollbarHideCSS}</style></head>`);
@@ -1050,7 +1064,7 @@ export default function SampleDetailsScreen() {
                     <View style={styles.templateMeta}>
                       <Feather name="file" size={12} color={theme.textSecondary} />
                       <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                        {template.contentType === 'html' ? 'HTML' : 'Text'} - {template.pageSize.toUpperCase()}
+                        {template.pageSize?.toUpperCase() || 'A4'} {template.orientation || 'Portrait'}
                       </ThemedText>
                     </View>
                   </View>
