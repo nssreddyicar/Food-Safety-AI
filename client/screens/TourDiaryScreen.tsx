@@ -329,7 +329,7 @@ export default function TourDiaryScreen() {
       
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.xl }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 80 }]}
         showsVerticalScrollIndicator={false}
       >
         <Card style={styles.tableCard}>
@@ -341,6 +341,13 @@ export default function TourDiaryScreen() {
           </ScrollView>
         </Card>
       </ScrollView>
+      
+      <Pressable
+        style={[styles.fab, { bottom: insets.bottom + Spacing.xl }]}
+        onPress={() => openEditModal(today.getDate())}
+      >
+        <Feather name="plus" size={24} color="#fff" />
+      </Pressable>
       
       <Modal
         visible={editModalVisible}
@@ -530,6 +537,21 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: Spacing.md,
+  },
+  fab: {
+    position: 'absolute',
+    right: Spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.light.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
   },
   tableCard: {
     padding: 0,
