@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, Switch, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Pressable, Switch, ActivityIndicator, Modal, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useNavigation } from '@react-navigation/native';
@@ -19,7 +19,6 @@ import { Inspection, Deviation, Sample, Witness, ActionTaken, SampleType } from 
 import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
 
 const INSPECTION_TYPES = ['Routine', 'Special Drive', 'Complaint Based', 'VVIP', 'Initiatives'];
-const DEVIATION_CATEGORIES = ['Hygiene', 'Labelling', 'Storage', 'Documentation', 'Adulteration', 'Other'];
 
 export default function NewInspectionScreen() {
   const { theme } = useTheme();
@@ -32,19 +31,23 @@ export default function NewInspectionScreen() {
   const [inspectionType, setInspectionType] = useState('Routine');
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   
+  const [fboEstablishmentName, setFboEstablishmentName] = useState('');
   const [fboName, setFboName] = useState('');
+  const [fboSonOf, setFboSonOf] = useState('');
+  const [fboAge, setFboAge] = useState('');
   const [fboAddress, setFboAddress] = useState('');
   const [hasLicense, setHasLicense] = useState(true);
   const [licenseNumber, setLicenseNumber] = useState('');
   
   const [proprietorSame, setProprietorSame] = useState(false);
   const [proprietorName, setProprietorName] = useState('');
+  const [proprietorSonOf, setProprietorSonOf] = useState('');
+  const [proprietorAge, setProprietorAge] = useState('');
   const [proprietorAddress, setProprietorAddress] = useState('');
   const [proprietorPhone, setProprietorPhone] = useState('');
   
   const [deviations, setDeviations] = useState<Deviation[]>([]);
   const [actions, setActions] = useState<Partial<ActionTaken>[]>([]);
-  const [sampleLifted, setSampleLifted] = useState(false);
   const [samples, setSamples] = useState<Partial<Sample>[]>([]);
   const [witnesses, setWitnesses] = useState<Partial<Witness>[]>([]);
 
@@ -122,6 +125,8 @@ export default function NewInspectionScreen() {
     const newWitness: Partial<Witness> = {
       id: `witness_${Date.now()}`,
       name: '',
+      sonOfName: '',
+      age: undefined,
       address: '',
       phone: '',
     };
@@ -143,7 +148,7 @@ export default function NewInspectionScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!fboName.trim()) {
+    if (!fboEstablishmentName.trim() && !fboName.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
@@ -160,13 +165,18 @@ export default function NewInspectionScreen() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         fboDetails: {
+          establishmentName: fboEstablishmentName,
           name: fboName,
+          sonOfName: fboSonOf || undefined,
+          age: fboAge ? parseInt(fboAge) : undefined,
           address: fboAddress,
           licenseNumber: hasLicense ? licenseNumber : undefined,
           hasLicense,
         },
         proprietorDetails: {
           name: proprietorSame ? fboName : proprietorName,
+          sonOfName: proprietorSame ? fboSonOf : proprietorSonOf || undefined,
+          age: proprietorSame ? (fboAge ? parseInt(fboAge) : undefined) : (proprietorAge ? parseInt(proprietorAge) : undefined),
           address: proprietorSame ? fboAddress : proprietorAddress,
           phone: proprietorPhone,
           isSameAsFBO: proprietorSame,
@@ -209,6 +219,8 @@ export default function NewInspectionScreen() {
         witnesses: witnesses.filter(w => w.name).map(w => ({
           id: w.id || `witness_${Date.now()}`,
           name: w.name || '',
+          sonOfName: w.sonOfName,
+          age: w.age,
           address: w.address || '',
           phone: w.phone || '',
           aadhaarNumber: w.aadhaarNumber,
@@ -231,8 +243,42 @@ export default function NewInspectionScreen() {
     }
   };
 
+  const renderDropdownModal = () => (
+    <Modal
+      visible={showTypeDropdown}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowTypeDropdown(false)}
+    >
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowTypeDropdown(false)}
+      >
+        <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault, marginTop: headerHeight + Spacing.xl + 100 }]}>
+          {INSPECTION_TYPES.map((type) => (
+            <Pressable
+              key={type}
+              onPress={() => {
+                setInspectionType(type);
+                setShowTypeDropdown(false);
+                Haptics.selectionAsync();
+              }}
+              style={[styles.dropdownItem, type === inspectionType && { backgroundColor: theme.primary + '15' }]}
+            >
+              <ThemedText style={type === inspectionType ? { color: theme.primary, fontWeight: '600' } : undefined}>
+                {type}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+      {renderDropdownModal()}
       <KeyboardAwareScrollViewCompat
         contentContainerStyle={[
           styles.content,
@@ -246,37 +292,57 @@ export default function NewInspectionScreen() {
         <View style={styles.section}>
           <ThemedText type="h3">Inspection Type</ThemedText>
           <Pressable
-            onPress={() => setShowTypeDropdown(!showTypeDropdown)}
+            onPress={() => setShowTypeDropdown(true)}
             style={[styles.dropdown, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
           >
             <ThemedText>{inspectionType}</ThemedText>
-            <Feather name={showTypeDropdown ? 'chevron-up' : 'chevron-down'} size={18} color={theme.textSecondary} />
+            <Feather name="chevron-down" size={18} color={theme.textSecondary} />
           </Pressable>
-          {showTypeDropdown ? (
-            <View style={[styles.dropdownMenu, { backgroundColor: theme.backgroundDefault }, Shadows.lg]}>
-              {INSPECTION_TYPES.map((type) => (
-                <Pressable
-                  key={type}
-                  onPress={() => {
-                    setInspectionType(type);
-                    setShowTypeDropdown(false);
-                    Haptics.selectionAsync();
-                  }}
-                  style={[styles.dropdownItem, type === inspectionType && { backgroundColor: theme.primary + '15' }]}
-                >
-                  <ThemedText style={type === inspectionType ? { color: theme.primary, fontWeight: '600' } : undefined}>
-                    {type}
-                  </ThemedText>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
         </View>
 
         <View style={styles.section}>
           <ThemedText type="h3">FBO Details</ThemedText>
-          <Input label="Business Name" placeholder="Enter FBO name" value={fboName} onChangeText={setFboName} testID="input-fbo-name" />
-          <Input label="Address" placeholder="Enter complete address" value={fboAddress} onChangeText={setFboAddress} multiline testID="input-fbo-address" />
+          <Input 
+            label="Establishment Name" 
+            placeholder="Enter establishment/business name" 
+            value={fboEstablishmentName} 
+            onChangeText={setFboEstablishmentName} 
+            testID="input-fbo-establishment" 
+          />
+          <Input 
+            label="Owner/Operator Name" 
+            placeholder="Enter owner/operator full name" 
+            value={fboName} 
+            onChangeText={setFboName} 
+            testID="input-fbo-name" 
+          />
+          <View style={styles.row}>
+            <View style={styles.flexTwo}>
+              <Input 
+                label="S/o, D/o, W/o" 
+                placeholder="Son of / Daughter of / Wife of" 
+                value={fboSonOf} 
+                onChangeText={setFboSonOf} 
+              />
+            </View>
+            <View style={styles.flexOne}>
+              <Input 
+                label="Age (Years)" 
+                placeholder="Age" 
+                value={fboAge} 
+                onChangeText={setFboAge}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+          <Input 
+            label="Address" 
+            placeholder="Enter complete address" 
+            value={fboAddress} 
+            onChangeText={setFboAddress} 
+            multiline 
+            testID="input-fbo-address" 
+          />
           
           <View style={styles.switchRow}>
             <ThemedText type="body">Has Food License/Registration?</ThemedText>
@@ -289,7 +355,13 @@ export default function NewInspectionScreen() {
           </View>
           
           {hasLicense ? (
-            <Input label="License/Registration Number" placeholder="Enter license number" value={licenseNumber} onChangeText={setLicenseNumber} testID="input-license" />
+            <Input 
+              label="License/Registration Number" 
+              placeholder="Enter license number" 
+              value={licenseNumber} 
+              onChangeText={setLicenseNumber} 
+              testID="input-license" 
+            />
           ) : null}
         </View>
 
@@ -309,11 +381,47 @@ export default function NewInspectionScreen() {
           
           {!proprietorSame ? (
             <>
-              <Input label="Name" placeholder="Proprietor name" value={proprietorName} onChangeText={setProprietorName} />
-              <Input label="Address" placeholder="Proprietor address" value={proprietorAddress} onChangeText={setProprietorAddress} />
+              <Input 
+                label="Name" 
+                placeholder="Proprietor full name" 
+                value={proprietorName} 
+                onChangeText={setProprietorName} 
+              />
+              <View style={styles.row}>
+                <View style={styles.flexTwo}>
+                  <Input 
+                    label="S/o, D/o, W/o" 
+                    placeholder="Son of / Daughter of / Wife of" 
+                    value={proprietorSonOf} 
+                    onChangeText={setProprietorSonOf} 
+                  />
+                </View>
+                <View style={styles.flexOne}>
+                  <Input 
+                    label="Age (Years)" 
+                    placeholder="Age" 
+                    value={proprietorAge} 
+                    onChangeText={setProprietorAge}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+              <Input 
+                label="Address" 
+                placeholder="Proprietor address" 
+                value={proprietorAddress} 
+                onChangeText={setProprietorAddress} 
+                multiline
+              />
             </>
           ) : null}
-          <Input label="Phone" placeholder="Contact number" value={proprietorPhone} onChangeText={setProprietorPhone} keyboardType="phone-pad" />
+          <Input 
+            label="Phone" 
+            placeholder="Contact number" 
+            value={proprietorPhone} 
+            onChangeText={setProprietorPhone} 
+            keyboardType="phone-pad" 
+          />
         </View>
 
         <View style={styles.section}>
@@ -460,7 +568,7 @@ export default function NewInspectionScreen() {
           <Button onPress={handleSaveDraft} style={[styles.draftButton, { backgroundColor: theme.backgroundSecondary }]} disabled={isLoading}>
             <ThemedText style={{ color: theme.text }}>Save Draft</ThemedText>
           </Button>
-          <Button onPress={handleSubmit} style={styles.submitButton} disabled={isLoading || !fboName.trim()}>
+          <Button onPress={handleSubmit} style={styles.submitButton} disabled={isLoading || (!fboEstablishmentName.trim() && !fboName.trim())}>
             {isLoading ? <ActivityIndicator color="#FFFFFF" size="small" /> : 'Submit'}
           </Button>
         </View>
@@ -495,6 +603,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
   },
+  row: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  flexOne: {
+    flex: 1,
+  },
+  flexTwo: {
+    flex: 2,
+  },
   dropdown: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -504,14 +622,16 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     borderWidth: 1,
   },
-  dropdownMenu: {
-    position: 'absolute',
-    top: 80,
-    left: 0,
-    right: 0,
-    borderRadius: BorderRadius.md,
-    zIndex: 100,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'flex-start',
+    paddingHorizontal: Spacing.lg,
+  },
+  modalContent: {
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
+    ...Shadows.lg,
   },
   dropdownItem: {
     paddingHorizontal: Spacing.lg,

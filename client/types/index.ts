@@ -17,7 +17,10 @@ export interface User {
 }
 
 export interface FBODetails {
+  establishmentName: string;
   name: string;
+  sonOfName?: string;
+  age?: number;
   address: string;
   licenseNumber?: string;
   registrationNumber?: string;
@@ -26,6 +29,8 @@ export interface FBODetails {
 
 export interface ProprietorDetails {
   name: string;
+  sonOfName?: string;
+  age?: number;
   address: string;
   phone: string;
   aadhaarNumber?: string;
@@ -42,6 +47,8 @@ export interface Deviation {
 export interface Witness {
   id: string;
   name: string;
+  sonOfName?: string;
+  age?: number;
   address: string;
   phone: string;
   aadhaarNumber?: string;

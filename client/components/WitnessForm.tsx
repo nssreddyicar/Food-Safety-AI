@@ -61,6 +61,26 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
         onChangeText={(text) => onUpdate({ ...witness, name: text })}
       />
 
+      <View style={styles.row}>
+        <View style={styles.flexTwo}>
+          <Input
+            label="S/o, D/o, W/o"
+            placeholder="Son of / Daughter of / Wife of"
+            value={witness.sonOfName || ''}
+            onChangeText={(text) => onUpdate({ ...witness, sonOfName: text })}
+          />
+        </View>
+        <View style={styles.flexOne}>
+          <Input
+            label="Age (Years)"
+            placeholder="Age"
+            value={witness.age?.toString() || ''}
+            onChangeText={(text) => onUpdate({ ...witness, age: text ? parseInt(text) : undefined })}
+            keyboardType="numeric"
+          />
+        </View>
+      </View>
+
       <Input
         label="Address"
         placeholder="Enter complete address"
@@ -138,6 +158,16 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     padding: Spacing.sm,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  flexOne: {
+    flex: 1,
+  },
+  flexTwo: {
+    flex: 2,
   },
   imageRow: {
     flexDirection: 'row',
