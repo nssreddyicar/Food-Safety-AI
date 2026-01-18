@@ -1137,6 +1137,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sample Workflow State APIs - For officers to update sample progress
+  app.get("/api/samples/:sampleId/workflow-state", async (req: Request, res: Response) => {
+    try {
+      const { sampleId } = req.params;
+      const states = await db.select().from(sampleWorkflowState)
+        .where(sql`${sampleWorkflowState.sampleId} = ${sampleId}`)
+        .orderBy(asc(sampleWorkflowState.enteredAt));
+      res.json(states);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch sample workflow state" });
+    }
+  });
+
+  app.post("/api/samples/:sampleId/workflow-state", async (req: Request, res: Response) => {
+    try {
+      const { sampleId } = req.params;
+      const { nodeId, nodeData } = req.body;
+      
+      // Check if there's already an entry for this node
+      const [existing] = await db.select().from(sampleWorkflowState)
+        .where(sql`${sampleWorkflowState.sampleId} = ${sampleId} AND ${sampleWorkflowState.currentNodeId} = ${nodeId}`);
+      
+      if (existing) {
+        // Update existing entry
+        const [updated] = await db.update(sampleWorkflowState)
+          .set({
+            nodeData: nodeData,
+            completedAt: new Date(),
+            status: 'completed',
+          })
+          .where(sql`${sampleWorkflowState.id} = ${existing.id}`)
+          .returning();
+        return res.json(updated);
+      }
+      
+      // Create new entry
+      const [created] = await db.insert(sampleWorkflowState)
+        .values({
+          sampleId,
+          currentNodeId: nodeId,
+          nodeData: nodeData,
+          enteredAt: new Date(),
+          completedAt: new Date(),
+          status: 'completed',
+        })
+        .returning();
+      res.json(created);
+    } catch (error) {
+      console.error('Error saving workflow state:', error);
+      res.status(500).json({ error: "Failed to save sample workflow state" });
+    }
+  });
+
+  app.put("/api/samples/:sampleId/workflow-state/:stateId", async (req: Request, res: Response) => {
+    try {
+      const { stateId } = req.params;
+      const { nodeData, status } = req.body;
+      
+      const [updated] = await db.update(sampleWorkflowState)
+        .set({
+          nodeData: nodeData,
+          status: status || 'completed',
+          completedAt: new Date(),
+        })
+        .where(sql`${sampleWorkflowState.id} = ${stateId}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update sample workflow state" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
