@@ -3,6 +3,8 @@ import { View, StyleSheet, Image, Pressable, Alert, Platform } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
@@ -15,6 +17,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAuthContext } from '@/context/AuthContext';
 import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { getApiUrl } from '@/lib/query-client';
+import { ProfileStackParamList } from '@/navigation/ProfileStackNavigator';
 
 interface MenuItemProps {
   icon: keyof typeof Feather.glyphMap;
@@ -57,11 +60,14 @@ function MenuItem({ icon, label, value, onPress, danger }: MenuItemProps) {
   );
 }
 
+type ProfileNavigationProp = NativeStackNavigationProp<ProfileStackParamList, 'Profile'>;
+
 export default function ProfileScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
+  const navigation = useNavigation<ProfileNavigationProp>();
   const { user, logout } = useAuthContext();
   const [showJurisdictionSwitcher, setShowJurisdictionSwitcher] = useState(false);
 
@@ -185,6 +191,20 @@ export default function ProfileScreen() {
           </View>
         </View>
       ) : null}
+
+      <View style={styles.section}>
+        <ThemedText type="h4" style={styles.sectionTitle}>
+          Documents
+        </ThemedText>
+        <View style={[styles.menuGroup, Shadows.sm]}>
+          <MenuItem 
+            icon="file-text" 
+            label="Document Templates" 
+            value="Download forms with your data" 
+            onPress={() => navigation.navigate('Templates')} 
+          />
+        </View>
+      </View>
 
       <View style={styles.section}>
         <ThemedText type="h4" style={styles.sectionTitle}>
