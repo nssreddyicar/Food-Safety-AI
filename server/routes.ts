@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
-import { officers, districts, inspections, samples, systemSettings, administrativeLevels, jurisdictionUnits, officerRoles, officerCapacities, officerAssignments, documentTemplates, workflowNodes, workflowTransitions, sampleWorkflowState, sampleCodes, sampleCodeAuditLog, fboLicenses, fboRegistrations, grievances, fswActivities, adjudicationCases, prosecutionCases, prosecutionHearings, actionCategories, actionItems, actionItemAuditLog, slASettings, specialDrives, vvipDuties, workshops, improvementNotices, seizedArticles } from "../shared/schema";
+import { officers, districts, inspections, samples, systemSettings, administrativeLevels, jurisdictionUnits, officerRoles, officerCapacities, officerAssignments, documentTemplates, workflowNodes, workflowTransitions, sampleWorkflowState, sampleCodes, sampleCodeAuditLog, fboLicenses, fboRegistrations, grievances, fswActivities, adjudicationCases, prosecutionCases, prosecutionHearings, actionCategories, actionItems, actionItemAuditLog, slASettings, specialDrives, vvipDuties, workshops, improvementNotices, seizedArticles, statisticsCards, dashboardSettings, reportSections } from "../shared/schema";
 import { desc, asc, count, sql } from "drizzle-orm";
 
 const ADMIN_CREDENTIALS = {
@@ -2493,6 +2493,236 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error creating seized article:', error);
       res.status(500).json({ error: "Failed to create seized article" });
     }
+  });
+
+  // ============ DASHBOARD SETTINGS & CONFIGURATION ============
+
+  // Get all statistics cards
+  app.get("/api/statistics-cards", async (_req: Request, res: Response) => {
+    try {
+      const cards = await db.select().from(statisticsCards)
+        .orderBy(asc(statisticsCards.displayOrder));
+      res.json(cards);
+    } catch (error) {
+      console.error('Error fetching statistics cards:', error);
+      res.status(500).json({ error: "Failed to fetch statistics cards" });
+    }
+  });
+
+  // Create statistics card
+  app.post("/api/statistics-cards", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(statisticsCards).values(req.body).returning();
+      res.json(created);
+    } catch (error) {
+      console.error('Error creating statistics card:', error);
+      res.status(500).json({ error: "Failed to create statistics card" });
+    }
+  });
+
+  // Update statistics card
+  app.put("/api/statistics-cards/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const [updated] = await db.update(statisticsCards)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(sql`${statisticsCards.id} = ${id}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating statistics card:', error);
+      res.status(500).json({ error: "Failed to update statistics card" });
+    }
+  });
+
+  // Delete statistics card
+  app.delete("/api/statistics-cards/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(statisticsCards).where(sql`${statisticsCards.id} = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting statistics card:', error);
+      res.status(500).json({ error: "Failed to delete statistics card" });
+    }
+  });
+
+  // Seed default statistics cards
+  app.post("/api/statistics-cards/seed-defaults", requireAuth, async (_req: Request, res: Response) => {
+    try {
+      const defaultCards = [
+        { name: 'Licenses Issued', code: 'licenses_issued', group: 'license', icon: 'file-text', color: '#059669', valueType: 'count', entityType: 'license', displayOrder: 1 },
+        { name: 'Registrations', code: 'registrations', group: 'license', icon: 'clipboard', color: '#0EA5E9', valueType: 'count', entityType: 'registration', displayOrder: 2 },
+        { name: 'Inspections', code: 'inspections_count', group: 'inspection', icon: 'search', color: '#1E40AF', valueType: 'count', entityType: 'inspection', displayOrder: 3 },
+        { name: 'Samples Collected', code: 'samples_collected', group: 'sample', icon: 'package', color: '#8B5CF6', valueType: 'count', entityType: 'sample', displayOrder: 4 },
+        { name: 'FSW Activities', code: 'fsw_activities', group: 'general', icon: 'activity', color: '#D97706', valueType: 'count', entityType: 'fsw', displayOrder: 5 },
+        { name: 'Grievances Resolved', code: 'grievances_resolved', group: 'general', icon: 'check-circle', color: '#059669', valueType: 'count', entityType: 'grievance', displayOrder: 6 },
+        { name: 'Adjudication Cases', code: 'adjudication_cases', group: 'legal', icon: 'scale', color: '#DC2626', valueType: 'count', entityType: 'adjudication', displayOrder: 7 },
+        { name: 'Prosecution Cases', code: 'prosecution_cases', group: 'legal', icon: 'briefcase', color: '#DC2626', valueType: 'count', entityType: 'prosecution', displayOrder: 8 },
+        { name: 'Revenue Collected', code: 'revenue_collected', group: 'financial', icon: 'dollar-sign', color: '#059669', valueType: 'currency', entityType: 'financial', displayOrder: 9 },
+        { name: 'Penalties Collected', code: 'penalties_collected', group: 'financial', icon: 'credit-card', color: '#D97706', valueType: 'currency', entityType: 'penalty', displayOrder: 10 },
+      ];
+
+      for (const card of defaultCards) {
+        await db.insert(statisticsCards)
+          .values(card)
+          .onConflictDoUpdate({
+            target: statisticsCards.code,
+            set: { ...card, updatedAt: new Date() }
+          });
+      }
+
+      const cards = await db.select().from(statisticsCards).orderBy(asc(statisticsCards.displayOrder));
+      res.json({ message: 'Default statistics cards seeded', cards });
+    } catch (error) {
+      console.error('Error seeding statistics cards:', error);
+      res.status(500).json({ error: "Failed to seed statistics cards" });
+    }
+  });
+
+  // Get all dashboard settings
+  app.get("/api/dashboard-settings", async (_req: Request, res: Response) => {
+    try {
+      const settings = await db.select().from(dashboardSettings);
+      res.json(settings);
+    } catch (error) {
+      console.error('Error fetching dashboard settings:', error);
+      res.status(500).json({ error: "Failed to fetch dashboard settings" });
+    }
+  });
+
+  // Update dashboard setting
+  app.put("/api/dashboard-settings/:key", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { key } = req.params;
+      const { value, type, description, category } = req.body;
+      
+      const [updated] = await db.insert(dashboardSettings)
+        .values({ settingKey: key, settingValue: value, settingType: type || 'string', description, category: category || 'general' })
+        .onConflictDoUpdate({
+          target: dashboardSettings.settingKey,
+          set: { settingValue: value, updatedAt: new Date() }
+        })
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating dashboard setting:', error);
+      res.status(500).json({ error: "Failed to update dashboard setting" });
+    }
+  });
+
+  // Get all report sections
+  app.get("/api/report-sections", async (_req: Request, res: Response) => {
+    try {
+      const sections = await db.select().from(reportSections)
+        .orderBy(asc(reportSections.displayOrder));
+      res.json(sections);
+    } catch (error) {
+      console.error('Error fetching report sections:', error);
+      res.status(500).json({ error: "Failed to fetch report sections" });
+    }
+  });
+
+  // Create report section
+  app.post("/api/report-sections", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(reportSections).values(req.body).returning();
+      res.json(created);
+    } catch (error) {
+      console.error('Error creating report section:', error);
+      res.status(500).json({ error: "Failed to create report section" });
+    }
+  });
+
+  // Update report section
+  app.put("/api/report-sections/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const [updated] = await db.update(reportSections)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(sql`${reportSections.id} = ${id}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating report section:', error);
+      res.status(500).json({ error: "Failed to update report section" });
+    }
+  });
+
+  // Delete report section
+  app.delete("/api/report-sections/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(reportSections).where(sql`${reportSections.id} = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting report section:', error);
+      res.status(500).json({ error: "Failed to delete report section" });
+    }
+  });
+
+  // Seed default report sections
+  app.post("/api/report-sections/seed-defaults", requireAuth, async (_req: Request, res: Response) => {
+    try {
+      const defaultSections = [
+        { name: 'Report Header', code: 'header', sectionType: 'summary', displayOrder: 1, configuration: { showLogo: true, showDate: true, showPeriod: true } },
+        { name: 'Action Dashboard Summary', code: 'action_summary', sectionType: 'summary', displayOrder: 2, configuration: { showCards: true } },
+        { name: 'Action Categories Breakdown', code: 'category_breakdown', sectionType: 'table', displayOrder: 3, configuration: { groupByCategory: true } },
+        { name: 'Statistics Overview', code: 'statistics_overview', sectionType: 'statistics', displayOrder: 4, configuration: { columns: 3 } },
+        { name: 'Financial Summary', code: 'financial_summary', sectionType: 'table', displayOrder: 5, configuration: { showRevenue: true, showPenalties: true } },
+        { name: 'Report Footer', code: 'footer', sectionType: 'summary', displayOrder: 6, configuration: { showSignature: true, showTimestamp: true } },
+      ];
+
+      for (const section of defaultSections) {
+        await db.insert(reportSections)
+          .values(section)
+          .onConflictDoUpdate({
+            target: reportSections.code,
+            set: { ...section, updatedAt: new Date() }
+          });
+      }
+
+      const sections = await db.select().from(reportSections).orderBy(asc(reportSections.displayOrder));
+      res.json({ message: 'Default report sections seeded', sections });
+    } catch (error) {
+      console.error('Error seeding report sections:', error);
+      res.status(500).json({ error: "Failed to seed report sections" });
+    }
+  });
+
+  // Delete action category
+  app.delete("/api/action-categories/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(actionCategories).where(sql`${actionCategories.id} = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting action category:', error);
+      res.status(500).json({ error: "Failed to delete action category" });
+    }
+  });
+
+  // Create action category
+  app.post("/api/action-categories", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(actionCategories).values(req.body).returning();
+      res.json(created);
+    } catch (error) {
+      console.error('Error creating action category:', error);
+      res.status(500).json({ error: "Failed to create action category" });
+    }
+  });
+
+  // ============ ADMIN DASHBOARD SETTINGS PAGE ============
+  app.get("/admin/dashboard-settings", (req: Request, res: Response) => {
+    if (!req.session?.authenticated) {
+      return res.redirect("/admin/login");
+    }
+    const templatePath = path.resolve(process.cwd(), "server", "templates", "admin-dashboard-settings.html");
+    if (fs.existsSync(templatePath)) {
+      return res.sendFile(templatePath);
+    }
+    res.status(404).send("Admin dashboard settings page not found");
   });
 
   const httpServer = createServer(app);
