@@ -6,6 +6,7 @@ import { Platform, StyleSheet } from "react-native";
 import DashboardStackNavigator from "@/navigation/DashboardStackNavigator";
 import InspectionsStackNavigator from "@/navigation/InspectionsStackNavigator";
 import SamplesStackNavigator from "@/navigation/SamplesStackNavigator";
+import ScannerStackNavigator from "@/navigation/ScannerStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
 
@@ -13,6 +14,7 @@ export type MainTabParamList = {
   DashboardTab: undefined;
   InspectionsTab: undefined;
   SamplesTab: undefined;
+  ScannerTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -75,6 +77,16 @@ export default function MainTabNavigator() {
           title: "Samples",
           tabBarIcon: ({ color, size }) => (
             <Feather name="droplet" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="ScannerTab"
+        component={ScannerStackNavigator}
+        options={{
+          title: "Scanner",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="maximize" size={size} color={color} />
           ),
         }}
       />
