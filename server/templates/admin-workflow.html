@@ -590,12 +590,96 @@
     async function seedDefaultWorkflow() {
       if (!confirm('This will create a default sample workflow with standard nodes. Continue?')) return;
       const defaultNodes = [
-        { name: 'Sample Lifted', description: 'Sample collected from FBO premises', position: 0, nodeType: 'action', icon: 'package', color: '#1E40AF', isStartNode: true, inputFields: [{ name: 'liftedDate', type: 'date', label: 'Lifted Date', required: true }, { name: 'liftedPlace', type: 'text', label: 'Place of Lifting', required: true }] },
-        { name: 'Dispatched to Lab', description: 'Sample sent to laboratory for testing', position: 1, nodeType: 'action', icon: 'truck', color: '#7C3AED', inputFields: [{ name: 'dispatchDate', type: 'date', label: 'Dispatch Date', required: true }, { name: 'dispatchMode', type: 'select', label: 'Dispatch Mode', options: ['hand_delivery', 'courier', 'speed_post'] }] },
-        { name: 'Lab Report Received', description: 'Laboratory analysis completed', position: 2, nodeType: 'decision', icon: 'file-text', color: '#059669', inputFields: [{ name: 'labReportDate', type: 'date', label: 'Report Date', required: true }, { name: 'labResult', type: 'select', label: 'Result', options: ['safe', 'unsafe', 'substandard', 'misbranded'] }] },
-        { name: 'Sample Safe - Closed', description: 'Sample passed all tests, case closed', position: 3, nodeType: 'end', icon: 'check-circle', color: '#10B981', isEndNode: true },
-        { name: 'Initiate Prosecution', description: 'Start prosecution process for unsafe sample', position: 4, nodeType: 'action', icon: 'alert-triangle', color: '#DC2626', inputFields: [{ name: 'prosecutionDate', type: 'date', label: 'Prosecution Start Date' }, { name: 'caseNumber', type: 'text', label: 'Case Number' }] },
-        { name: 'Issue Improvement Notice', description: 'Issue notice for substandard sample', position: 5, nodeType: 'action', icon: 'shield', color: '#F59E0B', inputFields: [{ name: 'noticeDate', type: 'date', label: 'Notice Date' }, { name: 'noticeNumber', type: 'text', label: 'Notice Number' }] }
+        { 
+          name: 'Sample Lifted', 
+          description: 'Sample collected from FBO premises', 
+          position: 0, 
+          nodeType: 'action', 
+          icon: 'package', 
+          color: '#1E40AF', 
+          isStartNode: true, 
+          inputFields: [
+            { name: 'liftedDate', type: 'date', label: 'Lifted Date', required: true },
+            { name: 'liftedPlace', type: 'text', label: 'Place of Lifting', required: true },
+            { name: 'liftedImage', type: 'image', label: 'Upload Sample Image' },
+            { name: 'remarks', type: 'textarea', label: 'Remarks' }
+          ] 
+        },
+        { 
+          name: 'Dispatched to Lab', 
+          description: 'Sample sent to laboratory for testing', 
+          position: 1, 
+          nodeType: 'action', 
+          icon: 'truck', 
+          color: '#7C3AED', 
+          inputFields: [
+            { name: 'dispatchDate', type: 'date', label: 'Dispatch Date', required: true },
+            { name: 'dispatchMode', type: 'select', label: 'Dispatch Mode', options: ['Hand Delivery', 'Courier', 'Speed Post', 'Registered Post'] },
+            { name: 'courierName', type: 'text', label: 'Courier/Carrier Name' },
+            { name: 'trackingNumber', type: 'text', label: 'Tracking Number' },
+            { name: 'dispatchImage', type: 'image', label: 'Dispatch Proof Image' },
+            { name: 'remarks', type: 'textarea', label: 'Remarks' }
+          ] 
+        },
+        { 
+          name: 'Lab Report Received', 
+          description: 'Laboratory analysis completed', 
+          position: 2, 
+          nodeType: 'decision', 
+          icon: 'file-text', 
+          color: '#059669', 
+          inputFields: [
+            { name: 'labReportDate', type: 'date', label: 'Lab Report Date', required: true },
+            { name: 'labReportNumber', type: 'text', label: 'Lab Report Number', required: true },
+            { name: 'coveringLetterNumber', type: 'text', label: 'Covering Letter Number' },
+            { name: 'coveringLetterDate', type: 'date', label: 'Covering Letter Date' },
+            { name: 'analystName', type: 'text', label: 'Analyst Name' },
+            { name: 'analystOpinion', type: 'textarea', label: 'Analyst Opinion', required: true },
+            { name: 'labResult', type: 'select', label: 'Result', required: true, options: ['Safe', 'Unsafe', 'Substandard', 'Misbranded'] },
+            { name: 'labReportImage', type: 'image', label: 'Lab Report Scan' }
+          ] 
+        },
+        { 
+          name: 'Sample Safe - Closed', 
+          description: 'Sample passed all tests, case closed', 
+          position: 3, 
+          nodeType: 'end', 
+          icon: 'check-circle', 
+          color: '#10B981', 
+          isEndNode: true,
+          inputFields: [
+            { name: 'closureDate', type: 'date', label: 'Closure Date' },
+            { name: 'closureRemarks', type: 'textarea', label: 'Closure Remarks' }
+          ]
+        },
+        { 
+          name: 'Initiate Prosecution', 
+          description: 'Start prosecution process for unsafe sample', 
+          position: 4, 
+          nodeType: 'action', 
+          icon: 'alert-triangle', 
+          color: '#DC2626', 
+          inputFields: [
+            { name: 'prosecutionDate', type: 'date', label: 'Prosecution Start Date', required: true },
+            { name: 'caseNumber', type: 'text', label: 'Case Number' },
+            { name: 'courtName', type: 'text', label: 'Court Name' },
+            { name: 'prosecutionRemarks', type: 'textarea', label: 'Prosecution Details' }
+          ] 
+        },
+        { 
+          name: 'Issue Improvement Notice', 
+          description: 'Issue notice for substandard sample', 
+          position: 5, 
+          nodeType: 'action', 
+          icon: 'shield', 
+          color: '#F59E0B', 
+          inputFields: [
+            { name: 'noticeDate', type: 'date', label: 'Notice Date', required: true },
+            { name: 'noticeNumber', type: 'text', label: 'Notice Number', required: true },
+            { name: 'complianceDeadline', type: 'date', label: 'Compliance Deadline' },
+            { name: 'noticeRemarks', type: 'textarea', label: 'Notice Details' }
+          ] 
+        }
       ];
       try {
         for (const node of defaultNodes) {
