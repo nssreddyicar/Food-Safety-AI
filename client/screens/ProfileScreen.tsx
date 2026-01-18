@@ -194,20 +194,6 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <ThemedText type="h4" style={styles.sectionTitle}>
-          Documents
-        </ThemedText>
-        <View style={[styles.menuGroup, Shadows.sm]}>
-          <MenuItem 
-            icon="file-text" 
-            label="Document Templates" 
-            value="Download forms with your data" 
-            onPress={() => navigation.navigate('Templates')} 
-          />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <ThemedText type="h4" style={styles.sectionTitle}>
           Settings
         </ThemedText>
         <View style={[styles.menuGroup, Shadows.sm]}>
