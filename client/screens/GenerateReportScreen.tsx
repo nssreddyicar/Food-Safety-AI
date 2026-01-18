@@ -18,7 +18,7 @@ import { getApiUrl } from '@/lib/query-client';
 import { generateReportHTML } from '@/lib/report-template';
 import { generateExcelCSV } from '@/lib/excel-template';
 import { TimeSelection, getDateRangeForSelection, getFilterDisplayLabel } from '@/components/TimeFilter';
-import { DashboardMetrics, ActionDashboardData } from '@/types';
+import { DashboardMetrics, ActionDashboardData, ReportSection, StatisticsCard } from '@/types';
 import { Spacing, BorderRadius } from '@/constants/theme';
 
 export default function GenerateReportScreen() {
@@ -39,6 +39,8 @@ export default function GenerateReportScreen() {
   const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [actionData, setActionData] = useState<ActionDashboardData | null>(null);
+  const [reportSections, setReportSections] = useState<ReportSection[]>([]);
+  const [statisticsCards, setStatisticsCards] = useState<StatisticsCard[]>([]);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
   const [excelUri, setExcelUri] = useState<string | null>(null);
 
@@ -52,6 +54,8 @@ export default function GenerateReportScreen() {
       
       const metricsUrl = new URL('/api/dashboard/metrics', getApiUrl());
       const actionUrl = new URL('/api/action-dashboard', getApiUrl());
+      const reportSectionsUrl = new URL('/api/report-sections', getApiUrl());
+      const statsCardsUrl = new URL('/api/statistics-cards', getApiUrl());
       
       if (jurisdictionId) {
         metricsUrl.searchParams.set('jurisdictionId', jurisdictionId);
@@ -62,10 +66,13 @@ export default function GenerateReportScreen() {
       metricsUrl.searchParams.set('endDate', dateRange.endDate);
       actionUrl.searchParams.set('startDate', dateRange.startDate);
       actionUrl.searchParams.set('endDate', dateRange.endDate);
+      actionUrl.searchParams.set('forReport', 'true');
 
-      const [metricsRes, actionRes] = await Promise.all([
+      const [metricsRes, actionRes, sectionsRes, statsRes] = await Promise.all([
         fetch(metricsUrl.toString()),
         fetch(actionUrl.toString()),
+        fetch(reportSectionsUrl.toString()),
+        fetch(statsCardsUrl.toString()),
       ]);
 
       if (metricsRes.ok) {
@@ -76,6 +83,16 @@ export default function GenerateReportScreen() {
       if (actionRes.ok) {
         const actionDashboardData = await actionRes.json();
         setActionData(actionDashboardData);
+      }
+
+      if (sectionsRes.ok) {
+        const sections = await sectionsRes.json();
+        setReportSections(sections.filter((s: ReportSection) => s.isEnabled));
+      }
+
+      if (statsRes.ok) {
+        const cards = await statsRes.json();
+        setStatisticsCards(cards.filter((c: StatisticsCard) => c.isEnabled && c.showInReport));
       }
     } catch (error) {
       console.error('Failed to load report data:', error);

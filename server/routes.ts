@@ -2037,7 +2037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get comprehensive action dashboard data
   app.get("/api/action-dashboard", async (req: Request, res: Response) => {
     try {
-      const { jurisdictionId, startDate, endDate } = req.query;
+      const { jurisdictionId, startDate, endDate, forReport } = req.query;
       const today = new Date();
       const weekFromNow = new Date();
       weekFromNow.setDate(today.getDate() + 7);
@@ -2046,10 +2046,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filterStartDate = startDate ? new Date(startDate as string) : null;
       const filterEndDate = endDate ? new Date(endDate as string) : null;
 
-      // Get all enabled categories
+      // Get all enabled categories - for report use showInReport, for dashboard use showOnDashboard
+      const showFilter = forReport === 'true' 
+        ? sql`${actionCategories.isEnabled} = true AND ${actionCategories.showInReport} = true`
+        : sql`${actionCategories.isEnabled} = true AND ${actionCategories.showOnDashboard} = true`;
+      const orderBy = forReport === 'true' 
+        ? asc(actionCategories.reportDisplayOrder) 
+        : asc(actionCategories.displayOrder);
+      
       const categories = await db.select().from(actionCategories)
-        .where(sql`${actionCategories.isEnabled} = true AND ${actionCategories.showOnDashboard} = true`)
-        .orderBy(asc(actionCategories.displayOrder));
+        .where(showFilter)
+        .orderBy(orderBy);
 
       const dashboardData: any[] = [];
 

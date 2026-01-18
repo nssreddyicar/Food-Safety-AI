@@ -315,3 +315,32 @@ export interface ActionDashboardData {
   categories: ActionCategory[];
   totals: ActionDashboardTotals;
 }
+
+export interface StatisticsCard {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  icon: string;
+  color: string;
+  group: string;
+  valueType: 'count' | 'currency' | 'percentage';
+  entityType?: string;
+  displayOrder: number;
+  isEnabled: boolean;
+  showOnDashboard: boolean;
+  showInReport: boolean;
+}
+
+export interface ReportSection {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  sectionType: 'summary' | 'table' | 'statistics' | 'chart';
+  displayOrder: number;
+  isEnabled: boolean;
+  showInPdf: boolean;
+  showInExcel: boolean;
+  configuration?: Record<string, any>;
+}
