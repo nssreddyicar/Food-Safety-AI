@@ -15,6 +15,7 @@ import { ActionForm } from '@/components/ActionForm';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthContext } from '@/context/AuthContext';
 import { storage } from '@/lib/storage';
+import { getApiUrl, apiRequest } from '@/lib/query-client';
 import { Inspection, Deviation, Sample, Witness, ActionTaken, SampleType } from '@/types';
 import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
 
@@ -234,6 +235,43 @@ export default function NewInspectionScreen() {
       };
 
       await storage.addInspection(inspection);
+      
+      // If inspection is submitted with samples, auto-trigger first workflow node for each sample
+      if (status === 'submitted' && inspection.samples && inspection.samples.length > 0) {
+        try {
+          // Fetch workflow nodes to find the start node
+          const workflowUrl = new URL('/api/workflow/config', getApiUrl());
+          const workflowResponse = await fetch(workflowUrl.toString());
+          if (workflowResponse.ok) {
+            const workflowConfig = await workflowResponse.json();
+            const startNode = workflowConfig.nodes?.find((n: any) => n.isStartNode);
+            
+            if (startNode) {
+              // Format current date as DD-MM-YYYY
+              const now = new Date();
+              const formattedDate = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+              
+              // For each sample, create workflow state for the first node
+              for (const sample of inspection.samples) {
+                const nodeData = {
+                  liftedDate: formattedDate,
+                  liftedPlace: fboAddress || inspection.fboDetails.address || '',
+                  remarks: `Auto-created from inspection submission: ${inspection.fboDetails.establishmentName || 'Unnamed FBO'}`,
+                };
+                
+                await apiRequest('POST', `/api/samples/${sample.id}/workflow-state`, {
+                  nodeId: startNode.id,
+                  nodeData,
+                });
+              }
+            }
+          }
+        } catch (workflowError) {
+          console.error('Failed to auto-trigger sample workflow:', workflowError);
+          // Don't fail the whole inspection save if workflow trigger fails
+        }
+      }
+      
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
     } catch (error) {
