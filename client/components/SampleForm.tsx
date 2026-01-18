@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, Switch, ScrollView, Image } from 'react-native';
+import { View, StyleSheet, Pressable, Switch } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { ThemedText } from '@/components/ThemedText';
 import { Input } from '@/components/Input';
