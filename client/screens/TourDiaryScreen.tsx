@@ -137,8 +137,46 @@ export default function TourDiaryScreen() {
   const [editingDay, setEditingDay] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<TourEntry>>({});
   const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [pickerMonth, setPickerMonth] = useState(selectedMonth);
+  const [pickerYear, setPickerYear] = useState(selectedYear);
+  const [showMonthSelector, setShowMonthSelector] = useState(false);
+  const [showYearSelector, setShowYearSelector] = useState(false);
   
   const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
+  const pickerDaysInMonth = getDaysInMonth(pickerYear, pickerMonth);
+  
+  const changePickerMonth = (delta: number) => {
+    let newMonth = pickerMonth + delta;
+    let newYear = pickerYear;
+    
+    if (newMonth < 0) {
+      newMonth = 11;
+      newYear--;
+    } else if (newMonth > 11) {
+      newMonth = 0;
+      newYear++;
+    }
+    
+    setPickerMonth(newMonth);
+    setPickerYear(newYear);
+  };
+  
+  const openDatePicker = () => {
+    setPickerMonth(selectedMonth);
+    setPickerYear(selectedYear);
+    setShowMonthSelector(false);
+    setShowYearSelector(false);
+    setDatePickerVisible(true);
+  };
+  
+  const selectDateAndOpen = (day: number) => {
+    setSelectedMonth(pickerMonth);
+    setSelectedYear(pickerYear);
+    setDatePickerVisible(false);
+    setTimeout(() => openEditModal(day), 100);
+  };
+  
+  const years = Array.from({ length: 10 }, (_, i) => today.getFullYear() - 2 + i);
   
   const loadMonthData = useCallback(async () => {
     try {
@@ -347,7 +385,7 @@ export default function TourDiaryScreen() {
       
       <Pressable
         style={[styles.fab, { bottom: tabBarHeight + Spacing.lg }]}
-        onPress={() => setDatePickerVisible(true)}
+        onPress={openDatePicker}
       >
         <Feather name="plus" size={24} color="#fff" />
       </Pressable>
@@ -362,54 +400,117 @@ export default function TourDiaryScreen() {
           style={styles.datePickerOverlay} 
           onPress={() => setDatePickerVisible(false)}
         >
-          <View style={[styles.datePickerContent, { backgroundColor: theme.backgroundDefault }]}>
-            <Text style={[styles.datePickerTitle, { color: theme.text }]}>
-              Select Date - {MONTHS[selectedMonth]} {selectedYear}
-            </Text>
-            <ScrollView style={styles.datePickerScroll} showsVerticalScrollIndicator={false}>
-              <View style={styles.datePickerGrid}>
-                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
-                  const dayName = getDayName(selectedYear, selectedMonth, day);
-                  const isSunday = new Date(selectedYear, selectedMonth, day).getDay() === 0;
-                  const is2ndSat = isSecondSaturday(selectedYear, selectedMonth, day);
-                  const publicHoliday = getPublicHolidayName(selectedYear, selectedMonth, day);
-                  const optionalHoliday = getOptionalHolidayName(selectedYear, selectedMonth, day);
-                  const isHoliday = isSunday || is2ndSat || publicHoliday;
-                  const isOptional = optionalHoliday !== null;
-                  
-                  return (
-                    <Pressable
-                      key={day}
-                      style={[
-                        styles.datePickerDay,
-                        { 
-                          backgroundColor: isHoliday ? '#FEE2E2' : (isOptional ? '#D1FAE5' : theme.backgroundSecondary),
-                          borderColor: theme.border,
-                        },
-                      ]}
-                      onPress={() => {
-                        setDatePickerVisible(false);
-                        openEditModal(day);
-                      }}
-                    >
-                      <Text style={[styles.datePickerDayNum, { color: isHoliday ? Colors.light.accent : (isOptional ? Colors.light.success : theme.text) }]}>
-                        {day}
-                      </Text>
-                      <Text style={[styles.datePickerDayName, { color: theme.textSecondary }]}>
-                        {dayName}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+          <Pressable style={[styles.datePickerContent, { backgroundColor: theme.backgroundDefault }]} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.datePickerHeader}>
+              <Pressable onPress={() => changePickerMonth(-1)} style={styles.datePickerNav}>
+                <Feather name="chevron-left" size={24} color={theme.text} />
+              </Pressable>
+              
+              <View style={styles.datePickerTitleRow}>
+                <Pressable 
+                  style={[styles.datePickerDropdown, { borderColor: theme.border }]}
+                  onPress={() => { setShowMonthSelector(!showMonthSelector); setShowYearSelector(false); }}
+                >
+                  <Text style={[styles.datePickerDropdownText, { color: theme.text }]}>
+                    {MONTHS[pickerMonth]}
+                  </Text>
+                  <Feather name="chevron-down" size={16} color={theme.textSecondary} />
+                </Pressable>
+                
+                <Pressable 
+                  style={[styles.datePickerDropdown, { borderColor: theme.border }]}
+                  onPress={() => { setShowYearSelector(!showYearSelector); setShowMonthSelector(false); }}
+                >
+                  <Text style={[styles.datePickerDropdownText, { color: theme.text }]}>
+                    {pickerYear}
+                  </Text>
+                  <Feather name="chevron-down" size={16} color={theme.textSecondary} />
+                </Pressable>
               </View>
-            </ScrollView>
+              
+              <Pressable onPress={() => changePickerMonth(1)} style={styles.datePickerNav}>
+                <Feather name="chevron-right" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+            
+            {showMonthSelector ? (
+              <View style={[styles.selectorGrid, { backgroundColor: theme.backgroundSecondary }]}>
+                {MONTHS.map((month, index) => (
+                  <Pressable
+                    key={month}
+                    style={[
+                      styles.selectorItem,
+                      pickerMonth === index && { backgroundColor: Colors.light.primary },
+                    ]}
+                    onPress={() => { setPickerMonth(index); setShowMonthSelector(false); }}
+                  >
+                    <Text style={[styles.selectorItemText, { color: pickerMonth === index ? '#fff' : theme.text }]}>
+                      {month.substring(0, 3)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : showYearSelector ? (
+              <View style={[styles.selectorGrid, { backgroundColor: theme.backgroundSecondary }]}>
+                {years.map((year) => (
+                  <Pressable
+                    key={year}
+                    style={[
+                      styles.selectorItem,
+                      pickerYear === year && { backgroundColor: Colors.light.primary },
+                    ]}
+                    onPress={() => { setPickerYear(year); setShowYearSelector(false); }}
+                  >
+                    <Text style={[styles.selectorItemText, { color: pickerYear === year ? '#fff' : theme.text }]}>
+                      {year}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <ScrollView style={styles.datePickerScroll} showsVerticalScrollIndicator={false}>
+                <View style={styles.datePickerGrid}>
+                  {Array.from({ length: pickerDaysInMonth }, (_, i) => i + 1).map((day) => {
+                    const dayName = getDayName(pickerYear, pickerMonth, day);
+                    const isSunday = new Date(pickerYear, pickerMonth, day).getDay() === 0;
+                    const is2ndSat = isSecondSaturday(pickerYear, pickerMonth, day);
+                    const publicHoliday = getPublicHolidayName(pickerYear, pickerMonth, day);
+                    const optionalHoliday = getOptionalHolidayName(pickerYear, pickerMonth, day);
+                    const isHoliday = isSunday || is2ndSat || publicHoliday;
+                    const isOptional = optionalHoliday !== null;
+                    
+                    return (
+                      <Pressable
+                        key={day}
+                        style={[
+                          styles.datePickerDay,
+                          { 
+                            backgroundColor: isHoliday ? '#FEE2E2' : (isOptional ? '#D1FAE5' : theme.backgroundSecondary),
+                            borderColor: theme.border,
+                          },
+                        ]}
+                        onPress={() => selectDateAndOpen(day)}
+                      >
+                        <Text style={[styles.datePickerDayNum, { color: isHoliday ? Colors.light.accent : (isOptional ? Colors.light.success : theme.text) }]}>
+                          {day}
+                        </Text>
+                        <Text style={[styles.datePickerDayName, { color: theme.textSecondary }]}>
+                          {dayName}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            )}
+            
             <Pressable
               style={[styles.datePickerCancel, { borderColor: theme.border }]}
               onPress={() => setDatePickerVisible(false)}
             >
               <Text style={[styles.datePickerCancelText, { color: theme.text }]}>Cancel</Text>
             </Pressable>
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
       
@@ -631,11 +732,53 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
   },
-  datePickerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
+  datePickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: Spacing.md,
+  },
+  datePickerNav: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePickerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  datePickerDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  datePickerDropdownText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  selectorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
+  },
+  selectorItem: {
+    width: '30%',
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    alignItems: 'center',
+  },
+  selectorItemText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   datePickerScroll: {
     maxHeight: 350,
