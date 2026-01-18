@@ -136,6 +136,7 @@ export default function TourDiaryScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingDay, setEditingDay] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<TourEntry>>({});
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
   
   const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
   
@@ -346,10 +347,71 @@ export default function TourDiaryScreen() {
       
       <Pressable
         style={[styles.fab, { bottom: tabBarHeight + Spacing.lg }]}
-        onPress={() => openEditModal(today.getDate())}
+        onPress={() => setDatePickerVisible(true)}
       >
         <Feather name="plus" size={24} color="#fff" />
       </Pressable>
+      
+      <Modal
+        visible={datePickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDatePickerVisible(false)}
+      >
+        <Pressable 
+          style={styles.datePickerOverlay} 
+          onPress={() => setDatePickerVisible(false)}
+        >
+          <View style={[styles.datePickerContent, { backgroundColor: theme.backgroundDefault }]}>
+            <Text style={[styles.datePickerTitle, { color: theme.text }]}>
+              Select Date - {MONTHS[selectedMonth]} {selectedYear}
+            </Text>
+            <ScrollView style={styles.datePickerScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.datePickerGrid}>
+                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+                  const dayName = getDayName(selectedYear, selectedMonth, day);
+                  const isSunday = new Date(selectedYear, selectedMonth, day).getDay() === 0;
+                  const is2ndSat = isSecondSaturday(selectedYear, selectedMonth, day);
+                  const publicHoliday = getPublicHolidayName(selectedYear, selectedMonth, day);
+                  const optionalHoliday = getOptionalHolidayName(selectedYear, selectedMonth, day);
+                  const isHoliday = isSunday || is2ndSat || publicHoliday;
+                  const isOptional = optionalHoliday !== null;
+                  
+                  return (
+                    <Pressable
+                      key={day}
+                      style={[
+                        styles.datePickerDay,
+                        { 
+                          backgroundColor: isHoliday ? '#FEE2E2' : (isOptional ? '#D1FAE5' : theme.backgroundSecondary),
+                          borderColor: theme.border,
+                        },
+                      ]}
+                      onPress={() => {
+                        setDatePickerVisible(false);
+                        openEditModal(day);
+                      }}
+                    >
+                      <Text style={[styles.datePickerDayNum, { color: isHoliday ? Colors.light.accent : (isOptional ? Colors.light.success : theme.text) }]}>
+                        {day}
+                      </Text>
+                      <Text style={[styles.datePickerDayName, { color: theme.textSecondary }]}>
+                        {dayName}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
+            <Pressable
+              style={[styles.datePickerCancel, { borderColor: theme.border }]}
+              onPress={() => setDatePickerVisible(false)}
+            >
+              <Text style={[styles.datePickerCancelText, { color: theme.text }]}>Cancel</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
       
       <Modal
         visible={editModalVisible}
@@ -554,6 +616,61 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 8,
+  },
+  datePickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  datePickerContent: {
+    width: '100%',
+    maxWidth: 360,
+    maxHeight: '80%',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+  },
+  datePickerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: Spacing.md,
+  },
+  datePickerScroll: {
+    maxHeight: 350,
+  },
+  datePickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    justifyContent: 'center',
+  },
+  datePickerDay: {
+    width: 60,
+    height: 60,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePickerDayNum: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  datePickerDayName: {
+    fontSize: 11,
+  },
+  datePickerCancel: {
+    marginTop: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  datePickerCancelText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   tableCard: {
     padding: 0,
