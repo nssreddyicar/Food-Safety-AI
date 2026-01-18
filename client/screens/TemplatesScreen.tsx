@@ -219,6 +219,10 @@ export default function TemplatesScreen() {
 
   const generatePreviewHtml = (template: DocumentTemplate, scale: number = 1): string => {
     const processedContent = replacePlaceholders(template.content);
+    const dims = getPageDimensions(template.pageSize, template.orientation);
+    const mmToPx = 3.7795275591;
+    const pageWidthPx = dims.width * mmToPx;
+    const pageHeightPx = dims.height * mmToPx;
     
     // Check if content is raw HTML - render it directly
     if (isRawHtmlContent(processedContent)) {
@@ -236,7 +240,7 @@ export default function TemplatesScreen() {
         bodyContent = bodyMatch[1];
       }
       
-      // For raw HTML, extract and rebuild with proper scaling
+      // For raw HTML, render exact A4 page like admin panel
       return `
         <!DOCTYPE html>
         <html>
@@ -244,32 +248,35 @@ export default function TemplatesScreen() {
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-              /* Original template styles */
-              ${extractedStyles}
-              
-              /* Preview wrapper styles */
+              * { box-sizing: border-box; }
               html, body { 
-                margin: 0 !important;
-                padding: 0 !important;
-                background: #4b5563 !important; 
-                display: flex !important; 
-                justify-content: center !important; 
-                align-items: flex-start !important;
-                padding: 20px !important;
-                min-height: 100vh !important;
-                width: auto !important;
-                height: auto !important;
+                margin: 0;
+                padding: 0;
+                background: #4b5563;
+                min-height: 100vh;
+                display: flex;
+                justify-content: center;
+                padding: 20px;
               }
-              .preview-scale-wrapper {
+              .preview-page {
+                background: white;
+                width: ${pageWidthPx}px;
+                height: ${pageHeightPx}px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
                 transform: scale(${scale});
                 transform-origin: top center;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                overflow: hidden;
+              }
+              .preview-page iframe {
+                width: 100%;
+                height: 100%;
+                border: none;
               }
             </style>
           </head>
           <body>
-            <div class="preview-scale-wrapper">
-              ${bodyContent}
+            <div class="preview-page">
+              <iframe srcdoc="${processedContent.replace(/"/g, '&quot;').replace(/\n/g, ' ')}"></iframe>
             </div>
           </body>
         </html>
@@ -283,11 +290,6 @@ export default function TemplatesScreen() {
     const pageNumberOffset = template.pageNumberOffset || 0;
     const headerAlignment = template.headerAlignment || 'center';
     const footerAlignment = template.footerAlignment || 'center';
-    
-    const dims = getPageDimensions(template.pageSize, template.orientation);
-    const mmToPx = 3.7795275591;
-    const pageWidthPx = dims.width * mmToPx * scale;
-    const pageHeightPx = dims.height * mmToPx * scale;
 
     let pageNumberStyle = `text-align: ${pageNumberPosition};`;
     if (pageNumberPosition === 'left') {
@@ -329,39 +331,41 @@ export default function TemplatesScreen() {
               background: white;
               width: ${pageWidthPx}px;
               height: ${pageHeightPx}px;
-              padding: ${template.marginTop * scale}mm ${template.marginRight * scale}mm ${template.marginBottom * scale}mm ${template.marginLeft * scale}mm;
+              padding: ${template.marginTop}mm ${template.marginRight}mm ${template.marginBottom}mm ${template.marginLeft}mm;
               box-shadow: 0 4px 20px rgba(0,0,0,0.3);
               font-family: "${template.fontFamily}", serif;
-              font-size: ${template.fontSize * scale}pt;
+              font-size: ${template.fontSize}pt;
               line-height: 1.6;
               color: #1f2937;
               display: flex;
               flex-direction: column;
+              transform: scale(${scale});
+              transform-origin: top center;
             }
             .header {
-              padding-bottom: ${12 * scale}px;
+              padding-bottom: 12px;
               border-bottom: 1px solid #e5e7eb;
-              margin-bottom: ${16 * scale}px;
+              margin-bottom: 16px;
               font-weight: 600;
             }
             .footer {
-              padding-top: ${12 * scale}px;
+              padding-top: 12px;
               border-top: 1px solid #e5e7eb;
               margin-top: auto;
-              font-size: ${10 * scale}pt;
+              font-size: 10pt;
               color: #6b7280;
             }
             .page-number {
-              margin-top: ${12 * scale}px;
-              font-size: ${10 * scale}pt;
+              margin-top: 12px;
+              font-size: 10pt;
               color: #6b7280;
             }
             .content {
               flex: 1;
               white-space: pre-wrap;
             }
-            table { border-collapse: collapse; width: 100%; margin: ${12 * scale}px 0; }
-            th, td { border: 1px solid #d1d5db; padding: ${8 * scale}px ${12 * scale}px; text-align: left; }
+            table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+            th, td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; }
             th { background: #f3f4f6; font-weight: 600; }
           </style>
         </head>
