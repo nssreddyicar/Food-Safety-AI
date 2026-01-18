@@ -2037,10 +2037,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get comprehensive action dashboard data
   app.get("/api/action-dashboard", async (req: Request, res: Response) => {
     try {
-      const { jurisdictionId } = req.query;
+      const { jurisdictionId, startDate, endDate } = req.query;
       const today = new Date();
       const weekFromNow = new Date();
       weekFromNow.setDate(today.getDate() + 7);
+
+      // Parse date range filters
+      const filterStartDate = startDate ? new Date(startDate as string) : null;
+      const filterEndDate = endDate ? new Date(endDate as string) : null;
 
       // Get all enabled categories
       const categories = await db.select().from(actionCategories)
@@ -2054,9 +2058,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         switch (category.code) {
           case 'court_cases': {
-            const baseWhere = jurisdictionId 
+            let baseWhere = jurisdictionId 
               ? sql`${prosecutionCases.jurisdictionId} = ${jurisdictionId}`
               : sql`1=1`;
+            
+            // Apply date filter to first registration date
+            if (filterStartDate && filterEndDate) {
+              baseWhere = sql`${baseWhere} AND ${prosecutionCases.firstRegistrationDate} >= ${filterStartDate} AND ${prosecutionCases.firstRegistrationDate} <= ${filterEndDate}`;
+            }
             
             const allCases = await db.select({ count: count() }).from(prosecutionCases)
               .where(sql`${baseWhere} AND ${prosecutionCases.status} IN ('pending', 'ongoing')`);
@@ -2080,9 +2089,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
           }
           case 'adjudication_files': {
-            const baseWhere = jurisdictionId 
+            let baseWhere = jurisdictionId 
               ? sql`${adjudicationCases.jurisdictionId} = ${jurisdictionId}`
               : sql`1=1`;
+            
+            if (filterStartDate && filterEndDate) {
+              baseWhere = sql`${baseWhere} AND ${adjudicationCases.createdAt} >= ${filterStartDate} AND ${adjudicationCases.createdAt} <= ${filterEndDate}`;
+            }
             
             const allCases = await db.select({ count: count() }).from(adjudicationCases)
               .where(sql`${baseWhere} AND ${adjudicationCases.status} IN ('pending', 'hearing')`);
@@ -2091,9 +2104,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
           }
           case 'pending_inspections': {
-            const baseWhere = jurisdictionId 
+            let baseWhere = jurisdictionId 
               ? sql`${inspections.jurisdictionId} = ${jurisdictionId}`
               : sql`1=1`;
+            
+            if (filterStartDate && filterEndDate) {
+              baseWhere = sql`${baseWhere} AND ${inspections.createdAt} >= ${filterStartDate} AND ${inspections.createdAt} <= ${filterEndDate}`;
+            }
             
             const allInsp = await db.select({ count: count() }).from(inspections)
               .where(sql`${baseWhere} AND ${inspections.status} = 'draft'`);
@@ -2102,9 +2119,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
           }
           case 'samples_pending': {
-            const baseWhere = jurisdictionId 
+            let baseWhere = jurisdictionId 
               ? sql`${samples.jurisdictionId} = ${jurisdictionId}`
               : sql`1=1`;
+            
+            if (filterStartDate && filterEndDate) {
+              baseWhere = sql`${baseWhere} AND ${samples.liftedDate} >= ${filterStartDate} AND ${samples.liftedDate} <= ${filterEndDate}`;
+            }
             
             const allSamples = await db.select({ count: count() }).from(samples)
               .where(sql`${baseWhere} AND ${samples.status} = 'pending'`);
@@ -2113,9 +2134,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
           }
           case 'lab_reports_awaited': {
-            const baseWhere = jurisdictionId 
+            let baseWhere = jurisdictionId 
               ? sql`${samples.jurisdictionId} = ${jurisdictionId}`
               : sql`1=1`;
+            
+            if (filterStartDate && filterEndDate) {
+              baseWhere = sql`${baseWhere} AND ${samples.liftedDate} >= ${filterStartDate} AND ${samples.liftedDate} <= ${filterEndDate}`;
+            }
             
             const awaiting = await db.select({ count: count() }).from(samples)
               .where(sql`${baseWhere} AND ${samples.status} = 'dispatched' AND ${samples.labReportDate} IS NULL`);
@@ -2131,9 +2156,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
           }
           case 'unsafe_samples': {
-            const baseWhere = jurisdictionId 
+            let baseWhere = jurisdictionId 
               ? sql`${samples.jurisdictionId} = ${jurisdictionId}`
               : sql`1=1`;
+            
+            if (filterStartDate && filterEndDate) {
+              baseWhere = sql`${baseWhere} AND ${samples.liftedDate} >= ${filterStartDate} AND ${samples.liftedDate} <= ${filterEndDate}`;
+            }
             
             const unsafe = await db.select({ count: count() }).from(samples)
               .where(sql`${baseWhere} AND ${samples.labResult} = 'unsafe'`);
@@ -2142,9 +2171,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
           }
           case 'substandard_samples': {
-            const baseWhere = jurisdictionId 
+            let baseWhere = jurisdictionId 
               ? sql`${samples.jurisdictionId} = ${jurisdictionId}`
               : sql`1=1`;
+            
+            if (filterStartDate && filterEndDate) {
+              baseWhere = sql`${baseWhere} AND ${samples.liftedDate} >= ${filterStartDate} AND ${samples.liftedDate} <= ${filterEndDate}`;
+            }
             
             const substandard = await db.select({ count: count() }).from(samples)
               .where(sql`${baseWhere} AND ${samples.labResult} = 'substandard'`);
@@ -2153,9 +2186,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
           }
           case 'grievances': {
-            const baseWhere = jurisdictionId 
+            let baseWhere = jurisdictionId 
               ? sql`${grievances.jurisdictionId} = ${jurisdictionId}`
               : sql`1=1`;
+            
+            if (filterStartDate && filterEndDate) {
+              baseWhere = sql`${baseWhere} AND ${grievances.createdAt} >= ${filterStartDate} AND ${grievances.createdAt} <= ${filterEndDate}`;
+            }
             
             const allGrievances = await db.select({ count: count() }).from(grievances)
               .where(sql`${baseWhere} AND ${grievances.status} IN ('pending', 'investigating')`);
