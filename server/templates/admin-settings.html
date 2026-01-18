@@ -142,6 +142,33 @@
 
       <div class="settings-card">
         <div class="card-header">
+          <div class="card-title">Workflow Settings</div>
+          <div class="card-subtitle">Configure sample workflow behavior and editing rules</div>
+        </div>
+        <div class="card-body">
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label">Node Edit Time Period (Hours)</div>
+              <div class="setting-desc">Number of hours after completing a workflow node during which officers can still edit it. After this period, the node becomes locked and cannot be modified.</div>
+            </div>
+            <div class="setting-control">
+              <input type="number" class="form-input" id="workflow_node_edit_hours" value="48" min="0" max="720" style="width: 100px;" />
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label">Allow Node Editing</div>
+              <div class="setting-desc">Enable or disable editing of completed workflow nodes (within the time period)</div>
+            </div>
+            <div class="setting-control">
+              <div class="toggle active" id="workflow_allow_node_edit" onclick="toggleSetting(this)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="card-header">
           <div class="card-title">Custom Settings</div>
           <div class="card-subtitle">Add custom configuration parameters</div>
         </div>
