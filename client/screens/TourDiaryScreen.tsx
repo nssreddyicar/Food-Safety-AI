@@ -223,7 +223,11 @@ export default function TourDiaryScreen() {
           style={styles.actionCell}
           onPress={() => openEditModal(day)}
         >
-          <Feather name="edit-2" size={16} color={Colors.light.primary} />
+          {entry?.from || entry?.to || entry?.purposeOfVisit ? (
+            <Feather name="edit-2" size={16} color={Colors.light.primary} />
+          ) : (
+            <Feather name="plus-circle" size={18} color={Colors.light.success} />
+          )}
         </Pressable>
       </View>
     );
