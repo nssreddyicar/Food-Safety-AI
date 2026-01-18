@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Platform, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import { ThemedText } from '@/components/ThemedText';
@@ -12,6 +12,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthContext } from '@/context/AuthContext';
 import { storage } from '@/lib/storage';
+import { getApiUrl, apiRequest } from '@/lib/query-client';
 import { Sample, Inspection } from '@/types';
 import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
 
@@ -26,6 +27,14 @@ interface DocumentTemplate {
   createdAt: string;
 }
 
+interface InputField {
+  name: string;
+  type: 'text' | 'date' | 'select' | 'textarea' | 'number';
+  label: string;
+  required?: boolean;
+  options?: string[];
+}
+
 interface WorkflowNode {
   id: string;
   name: string;
@@ -34,7 +43,7 @@ interface WorkflowNode {
   nodeType: 'action' | 'decision' | 'end';
   icon: string;
   color: string;
-  inputFields: Array<{ name: string; type: string; label: string; required?: boolean; options?: string[] }>;
+  inputFields: InputField[];
   templateIds: string[];
   isStartNode: boolean;
   isEndNode: boolean;
@@ -52,6 +61,16 @@ interface WorkflowTransition {
   conditionValue?: string;
   label?: string;
   status: string;
+}
+
+interface WorkflowState {
+  id: string;
+  sampleId: string;
+  currentNodeId: string;
+  nodeData: Record<string, any> | null;
+  enteredAt: string;
+  completedAt: string | null;
+  status: 'active' | 'completed' | 'skipped';
 }
 
 type RouteParams = {
@@ -77,16 +96,18 @@ interface DynamicTimelineStepProps {
   isLast?: boolean;
   isBranch?: boolean;
   branchLabel?: string;
+  savedData?: Record<string, any> | null;
+  onPress: () => void;
 }
 
-function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranch, branchLabel }: DynamicTimelineStepProps) {
+function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranch, branchLabel, savedData, onPress }: DynamicTimelineStepProps) {
   const { theme } = useTheme();
   const nodeColor = node.color || theme.primary;
   const color = isComplete ? theme.success : isActive ? nodeColor : theme.textSecondary;
   const iconName = iconMap[node.icon] || 'circle';
   
   return (
-    <View style={styles.timelineStep}>
+    <Pressable onPress={onPress} style={styles.timelineStep}>
       <View style={styles.timelineLeft}>
         <View style={[styles.timelineIcon, { backgroundColor: color + '20', borderColor: color }]}>
           <Feather name={isComplete ? 'check' : iconName} size={16} color={color} />
@@ -107,6 +128,10 @@ function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranc
               <ThemedText type="small" style={{ color: theme.success, fontSize: 10 }}>END</ThemedText>
             </View>
           ) : null}
+          <View style={[styles.tapBadge, { backgroundColor: theme.primary + '15' }]}>
+            <Feather name="edit-2" size={10} color={theme.primary} />
+            <ThemedText type="small" style={{ color: theme.primary, fontSize: 10 }}>TAP</ThemedText>
+          </View>
         </View>
         {isBranch && branchLabel ? (
           <ThemedText type="small" style={{ color: theme.warning, fontStyle: 'italic' }}>{branchLabel}</ThemedText>
@@ -119,8 +144,26 @@ function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranc
         {node.description ? (
           <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 2 }}>{node.description}</ThemedText>
         ) : null}
+        {savedData && Object.keys(savedData).length > 0 ? (
+          <View style={[styles.savedDataContainer, { backgroundColor: theme.success + '10', borderColor: theme.success + '30' }]}>
+            <View style={styles.savedDataHeader}>
+              <Feather name="check-circle" size={12} color={theme.success} />
+              <ThemedText type="small" style={{ color: theme.success, fontWeight: '600' }}>Update Recorded</ThemedText>
+            </View>
+            {Object.entries(savedData).slice(0, 3).map(([key, value]) => (
+              <View key={key} style={styles.savedDataRow}>
+                <ThemedText type="small" style={{ color: theme.textSecondary, textTransform: 'capitalize' }}>
+                  {key.replace(/_/g, ' ')}:
+                </ThemedText>
+                <ThemedText type="small" style={{ color: theme.text, flex: 1 }}>
+                  {String(value)}
+                </ThemedText>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -139,10 +182,17 @@ export default function SampleDetailsScreen() {
   const headerHeight = useHeaderHeight();
   const route = useRoute<RouteProp<RouteParams, 'SampleDetails'>>();
   const { user, activeJurisdiction } = useAuthContext();
+  const queryClient = useQueryClient();
   
   const [sample, setSample] = useState<SampleWithInspection | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  const sampleId = route.params.sampleId;
 
   const { data: templates = [] } = useQuery<DocumentTemplate[]>({
     queryKey: ['/api/templates'],
@@ -154,6 +204,30 @@ export default function SampleDetailsScreen() {
 
   const { data: workflowTransitions = [] } = useQuery<WorkflowTransition[]>({
     queryKey: ['/api/admin/workflow/transitions'],
+  });
+
+  const { data: workflowStates = [], refetch: refetchWorkflowStates } = useQuery<WorkflowState[]>({
+    queryKey: ['/api/samples', sampleId, 'workflow-state'],
+    queryFn: async () => {
+      const url = new URL(`/api/samples/${sampleId}/workflow-state`, getApiUrl());
+      const response = await fetch(url.toString());
+      if (!response.ok) throw new Error('Failed to fetch workflow state');
+      return response.json();
+    },
+    enabled: !!sampleId,
+  });
+
+  const saveWorkflowStateMutation = useMutation({
+    mutationFn: async ({ nodeId, nodeData }: { nodeId: string; nodeData: Record<string, any> }) => {
+      return apiRequest(`/api/samples/${sampleId}/workflow-state`, {
+        method: 'POST',
+        body: JSON.stringify({ nodeId, nodeData }),
+      });
+    },
+    onSuccess: () => {
+      refetchWorkflowStates();
+      queryClient.invalidateQueries({ queryKey: ['/api/samples', sampleId, 'workflow-state'] });
+    },
   });
 
   useEffect(() => {
@@ -199,10 +273,42 @@ export default function SampleDetailsScreen() {
     }
   };
 
+  const getStateForNode = useCallback((nodeId: string): WorkflowState | undefined => {
+    return workflowStates.find(s => s.currentNodeId === nodeId);
+  }, [workflowStates]);
+
+  const openNodeModal = (node: WorkflowNode) => {
+    const existingState = getStateForNode(node.id);
+    setSelectedNode(node);
+    setFormData(existingState?.nodeData || {});
+    setModalVisible(true);
+  };
+
+  const handleSaveNodeData = async () => {
+    if (!selectedNode) return;
+    
+    setIsSaving(true);
+    try {
+      await saveWorkflowStateMutation.mutateAsync({
+        nodeId: selectedNode.id,
+        nodeData: formData,
+      });
+      setModalVisible(false);
+      setSelectedNode(null);
+      setFormData({});
+      Alert.alert('Success', 'Workflow update saved successfully');
+    } catch (error) {
+      console.error('Failed to save workflow state:', error);
+      Alert.alert('Error', 'Failed to save workflow update. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const replacePlaceholders = (content: string): string => {
     const now = new Date();
     
-    const formatDate = (dateStr?: string) => {
+    const formatDateFn = (dateStr?: string) => {
       if (!dateStr) return '[Date]';
       return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
     };
@@ -221,18 +327,18 @@ export default function SampleDetailsScreen() {
       fbo_address: sample?.fboAddress || '[FBO Address]',
       fbo_license: sample?.fboLicense || '[FBO License Number]',
       establishment_name: sample?.establishmentName || '[Establishment Name]',
-      inspection_date: sample?.inspectionDate ? formatDate(sample.inspectionDate) : '[Inspection Date]',
+      inspection_date: sample?.inspectionDate ? formatDateFn(sample.inspectionDate) : '[Inspection Date]',
       inspection_type: sample?.inspectionType || '[Inspection Type]',
       sample_code: sample?.code || '[Sample Code]',
       sample_name: sample?.name || '[Sample Name]',
       sample_type: sample?.sampleType === 'enforcement' ? 'Enforcement' : sample?.sampleType === 'surveillance' ? 'Surveillance' : '[Sample Type]',
-      sample_lifted_date: sample?.liftedDate ? formatDate(sample.liftedDate) : '[Lifted Date]',
+      sample_lifted_date: sample?.liftedDate ? formatDateFn(sample.liftedDate) : '[Lifted Date]',
       sample_lifted_place: sample?.liftedPlace || '[Lifted Place]',
       sample_cost: sample?.cost ? `Rs. ${sample.cost}` : '[Sample Cost]',
       sample_quantity: sample?.quantityInGrams ? `${sample.quantityInGrams} grams` : '[Quantity]',
       sample_packing_type: sample?.packingType === 'packed' ? 'Packed' : sample?.packingType === 'loose' ? 'Loose' : '[Packing Type]',
       sample_preservative: sample?.preservativeAdded ? (sample.preservativeType || 'Yes') : 'No',
-      sample_dispatch_date: sample?.dispatchDate ? formatDate(sample.dispatchDate) : '[Dispatch Date]',
+      sample_dispatch_date: sample?.dispatchDate ? formatDateFn(sample.dispatchDate) : '[Dispatch Date]',
       sample_dispatch_mode: sample?.dispatchMode || '[Dispatch Mode]',
       manufacturer_name: sample?.manufacturerDetails?.name || '[Manufacturer Name]',
       manufacturer_address: sample?.manufacturerDetails?.address || '[Manufacturer Address]',
@@ -240,7 +346,7 @@ export default function SampleDetailsScreen() {
       mfg_date: sample?.mfgDate || '[Manufacturing Date]',
       expiry_date: sample?.useByDate || '[Expiry Date]',
       lot_batch_number: sample?.lotBatchNumber || '[Lot/Batch Number]',
-      lab_report_date: sample?.labReportDate ? formatDate(sample.labReportDate) : '[Lab Report Date]',
+      lab_report_date: sample?.labReportDate ? formatDateFn(sample.labReportDate) : '[Lab Report Date]',
       lab_result: sample?.labResult ? sample.labResult.replace('_', ' ').toUpperCase() : '[Lab Result]',
     };
 
@@ -282,9 +388,13 @@ export default function SampleDetailsScreen() {
 
     for (let i = 0; i < sortedNodes.length; i++) {
       const node = sortedNodes[i];
+      const nodeState = getStateForNode(node.id);
       const nodeName = node.name.toLowerCase();
       
-      if (nodeName.includes('lifted') || nodeName.includes('sample lifted')) {
+      if (nodeState?.status === 'completed') {
+        completedNodes.add(i);
+        currentNodeIndex = i + 1;
+      } else if (nodeName.includes('lifted') || nodeName.includes('sample lifted')) {
         if (sample.liftedDate) {
           completedNodes.add(i);
           currentNodeIndex = i + 1;
@@ -347,6 +457,10 @@ export default function SampleDetailsScreen() {
     const branchNodes = getRelevantBranchNodes();
     
     const getDateForNode = (node: WorkflowNode) => {
+      const nodeState = getStateForNode(node.id);
+      if (nodeState?.completedAt) {
+        return formatDate(nodeState.completedAt);
+      }
       const nodeName = node.name.toLowerCase();
       if (nodeName.includes('lifted')) return formatDate(sample?.liftedDate);
       if (nodeName.includes('dispatch')) return formatDate(sample?.dispatchDate);
@@ -358,6 +472,7 @@ export default function SampleDetailsScreen() {
       const isComplete = completedNodes.has(idx);
       const isActive = idx === currentNodeIndex;
       const isLast = idx === mainNodes.length - 1 && branchNodes.length === 0;
+      const nodeState = getStateForNode(node.id);
       
       return (
         <DynamicTimelineStep
@@ -367,22 +482,27 @@ export default function SampleDetailsScreen() {
           isActive={isActive}
           isComplete={isComplete}
           isLast={isLast}
+          savedData={nodeState?.nodeData}
+          onPress={() => openNodeModal(node)}
         />
       );
     });
 
     if (branchNodes.length > 0) {
       branchNodes.forEach((item, idx) => {
+        const nodeState = getStateForNode(item.node.id);
         timeline.push(
           <DynamicTimelineStep
             key={item.node.id}
             node={item.node}
-            date={undefined}
+            date={nodeState?.completedAt ? formatDate(nodeState.completedAt) : undefined}
             isActive={sample?.labReportDate != null}
-            isComplete={false}
+            isComplete={nodeState?.status === 'completed'}
             isLast={idx === branchNodes.length - 1}
             isBranch={true}
             branchLabel={item.transition.label}
+            savedData={nodeState?.nodeData}
+            onPress={() => openNodeModal(item.node)}
           />
         );
       });
@@ -429,6 +549,103 @@ export default function SampleDetailsScreen() {
     }
   };
 
+  const renderInputField = (field: InputField) => {
+    const value = formData[field.name] || '';
+    
+    switch (field.type) {
+      case 'textarea':
+        return (
+          <View key={field.name} style={styles.formField}>
+            <ThemedText type="body" style={styles.fieldLabel}>
+              {field.label}{field.required ? ' *' : ''}
+            </ThemedText>
+            <TextInput
+              style={[styles.textArea, { borderColor: theme.border, color: theme.text, backgroundColor: theme.backgroundRoot }]}
+              value={value}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, [field.name]: text }))}
+              placeholder={`Enter ${field.label.toLowerCase()}`}
+              placeholderTextColor={theme.textDisabled}
+              multiline
+              numberOfLines={4}
+            />
+          </View>
+        );
+      case 'date':
+        return (
+          <View key={field.name} style={styles.formField}>
+            <ThemedText type="body" style={styles.fieldLabel}>
+              {field.label}{field.required ? ' *' : ''}
+            </ThemedText>
+            <TextInput
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.backgroundRoot }]}
+              value={value}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, [field.name]: text }))}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={theme.textDisabled}
+            />
+          </View>
+        );
+      case 'select':
+        return (
+          <View key={field.name} style={styles.formField}>
+            <ThemedText type="body" style={styles.fieldLabel}>
+              {field.label}{field.required ? ' *' : ''}
+            </ThemedText>
+            <View style={styles.selectOptions}>
+              {field.options?.map(option => (
+                <Pressable
+                  key={option}
+                  style={[
+                    styles.selectOption,
+                    { 
+                      borderColor: value === option ? theme.primary : theme.border,
+                      backgroundColor: value === option ? theme.primary + '15' : theme.backgroundRoot 
+                    }
+                  ]}
+                  onPress={() => setFormData(prev => ({ ...prev, [field.name]: option }))}
+                >
+                  <ThemedText type="small" style={{ color: value === option ? theme.primary : theme.text }}>
+                    {option}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        );
+      case 'number':
+        return (
+          <View key={field.name} style={styles.formField}>
+            <ThemedText type="body" style={styles.fieldLabel}>
+              {field.label}{field.required ? ' *' : ''}
+            </ThemedText>
+            <TextInput
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.backgroundRoot }]}
+              value={value}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, [field.name]: text }))}
+              placeholder={`Enter ${field.label.toLowerCase()}`}
+              placeholderTextColor={theme.textDisabled}
+              keyboardType="numeric"
+            />
+          </View>
+        );
+      default:
+        return (
+          <View key={field.name} style={styles.formField}>
+            <ThemedText type="body" style={styles.fieldLabel}>
+              {field.label}{field.required ? ' *' : ''}
+            </ThemedText>
+            <TextInput
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.backgroundRoot }]}
+              value={value}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, [field.name]: text }))}
+              placeholder={`Enter ${field.label.toLowerCase()}`}
+              placeholderTextColor={theme.textDisabled}
+            />
+          </View>
+        );
+    }
+  };
+
   if (isLoading || !sample) {
     return (
       <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -453,6 +670,9 @@ export default function SampleDetailsScreen() {
   const isOverdue = sample.daysRemaining !== undefined && sample.daysRemaining <= 0 && !sample.labResult;
   const isUrgent = sample.daysRemaining !== undefined && sample.daysRemaining <= 3 && !sample.labResult;
   const countdownColor = isOverdue ? theme.accent : isUrgent ? theme.warning : theme.primary;
+
+  const inputFields: InputField[] = selectedNode?.inputFields || [];
+  const hasInputFields = inputFields.length > 0;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -538,7 +758,13 @@ export default function SampleDetailsScreen() {
         </View>
 
         <View style={[styles.card, { backgroundColor: theme.backgroundDefault }, Shadows.md]}>
-          <ThemedText type="h3" style={styles.sectionTitle}>Sample Workflow</ThemedText>
+          <View style={styles.workflowHeader}>
+            <ThemedText type="h3">Sample Workflow</ThemedText>
+            <View style={[styles.interactiveHint, { backgroundColor: theme.primary + '10' }]}>
+              <Feather name="info" size={14} color={theme.primary} />
+              <ThemedText type="small" style={{ color: theme.primary }}>Tap nodes to add updates</ThemedText>
+            </View>
+          </View>
           
           <View style={styles.timeline}>
             {renderDynamicTimeline()}
@@ -554,7 +780,6 @@ export default function SampleDetailsScreen() {
           </View>
         ) : null}
 
-        {/* Document Templates Section */}
         {templates.length > 0 ? (
           <View style={[styles.card, { backgroundColor: theme.backgroundDefault }, Shadows.md]}>
             <View style={styles.templatesHeader}>
@@ -614,6 +839,92 @@ export default function SampleDetailsScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={[styles.modalContainer, { backgroundColor: theme.backgroundRoot }]}
+        >
+          <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+            <Pressable onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+            <ThemedText type="h3" style={{ flex: 1, textAlign: 'center' }}>
+              {selectedNode?.name}
+            </ThemedText>
+            <View style={{ width: 40 }} />
+          </View>
+          
+          <ScrollView 
+            contentContainerStyle={styles.modalContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {selectedNode?.description ? (
+              <View style={[styles.nodeDescriptionCard, { backgroundColor: theme.primary + '10' }]}>
+                <Feather name="info" size={16} color={theme.primary} />
+                <ThemedText type="body" style={{ color: theme.primary, flex: 1 }}>
+                  {selectedNode.description}
+                </ThemedText>
+              </View>
+            ) : null}
+            
+            {hasInputFields ? (
+              inputFields.map(field => renderInputField(field))
+            ) : (
+              <View style={styles.noFieldsContainer}>
+                <View style={[styles.noFieldsIcon, { backgroundColor: theme.textSecondary + '15' }]}>
+                  <Feather name="edit-3" size={32} color={theme.textSecondary} />
+                </View>
+                <ThemedText type="h4" style={{ color: theme.text, textAlign: 'center' }}>
+                  Add Notes
+                </ThemedText>
+                <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center' }}>
+                  Record any notes or observations for this workflow step
+                </ThemedText>
+                <View style={styles.formField}>
+                  <TextInput
+                    style={[styles.textArea, { borderColor: theme.border, color: theme.text, backgroundColor: theme.backgroundDefault }]}
+                    value={formData.notes || ''}
+                    onChangeText={(text) => setFormData(prev => ({ ...prev, notes: text }))}
+                    placeholder="Enter your notes here..."
+                    placeholderTextColor={theme.textDisabled}
+                    multiline
+                    numberOfLines={6}
+                  />
+                </View>
+              </View>
+            )}
+          </ScrollView>
+          
+          <View style={[styles.modalFooter, { borderTopColor: theme.border, paddingBottom: insets.bottom + Spacing.md }]}>
+            <Pressable
+              style={[styles.cancelBtn, { borderColor: theme.border }]}
+              onPress={() => setModalVisible(false)}
+            >
+              <ThemedText type="body" style={{ color: theme.text }}>Cancel</ThemedText>
+            </Pressable>
+            <Pressable
+              style={[styles.saveBtn, { backgroundColor: theme.primary }]}
+              onPress={handleSaveNodeData}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Feather name="check" size={18} color="white" />
+                  <ThemedText type="body" style={{ color: 'white', fontWeight: '600' }}>Save Update</ThemedText>
+                </>
+              )}
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -689,12 +1000,24 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  workflowHeader: {
+    gap: Spacing.sm,
+  },
+  interactiveHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    alignSelf: 'flex-start',
+  },
   timeline: {
     gap: 0,
   },
   timelineStep: {
     flexDirection: 'row',
-    minHeight: 60,
+    minHeight: 70,
   },
   timelineLeft: {
     width: 40,
@@ -730,6 +1053,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xs,
     paddingVertical: 2,
     borderRadius: BorderRadius.xs,
+  },
+  tapBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.xs,
+  },
+  savedDataContainer: {
+    marginTop: Spacing.sm,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    gap: Spacing.xs,
+  },
+  savedDataHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: 2,
+  },
+  savedDataRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
   },
   emptyWorkflow: {
     alignItems: 'center',
@@ -790,6 +1138,104 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+  },
+  modalCloseBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalContent: {
+    padding: Spacing.lg,
+    gap: Spacing.md,
+  },
+  nodeDescriptionCard: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.sm,
+  },
+  noFieldsContainer: {
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.lg,
+  },
+  noFieldsIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.sm,
+  },
+  formField: {
+    gap: Spacing.xs,
+    width: '100%',
+  },
+  fieldLabel: {
+    fontWeight: '600',
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: 16,
+  },
+  textArea: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: 16,
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  selectOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  selectOption: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+  },
+  cancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  saveBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
   },
 });
