@@ -1,13 +1,15 @@
 import React, { createContext, useContext, ReactNode } from 'react';
-import { User } from '@/types';
+import { User, JurisdictionInfo } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  activeJurisdiction: JurisdictionInfo | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  switchJurisdiction: (jurisdiction: JurisdictionInfo) => Promise<void>;
   refresh: () => Promise<void>;
 }
 

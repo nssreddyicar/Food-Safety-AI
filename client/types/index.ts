@@ -7,10 +7,12 @@ export type SampleType = 'enforcement' | 'surveillance';
 export type PackingType = 'packed' | 'loose';
 
 export interface JurisdictionInfo {
+  assignmentId?: string;
   unitId?: string;
   unitName?: string;
   roleName?: string;
   capacityName?: string;
+  isPrimary?: boolean;
 }
 
 export interface User {
@@ -23,6 +25,7 @@ export interface User {
   phone?: string;
   employeeId?: string;
   jurisdiction?: JurisdictionInfo | null;
+  allJurisdictions?: JurisdictionInfo[];
   avatar?: string;
 }
 

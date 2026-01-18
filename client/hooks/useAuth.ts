@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { User } from '@/types';
+import { User, JurisdictionInfo } from '@/types';
 import { storage } from '@/lib/storage';
 import { getApiUrl } from '@/lib/query-client';
 
@@ -8,6 +8,7 @@ export function useAuth() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [activeJurisdiction, setActiveJurisdiction] = useState<JurisdictionInfo | null>(null);
 
   const loadUser = useCallback(async () => {
     setIsLoading(true);
@@ -15,6 +16,9 @@ export function useAuth() {
       const storedUser = await storage.getUser();
       setUser(storedUser);
       setIsAuthenticated(!!storedUser);
+      if (storedUser?.jurisdiction) {
+        setActiveJurisdiction(storedUser.jurisdiction);
+      }
     } catch (error) {
       console.error('Failed to load user:', error);
     } finally {
@@ -54,12 +58,16 @@ export function useAuth() {
         phone: data.officer.phone || '',
         employeeId: data.officer.employeeId || '',
         jurisdiction: data.officer.jurisdiction,
+        allJurisdictions: data.officer.allJurisdictions || [],
       };
 
       await storage.setUser(officerUser);
       await storage.seedDemoData(); // Seed inspection/sample demo data
       setUser(officerUser);
       setIsAuthenticated(true);
+      if (officerUser.jurisdiction) {
+        setActiveJurisdiction(officerUser.jurisdiction);
+      }
       return true;
     } catch (error) {
       console.error('Login failed:', error);
@@ -76,6 +84,7 @@ export function useAuth() {
       await storage.clearAll();
       setUser(null);
       setIsAuthenticated(false);
+      setActiveJurisdiction(null);
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
@@ -83,13 +92,25 @@ export function useAuth() {
     }
   }, []);
 
+  const switchJurisdiction = useCallback(async (jurisdiction: JurisdictionInfo) => {
+    if (!user) return;
+    
+    // Update user's active jurisdiction
+    const updatedUser = { ...user, jurisdiction };
+    setUser(updatedUser);
+    setActiveJurisdiction(jurisdiction);
+    await storage.setUser(updatedUser);
+  }, [user]);
+
   return {
     user,
     isLoading,
     isAuthenticated,
     loginError,
+    activeJurisdiction,
     login,
     logout,
+    switchJurisdiction,
     refresh: loadUser,
   };
 }
