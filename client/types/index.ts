@@ -10,6 +10,7 @@ export interface JurisdictionInfo {
   unitId?: string;
   unitName?: string;
   roleName?: string;
+  capacityName?: string;
 }
 
 export interface User {

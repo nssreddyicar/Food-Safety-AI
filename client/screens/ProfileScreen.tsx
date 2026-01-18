@@ -133,11 +133,35 @@ export default function ProfileScreen() {
           Account Information
         </ThemedText>
         <View style={[styles.menuGroup, Shadows.sm]}>
-          <MenuItem icon="map-pin" label="District" value={user?.district || 'Not assigned'} />
+          <MenuItem 
+            icon="map-pin" 
+            label="Jurisdiction" 
+            value={user?.jurisdiction?.unitName || 'Not assigned'} 
+          />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <MenuItem icon="briefcase" label="Role" value={user?.role?.toUpperCase() || 'FSO'} />
+          <MenuItem 
+            icon="briefcase" 
+            label="Assignment" 
+            value={
+              user?.jurisdiction?.roleName && user?.jurisdiction?.capacityName
+                ? `${user.jurisdiction.roleName} (${user.jurisdiction.capacityName})`
+                : user?.jurisdiction?.roleName || user?.role?.toUpperCase() || 'FSO'
+            } 
+          />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <MenuItem icon="user" label="User ID" value={user?.id || 'N/A'} />
+          {user?.employeeId ? (
+            <>
+              <MenuItem icon="hash" label="Employee ID" value={user.employeeId} />
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+            </>
+          ) : null}
+          {user?.phone ? (
+            <>
+              <MenuItem icon="phone" label="Phone" value={user.phone} />
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+            </>
+          ) : null}
+          <MenuItem icon="user" label="User ID" value={user?.id?.substring(0, 8) || 'N/A'} />
         </View>
       </View>
 

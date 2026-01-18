@@ -237,10 +237,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const [role] = await db.select().from(officerRoles).where(
           sql`${officerRoles.id} = ${primaryAssignment.roleId}`
         );
+        const [capacity] = await db.select().from(officerCapacities).where(
+          sql`${officerCapacities.id} = ${primaryAssignment.capacityId}`
+        );
         jurisdictionInfo = {
           unitId: unit?.id,
           unitName: unit?.name,
           roleName: role?.name,
+          capacityName: capacity?.name,
         };
       }
 
