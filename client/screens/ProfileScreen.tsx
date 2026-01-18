@@ -186,14 +186,16 @@ export default function ProfileScreen() {
         </View>
       ) : null}
 
-      <View style={styles.section}>
-        <ThemedText type="h4" style={styles.sectionTitle}>
-          Administration
-        </ThemedText>
-        <View style={[styles.menuGroup, Shadows.sm]}>
-          <MenuItem icon="settings" label="Super Admin Panel" onPress={handleOpenAdminPanel} />
+      {user?.showAdminPanel ? (
+        <View style={styles.section}>
+          <ThemedText type="h4" style={styles.sectionTitle}>
+            Administration
+          </ThemedText>
+          <View style={[styles.menuGroup, Shadows.sm]}>
+            <MenuItem icon="settings" label="Super Admin Panel" onPress={handleOpenAdminPanel} />
+          </View>
         </View>
-      </View>
+      ) : null}
 
       <View style={styles.section}>
         <ThemedText type="h4" style={styles.sectionTitle}>

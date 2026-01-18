@@ -181,6 +181,17 @@
               <option value="inactive">Inactive</option>
             </select>
           </div>
+          
+          <div class="section-divider">
+            <div class="section-title">Access Control</div>
+          </div>
+          <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+              <input type="checkbox" id="showAdminPanel" style="width: 18px; height: 18px; cursor: pointer;" />
+              <span class="form-label" style="margin: 0;">Allow access to Super Admin Panel</span>
+            </label>
+            <small style="color: #6b7280; font-size: 12px; margin-top: 4px; display: block;">When enabled, this officer will see the Admin Panel button in their mobile app profile.</small>
+          </div>
           <div class="modal-actions">
             <button type="button" class="cancel-btn" onclick="closeModal()">Cancel</button>
             <button type="submit" class="save-btn">Save Officer</button>
@@ -324,12 +335,14 @@
           document.getElementById('designation').value = officer.designation || '';
           document.getElementById('password').value = '';
           document.getElementById('status').value = officer.status;
+          document.getElementById('showAdminPanel').checked = officer.showAdminPanel || false;
           editingId = officer.id;
         } else {
           title.textContent = 'Add Officer';
           form.reset();
           document.getElementById('officer-id').value = '';
           document.getElementById('password').value = '';
+          document.getElementById('showAdminPanel').checked = false;
           editingId = null;
         }
         
@@ -372,6 +385,7 @@
           role: document.getElementById('role').value,
           designation: document.getElementById('designation').value,
           status: document.getElementById('status').value,
+          showAdminPanel: document.getElementById('showAdminPanel').checked,
         };
         
         if (password && password.length >= 6) {

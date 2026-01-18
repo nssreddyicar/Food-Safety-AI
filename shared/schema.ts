@@ -33,6 +33,7 @@ export const officers = pgTable("officers", {
   dateOfJoining: timestamp("date_of_joining"),
   employeeId: text("employee_id"),
   status: text("status").notNull().default("active"),
+  showAdminPanel: boolean("show_admin_panel").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

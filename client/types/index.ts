@@ -26,6 +26,7 @@ export interface User {
   employeeId?: string;
   jurisdiction?: JurisdictionInfo | null;
   allJurisdictions?: JurisdictionInfo[];
+  showAdminPanel?: boolean;
   avatar?: string;
 }
 
