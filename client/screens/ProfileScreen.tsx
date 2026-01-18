@@ -5,12 +5,15 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { ThemedText } from '@/components/ThemedText';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthContext } from '@/context/AuthContext';
 import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { getApiUrl } from '@/lib/query-client';
 
 interface MenuItemProps {
   icon: keyof typeof Feather.glyphMap;
@@ -84,6 +87,15 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleOpenAdminPanel = async () => {
+    const adminUrl = `${getApiUrl()}/admin`;
+    if (Platform.OS === 'web') {
+      window.open(adminUrl, '_blank');
+    } else {
+      await WebBrowser.openBrowserAsync(adminUrl);
+    }
+  };
+
   return (
     <KeyboardAwareScrollViewCompat
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
@@ -126,6 +138,15 @@ export default function ProfileScreen() {
           <MenuItem icon="briefcase" label="Role" value={user?.role?.toUpperCase() || 'FSO'} />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <MenuItem icon="user" label="User ID" value={user?.id || 'N/A'} />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="h4" style={styles.sectionTitle}>
+          Administration
+        </ThemedText>
+        <View style={[styles.menuGroup, Shadows.sm]}>
+          <MenuItem icon="settings" label="Super Admin Panel" onPress={handleOpenAdminPanel} />
         </View>
       </View>
 

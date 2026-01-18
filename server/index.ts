@@ -213,6 +213,20 @@ function configureExpoAndLanding(app: express.Application) {
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
   app.use(express.static(path.resolve(process.cwd(), "static-build")));
 
+  // Proxy to Expo dev server for mobile web app (when running in dev mode)
+  if (process.env.NODE_ENV === "development") {
+    const expoProxy = createProxyMiddleware({
+      target: "http://localhost:8081",
+      changeOrigin: true,
+      ws: true,
+    });
+    
+    // Proxy Expo-specific routes to the dev server
+    app.use("/_expo", expoProxy);
+    app.use("/node_modules", expoProxy);
+    app.use("/.expo", expoProxy);
+  }
+
   log("Expo routing: Checking expo-platform header on / and /manifest");
 }
 
