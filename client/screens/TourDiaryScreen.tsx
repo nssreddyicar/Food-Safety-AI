@@ -165,6 +165,7 @@ export default function TourDiaryScreen() {
   const [pickerYear, setPickerYear] = useState(selectedYear);
   const [showMonthSelector, setShowMonthSelector] = useState(false);
   const [showYearSelector, setShowYearSelector] = useState(false);
+  const [showPurposeDropdown, setShowPurposeDropdown] = useState(false);
   
   const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
   const pickerDaysInMonth = getDaysInMonth(pickerYear, pickerMonth);
@@ -682,36 +683,21 @@ export default function TourDiaryScreen() {
               
               <View style={styles.formGroup}>
                 <Text style={[styles.label, { color: theme.textSecondary }]}>Purpose of Visit</Text>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.purposeScrollContainer}
-                  contentContainerStyle={styles.purposeScrollContent}
+                <Pressable
+                  style={[styles.dropdownButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                  onPress={() => setShowPurposeDropdown(true)}
                 >
-                  {PURPOSE_OPTIONS.map((purpose) => (
-                    <Pressable
-                      key={purpose}
-                      style={[
-                        styles.purposeChip,
-                        {
-                          backgroundColor: editForm.purposeOfVisit === purpose ? Colors.light.primary : theme.backgroundSecondary,
-                          borderColor: editForm.purposeOfVisit === purpose ? Colors.light.primary : theme.border,
-                        },
-                      ]}
-                      onPress={() => setEditForm({ ...editForm, purposeOfVisit: purpose, customPurpose: '' })}
-                    >
-                      <Text
-                        style={[
-                          styles.purposeChipText,
-                          { color: editForm.purposeOfVisit === purpose ? '#fff' : theme.text },
-                        ]}
-                        numberOfLines={2}
-                      >
-                        {purpose}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
+                  <Text 
+                    style={[
+                      styles.dropdownButtonText, 
+                      { color: editForm.purposeOfVisit ? theme.text : theme.textSecondary }
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {editForm.purposeOfVisit || 'Select purpose...'}
+                  </Text>
+                  <Feather name="chevron-down" size={20} color={theme.textSecondary} />
+                </Pressable>
                 {editForm.purposeOfVisit === 'Other' ? (
                   <TextInput
                     style={[styles.input, styles.otherInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
@@ -722,6 +708,54 @@ export default function TourDiaryScreen() {
                   />
                 ) : null}
               </View>
+              
+              <Modal
+                visible={showPurposeDropdown}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowPurposeDropdown(false)}
+              >
+                <Pressable 
+                  style={styles.dropdownOverlay} 
+                  onPress={() => setShowPurposeDropdown(false)}
+                >
+                  <View style={[styles.dropdownContent, { backgroundColor: theme.backgroundDefault }]}>
+                    <View style={styles.dropdownHeader}>
+                      <Text style={[styles.dropdownTitle, { color: theme.text }]}>Select Purpose of Visit</Text>
+                      <Pressable onPress={() => setShowPurposeDropdown(false)}>
+                        <Feather name="x" size={24} color={theme.textSecondary} />
+                      </Pressable>
+                    </View>
+                    <ScrollView style={styles.dropdownList} showsVerticalScrollIndicator={false}>
+                      {PURPOSE_OPTIONS.map((purpose) => (
+                        <Pressable
+                          key={purpose}
+                          style={[
+                            styles.dropdownItem,
+                            editForm.purposeOfVisit === purpose && { backgroundColor: Colors.light.primary + '15' },
+                          ]}
+                          onPress={() => {
+                            setEditForm({ ...editForm, purposeOfVisit: purpose, customPurpose: '' });
+                            setShowPurposeDropdown(false);
+                          }}
+                        >
+                          <Text 
+                            style={[
+                              styles.dropdownItemText, 
+                              { color: editForm.purposeOfVisit === purpose ? Colors.light.primary : theme.text }
+                            ]}
+                          >
+                            {purpose}
+                          </Text>
+                          {editForm.purposeOfVisit === purpose ? (
+                            <Feather name="check" size={18} color={Colors.light.primary} />
+                          ) : null}
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                </Pressable>
+              </Modal>
               
               <View style={styles.formGroup}>
                 <Text style={[styles.label, { color: theme.textSecondary }]}>Signature / Remarks</Text>
@@ -1050,24 +1084,55 @@ const styles = StyleSheet.create({
   modeChipText: {
     fontSize: 14,
   },
-  purposeScrollContainer: {
-    marginBottom: Spacing.sm,
-  },
-  purposeScrollContent: {
-    gap: Spacing.sm,
-    paddingRight: Spacing.md,
-  },
-  purposeChip: {
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.md,
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderWidth: 1,
-    minWidth: 100,
-    maxWidth: 160,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
   },
-  purposeChipText: {
-    fontSize: 13,
-    textAlign: 'center',
+  dropdownButtonText: {
+    fontSize: 16,
+    flex: 1,
+  },
+  dropdownOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+  },
+  dropdownContent: {
+    borderRadius: BorderRadius.xl,
+    maxHeight: '70%',
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  dropdownTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  dropdownList: {
+    maxHeight: 400,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    flex: 1,
   },
   otherInput: {
     marginTop: Spacing.sm,
