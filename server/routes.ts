@@ -1328,6 +1328,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to increment text values (A -> B, Z -> AA, etc.)
+  function incrementText(value: string, incrementBy: number): string {
+    const chars = value.toUpperCase().split('');
+    let carry = incrementBy;
+    
+    for (let i = chars.length - 1; i >= 0 && carry > 0; i--) {
+      const charCode = chars[i].charCodeAt(0);
+      if (charCode >= 65 && charCode <= 90) { // A-Z
+        const newCode = charCode - 65 + carry;
+        chars[i] = String.fromCharCode((newCode % 26) + 65);
+        carry = Math.floor(newCode / 26);
+      }
+    }
+    
+    // If there's still carry, prepend new character(s)
+    while (carry > 0) {
+      chars.unshift(String.fromCharCode(((carry - 1) % 26) + 65));
+      carry = Math.floor((carry - 1) / 26);
+    }
+    
+    return chars.join('');
+  }
+
   // Generate new sample codes
   app.post("/api/sample-codes/generate", async (req: Request, res: Response) => {
     try {
@@ -1336,6 +1359,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         prefixStart,
         middleStart,
         suffixStart,
+        prefixFieldType = 'number',
+        middleFieldType = 'number',
+        suffixFieldType = 'number',
         prefixIncrement,
         middleIncrement,
         suffixIncrement,
@@ -1356,14 +1382,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const generatedCodes: any[] = [];
       const duplicates: string[] = [];
 
-      let currentPrefix = parseInt(prefixStart);
-      let currentMiddle = parseInt(middleStart);
-      let currentSuffix = parseInt(suffixStart);
+      // Initialize current values based on field type
+      let currentPrefixNum = prefixFieldType === 'number' ? parseInt(prefixStart) || 0 : 0;
+      let currentMiddleNum = middleFieldType === 'number' ? parseInt(middleStart) || 0 : 0;
+      let currentSuffixNum = suffixFieldType === 'number' ? parseInt(suffixStart) || 0 : 0;
+      let currentPrefixText = prefixFieldType === 'text' ? prefixStart : '';
+      let currentMiddleText = middleFieldType === 'text' ? middleStart : '';
+      let currentSuffixText = suffixFieldType === 'text' ? suffixStart : '';
 
       for (let i = 0; i < quantity; i++) {
-        const prefix = String(currentPrefix).padStart(prefixStart.length, '0');
-        const middle = String(currentMiddle).padStart(middleStart.length, '0');
-        const suffix = String(currentSuffix).padStart(suffixStart.length, '0');
+        // Generate values based on field type
+        const prefix = prefixFieldType === 'number' 
+          ? String(currentPrefixNum).padStart(prefixStart.length, '0')
+          : currentPrefixText;
+        const middle = middleFieldType === 'number'
+          ? String(currentMiddleNum).padStart(middleStart.length, '0')
+          : currentMiddleText;
+        const suffix = suffixFieldType === 'number'
+          ? String(currentSuffixNum).padStart(suffixStart.length, '0')
+          : currentSuffixText;
         const fullCode = `${prefix}-${middle}-${suffix}`;
 
         // Check for duplicates
@@ -1400,15 +1437,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
         }
 
-        // Increment values
+        // Increment values based on field type
         if (prefixIncrementEnabled) {
-          currentPrefix += parseInt(prefixIncrement) || 1;
+          const inc = parseInt(prefixIncrement) || 1;
+          if (prefixFieldType === 'number') {
+            currentPrefixNum += inc;
+          } else {
+            currentPrefixText = incrementText(currentPrefixText, inc);
+          }
         }
         if (middleIncrementEnabled) {
-          currentMiddle += parseInt(middleIncrement) || 1;
+          const inc = parseInt(middleIncrement) || 1;
+          if (middleFieldType === 'number') {
+            currentMiddleNum += inc;
+          } else {
+            currentMiddleText = incrementText(currentMiddleText, inc);
+          }
         }
         if (suffixIncrementEnabled) {
-          currentSuffix += parseInt(suffixIncrement) || 1;
+          const inc = parseInt(suffixIncrement) || 1;
+          if (suffixFieldType === 'number') {
+            currentSuffixNum += inc;
+          } else {
+            currentSuffixText = incrementText(currentSuffixText, inc);
+          }
         }
       }
 

@@ -63,6 +63,9 @@ export default function SampleCodeBankScreen() {
   const [prefixStart, setPrefixStart] = useState('001');
   const [middleStart, setMiddleStart] = useState('001');
   const [suffixStart, setSuffixStart] = useState('001');
+  const [prefixFieldType, setPrefixFieldType] = useState<'text' | 'number'>('number');
+  const [middleFieldType, setMiddleFieldType] = useState<'text' | 'number'>('number');
+  const [suffixFieldType, setSuffixFieldType] = useState<'text' | 'number'>('number');
   const [prefixIncrementEnabled, setPrefixIncrementEnabled] = useState(true);
   const [middleIncrementEnabled, setMiddleIncrementEnabled] = useState(false);
   const [suffixIncrementEnabled, setSuffixIncrementEnabled] = useState(false);
@@ -70,6 +73,7 @@ export default function SampleCodeBankScreen() {
   const [middleIncrement, setMiddleIncrement] = useState('1');
   const [suffixIncrement, setSuffixIncrement] = useState('1');
   const [quantity, setQuantity] = useState('10');
+  const [showFieldTypeDropdown, setShowFieldTypeDropdown] = useState<string | null>(null);
 
   const jurisdictionId = user?.jurisdiction?.unitId;
 
@@ -109,6 +113,9 @@ export default function SampleCodeBankScreen() {
         prefixStart,
         middleStart,
         suffixStart,
+        prefixFieldType,
+        middleFieldType,
+        suffixFieldType,
         prefixIncrement: parseInt(prefixIncrement),
         middleIncrement: parseInt(middleIncrement),
         suffixIncrement: parseInt(suffixIncrement),
@@ -136,6 +143,9 @@ export default function SampleCodeBankScreen() {
     setPrefixStart('001');
     setMiddleStart('001');
     setSuffixStart('001');
+    setPrefixFieldType('number');
+    setMiddleFieldType('number');
+    setSuffixFieldType('number');
     setPrefixIncrementEnabled(true);
     setMiddleIncrementEnabled(false);
     setSuffixIncrementEnabled(false);
@@ -143,6 +153,7 @@ export default function SampleCodeBankScreen() {
     setMiddleIncrement('1');
     setSuffixIncrement('1');
     setQuantity('10');
+    setShowFieldTypeDropdown(null);
   };
 
   const openCodeDetails = (code: SampleCode) => {
@@ -256,49 +267,100 @@ export default function SampleCodeBankScreen() {
 
   const renderIncrementControl = (
     label: string,
+    fieldKey: string,
     value: string,
     setValue: (v: string) => void,
+    fieldType: 'text' | 'number',
+    setFieldType: (v: 'text' | 'number') => void,
     enabled: boolean,
     setEnabled: (v: boolean) => void,
     increment: string,
     setIncrement: (v: string) => void,
-  ) => (
-    <View style={styles.incrementControl}>
-      <View style={styles.incrementHeader}>
-        <ThemedText type="body" style={{ fontWeight: '600' }}>{label}</ThemedText>
-        <Pressable
-          onPress={() => setEnabled(!enabled)}
-          style={[
-            styles.incrementToggle,
-            { backgroundColor: enabled ? theme.primary : theme.border }
-          ]}
-        >
-          <ThemedText type="small" style={{ color: '#FFFFFF', fontWeight: '600' }}>
-            {enabled ? 'AUTO' : 'FIXED'}
-          </ThemedText>
-        </Pressable>
-      </View>
-      <TextInput
-        value={value}
-        onChangeText={setValue}
-        keyboardType="numeric"
-        style={[styles.incrementInput, { backgroundColor: theme.backgroundRoot, borderColor: theme.border, color: theme.text }]}
-        placeholder="Start value"
-        placeholderTextColor={theme.textSecondary}
-      />
-      {enabled ? (
-        <View style={styles.incrementValueRow}>
-          <ThemedText type="small" style={{ color: theme.textSecondary }}>Increment by:</ThemedText>
-          <TextInput
-            value={increment}
-            onChangeText={setIncrement}
-            keyboardType="numeric"
-            style={[styles.incrementValueInput, { backgroundColor: theme.backgroundRoot, borderColor: theme.border, color: theme.text }]}
-          />
+  ) => {
+    const isDropdownOpen = showFieldTypeDropdown === fieldKey;
+    
+    return (
+      <View style={[styles.incrementControl, { zIndex: isDropdownOpen ? 100 : 1 }]}>
+        <View style={styles.incrementHeader}>
+          <ThemedText type="body" style={{ fontWeight: '600' }}>{label}</ThemedText>
+          <View style={styles.headerControls}>
+            {/* Field Type Dropdown */}
+            <View style={styles.fieldTypeContainer}>
+              <Pressable
+                onPress={() => {
+                  setShowFieldTypeDropdown(isDropdownOpen ? null : fieldKey);
+                  Haptics.selectionAsync();
+                }}
+                style={[styles.fieldTypeButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+              >
+                <ThemedText type="small" style={{ fontWeight: '500' }}>
+                  {fieldType === 'text' ? 'Text' : 'Number'}
+                </ThemedText>
+                <Feather name={isDropdownOpen ? 'chevron-up' : 'chevron-down'} size={14} color={theme.textSecondary} />
+              </Pressable>
+              {isDropdownOpen ? (
+                <View style={[styles.fieldTypeDropdown, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+                  <Pressable
+                    onPress={() => {
+                      setFieldType('text');
+                      setShowFieldTypeDropdown(null);
+                      Haptics.selectionAsync();
+                    }}
+                    style={[styles.fieldTypeOption, fieldType === 'text' && { backgroundColor: theme.primary + '15' }]}
+                  >
+                    <Feather name="type" size={14} color={fieldType === 'text' ? theme.primary : theme.text} />
+                    <ThemedText type="small" style={{ color: fieldType === 'text' ? theme.primary : theme.text, fontWeight: fieldType === 'text' ? '600' : '400' }}>Text</ThemedText>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      setFieldType('number');
+                      setShowFieldTypeDropdown(null);
+                      Haptics.selectionAsync();
+                    }}
+                    style={[styles.fieldTypeOption, fieldType === 'number' && { backgroundColor: theme.primary + '15' }]}
+                  >
+                    <Feather name="hash" size={14} color={fieldType === 'number' ? theme.primary : theme.text} />
+                    <ThemedText type="small" style={{ color: fieldType === 'number' ? theme.primary : theme.text, fontWeight: fieldType === 'number' ? '600' : '400' }}>Number</ThemedText>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
+            {/* Auto/Fixed Toggle */}
+            <Pressable
+              onPress={() => setEnabled(!enabled)}
+              style={[
+                styles.incrementToggle,
+                { backgroundColor: enabled ? theme.primary : theme.border }
+              ]}
+            >
+              <ThemedText type="small" style={{ color: '#FFFFFF', fontWeight: '600' }}>
+                {enabled ? 'AUTO' : 'FIXED'}
+              </ThemedText>
+            </Pressable>
+          </View>
         </View>
-      ) : null}
-    </View>
-  );
+        <TextInput
+          value={value}
+          onChangeText={setValue}
+          keyboardType={fieldType === 'number' ? 'numeric' : 'default'}
+          style={[styles.incrementInput, { backgroundColor: theme.backgroundRoot, borderColor: theme.border, color: theme.text }]}
+          placeholder={fieldType === 'number' ? 'Start value (e.g., 001)' : 'Start value (e.g., AAA)'}
+          placeholderTextColor={theme.textSecondary}
+        />
+        {enabled ? (
+          <View style={styles.incrementValueRow}>
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>Increment by:</ThemedText>
+            <TextInput
+              value={increment}
+              onChangeText={setIncrement}
+              keyboardType="numeric"
+              style={[styles.incrementValueInput, { backgroundColor: theme.backgroundRoot, borderColor: theme.border, color: theme.text }]}
+            />
+          </View>
+        ) : null}
+      </View>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -394,9 +456,9 @@ export default function SampleCodeBankScreen() {
             </View>
 
             <View style={styles.incrementControls}>
-              {renderIncrementControl('Prefix', prefixStart, setPrefixStart, prefixIncrementEnabled, setPrefixIncrementEnabled, prefixIncrement, setPrefixIncrement)}
-              {renderIncrementControl('Middle', middleStart, setMiddleStart, middleIncrementEnabled, setMiddleIncrementEnabled, middleIncrement, setMiddleIncrement)}
-              {renderIncrementControl('Suffix', suffixStart, setSuffixStart, suffixIncrementEnabled, setSuffixIncrementEnabled, suffixIncrement, setSuffixIncrement)}
+              {renderIncrementControl('Prefix', 'prefix', prefixStart, setPrefixStart, prefixFieldType, setPrefixFieldType, prefixIncrementEnabled, setPrefixIncrementEnabled, prefixIncrement, setPrefixIncrement)}
+              {renderIncrementControl('Middle', 'middle', middleStart, setMiddleStart, middleFieldType, setMiddleFieldType, middleIncrementEnabled, setMiddleIncrementEnabled, middleIncrement, setMiddleIncrement)}
+              {renderIncrementControl('Suffix', 'suffix', suffixStart, setSuffixStart, suffixFieldType, setSuffixFieldType, suffixIncrementEnabled, setSuffixIncrementEnabled, suffixIncrement, setSuffixIncrement)}
             </View>
 
             <View style={styles.quantityRow}>
@@ -668,6 +730,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+  },
+  headerControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  fieldTypeContainer: {
+    position: 'relative',
+  },
+  fieldTypeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  fieldTypeDropdown: {
+    position: 'absolute',
+    top: 32,
+    right: 0,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    minWidth: 100,
+    zIndex: 1000,
+    elevation: 5,
+  },
+  fieldTypeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
   },
   incrementToggle: {
     paddingHorizontal: Spacing.sm,
