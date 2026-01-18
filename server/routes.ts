@@ -195,6 +195,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.status(401).json({ authenticated: false });
   });
 
+  // Officer Mobile App Login API
+  app.post("/api/officer/login", async (req: Request, res: Response) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ success: false, error: "Email and password are required" });
+      }
+
+      const [officer] = await db.select().from(officers).where(sql`${officers.email} = ${email}`);
+      
+      if (!officer) {
+        return res.status(401).json({ success: false, error: "Invalid email or password" });
+      }
+
+      if (officer.status !== 'active') {
+        return res.status(401).json({ success: false, error: "Your account is inactive. Contact administrator." });
+      }
+
+      if (!officer.password) {
+        return res.status(401).json({ success: false, error: "Password not set. Contact administrator." });
+      }
+
+      if (officer.password !== password) {
+        return res.status(401).json({ success: false, error: "Invalid email or password" });
+      }
+
+      // Get officer's primary assignment if exists
+      const assignments = await db.select().from(officerAssignments).where(
+        sql`${officerAssignments.officerId} = ${officer.id} AND ${officerAssignments.status} = 'active'`
+      );
+      
+      const primaryAssignment = assignments.find((a: any) => a.isPrimary) || assignments[0];
+      
+      let jurisdictionInfo = null;
+      if (primaryAssignment) {
+        const [unit] = await db.select().from(jurisdictionUnits).where(
+          sql`${jurisdictionUnits.id} = ${primaryAssignment.jurisdictionId}`
+        );
+        const [role] = await db.select().from(officerRoles).where(
+          sql`${officerRoles.id} = ${primaryAssignment.roleId}`
+        );
+        jurisdictionInfo = {
+          unitId: unit?.id,
+          unitName: unit?.name,
+          roleName: role?.name,
+        };
+      }
+
+      // Return officer data (without password)
+      const { password: _, ...officerData } = officer;
+      
+      return res.json({
+        success: true,
+        officer: {
+          ...officerData,
+          jurisdiction: jurisdictionInfo,
+        },
+      });
+    } catch (error) {
+      console.error("Officer login error:", error);
+      return res.status(500).json({ success: false, error: "Login failed. Please try again." });
+    }
+  });
+
   app.get("/api/admin/stats", async (_req: Request, res: Response) => {
     try {
       const [officerCount] = await db.select({ count: count() }).from(officers).where(sql`${officers.status} = 'active'`);

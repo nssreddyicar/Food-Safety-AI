@@ -6,13 +6,22 @@ export type SampleType = 'enforcement' | 'surveillance';
 
 export type PackingType = 'packed' | 'loose';
 
+export interface JurisdictionInfo {
+  unitId?: string;
+  unitName?: string;
+  roleName?: string;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: 'fso' | 'do' | 'commissioner' | 'super_admin';
   designation: string;
-  district: string;
+  district?: string;
+  phone?: string;
+  employeeId?: string;
+  jurisdiction?: JurisdictionInfo | null;
   avatar?: string;
 }
 
