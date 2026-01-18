@@ -1228,9 +1228,9 @@ export default function SampleDetailsScreen() {
                   height: '100%',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'flex-start',
+                  justifyContent: 'center',
                   padding: 20,
-                  overflow: 'auto',
+                  overflow: 'hidden',
                   backgroundColor: '#4b5563'
                 }}>
                   <div style={{
