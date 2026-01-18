@@ -1209,29 +1209,39 @@ export default function SampleDetailsScreen() {
                   height: '100%',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
+                  justifyContent: 'flex-start',
                   padding: 20,
                   overflow: 'auto',
-                  backgroundColor: '#374151'
+                  backgroundColor: '#4b5563'
                 }}>
                   <div style={{
                     width: 794 * previewZoom,
                     height: 1123 * previewZoom,
-                    overflow: 'hidden',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                    backgroundColor: 'white',
+                    position: 'relative',
+                    flexShrink: 0,
                   }}>
-                    <iframe
-                      srcDoc={generatePdfHtml(previewTemplate)}
-                      style={{ 
-                        width: 794,
-                        height: 1123,
-                        border: 'none',
-                        transform: `scale(${previewZoom})`,
-                        transformOrigin: 'top left',
-                      }}
-                      title="Document Preview"
-                    />
+                    <div style={{
+                      width: 794,
+                      height: 1123,
+                      backgroundColor: 'white',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                      transform: `scale(${previewZoom})`,
+                      transformOrigin: 'top left',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                    }}>
+                      <iframe
+                        srcDoc={generatePdfHtml(previewTemplate)}
+                        style={{ 
+                          width: '100%',
+                          height: '100%',
+                          border: 'none',
+                          backgroundColor: 'white',
+                        }}
+                        title="Document Preview"
+                      />
+                    </div>
                   </div>
                 </div>
               ) : (
