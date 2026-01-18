@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
-import { officers, districts, inspections, samples, systemSettings, administrativeLevels, jurisdictionUnits, officerRoles, officerCapacities, officerAssignments, documentTemplates } from "../shared/schema";
+import { officers, districts, inspections, samples, systemSettings, administrativeLevels, jurisdictionUnits, officerRoles, officerCapacities, officerAssignments, documentTemplates, workflowNodes, workflowTransitions, sampleWorkflowState } from "../shared/schema";
 import { desc, asc, count, sql } from "drizzle-orm";
 
 const ADMIN_CREDENTIALS = {
@@ -830,6 +830,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).send(html);
   });
 
+  // Sample Workflow Admin Page
+  app.get("/admin/workflow", (req: Request, res: Response) => {
+    const sessionToken = getSessionToken(req);
+    if (!sessionToken || !isValidSession(sessionToken)) {
+      return res.redirect("/admin");
+    }
+    const templatePath = path.resolve(process.cwd(), "server", "templates", "admin-workflow.html");
+    const html = fs.readFileSync(templatePath, "utf-8");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  });
+
   // Document Templates API
   app.get("/api/admin/templates", async (_req: Request, res: Response) => {
     try {
@@ -944,6 +956,184 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete template" });
+    }
+  });
+
+  // ==================== WORKFLOW NODES API ====================
+  
+  app.get("/api/admin/workflow/nodes", async (_req: Request, res: Response) => {
+    try {
+      const nodes = await db.select().from(workflowNodes).orderBy(asc(workflowNodes.position));
+      res.json(nodes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch workflow nodes" });
+    }
+  });
+
+  app.get("/api/workflow/nodes", async (_req: Request, res: Response) => {
+    try {
+      const nodes = await db.select().from(workflowNodes)
+        .where(sql`${workflowNodes.status} = 'active'`)
+        .orderBy(asc(workflowNodes.position));
+      res.json(nodes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch workflow nodes" });
+    }
+  });
+
+  app.post("/api/admin/workflow/nodes", async (req: Request, res: Response) => {
+    try {
+      const { name, description, position, nodeType, icon, color, inputFields, templateIds, isStartNode, isEndNode, autoAdvanceCondition, status } = req.body;
+      const [newNode] = await db.insert(workflowNodes).values({
+        name,
+        description,
+        position: position || 0,
+        nodeType: nodeType || "action",
+        icon: icon || "circle",
+        color: color || "#1E40AF",
+        inputFields: inputFields || [],
+        templateIds: templateIds || [],
+        isStartNode: isStartNode || false,
+        isEndNode: isEndNode || false,
+        autoAdvanceCondition,
+        status: status || "active",
+      }).returning();
+      res.json(newNode);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create workflow node" });
+    }
+  });
+
+  app.put("/api/admin/workflow/nodes/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, description, position, nodeType, icon, color, inputFields, templateIds, isStartNode, isEndNode, autoAdvanceCondition, status } = req.body;
+      const [updated] = await db.update(workflowNodes)
+        .set({
+          name,
+          description,
+          position,
+          nodeType,
+          icon,
+          color,
+          inputFields,
+          templateIds,
+          isStartNode,
+          isEndNode,
+          autoAdvanceCondition,
+          status,
+          updatedAt: new Date(),
+        })
+        .where(sql`${workflowNodes.id} = ${id}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update workflow node" });
+    }
+  });
+
+  app.delete("/api/admin/workflow/nodes/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(workflowTransitions).where(
+        sql`${workflowTransitions.fromNodeId} = ${id} OR ${workflowTransitions.toNodeId} = ${id}`
+      );
+      await db.delete(workflowNodes).where(sql`${workflowNodes.id} = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete workflow node" });
+    }
+  });
+
+  // ==================== WORKFLOW TRANSITIONS API ====================
+  
+  app.get("/api/admin/workflow/transitions", async (_req: Request, res: Response) => {
+    try {
+      const transitions = await db.select().from(workflowTransitions).orderBy(asc(workflowTransitions.displayOrder));
+      res.json(transitions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch workflow transitions" });
+    }
+  });
+
+  app.get("/api/workflow/transitions", async (_req: Request, res: Response) => {
+    try {
+      const transitions = await db.select().from(workflowTransitions)
+        .where(sql`${workflowTransitions.status} = 'active'`)
+        .orderBy(asc(workflowTransitions.displayOrder));
+      res.json(transitions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch workflow transitions" });
+    }
+  });
+
+  app.post("/api/admin/workflow/transitions", async (req: Request, res: Response) => {
+    try {
+      const { fromNodeId, toNodeId, conditionType, conditionField, conditionOperator, conditionValue, label, displayOrder, status } = req.body;
+      const [newTransition] = await db.insert(workflowTransitions).values({
+        fromNodeId,
+        toNodeId,
+        conditionType: conditionType || "always",
+        conditionField,
+        conditionOperator,
+        conditionValue,
+        label,
+        displayOrder: displayOrder || 0,
+        status: status || "active",
+      }).returning();
+      res.json(newTransition);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create workflow transition" });
+    }
+  });
+
+  app.put("/api/admin/workflow/transitions/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { fromNodeId, toNodeId, conditionType, conditionField, conditionOperator, conditionValue, label, displayOrder, status } = req.body;
+      const [updated] = await db.update(workflowTransitions)
+        .set({
+          fromNodeId,
+          toNodeId,
+          conditionType,
+          conditionField,
+          conditionOperator,
+          conditionValue,
+          label,
+          displayOrder,
+          status,
+          updatedAt: new Date(),
+        })
+        .where(sql`${workflowTransitions.id} = ${id}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update workflow transition" });
+    }
+  });
+
+  app.delete("/api/admin/workflow/transitions/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(workflowTransitions).where(sql`${workflowTransitions.id} = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete workflow transition" });
+    }
+  });
+
+  // Get complete workflow configuration (nodes + transitions)
+  app.get("/api/workflow/config", async (_req: Request, res: Response) => {
+    try {
+      const nodes = await db.select().from(workflowNodes)
+        .where(sql`${workflowNodes.status} = 'active'`)
+        .orderBy(asc(workflowNodes.position));
+      const transitions = await db.select().from(workflowTransitions)
+        .where(sql`${workflowTransitions.status} = 'active'`)
+        .orderBy(asc(workflowTransitions.displayOrder));
+      res.json({ nodes, transitions });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch workflow configuration" });
     }
   });
 

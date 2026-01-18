@@ -125,10 +125,30 @@ Each sample captures comprehensive information:
 
 ### Sample Tracking
 - 14-day countdown from dispatch to lab report deadline
-- Status tracking: Pending → Dispatched → Lab Report
+- Dynamic workflow-based timeline (admin-configurable)
 - Visual urgency indicators (red for overdue, amber for < 3 days)
 - Filter by status
 - Sample type badges (ENF/SRV)
+
+### Dynamic Sample Workflow System
+Admin-configurable workflow engine for sample lifecycle management:
+- **Workflow Nodes**: Define each step in the sample process (e.g., Sample Lifted, Dispatched, Lab Report, Prosecution)
+- **Node Types**: action, decision, end - with conditional branching
+- **Transitions**: Define movement between nodes with conditions (always, lab_result, field_value)
+- **Conditional Logic**: Branch to different paths based on lab results (safe → closed, unsafe → prosecution, substandard → notice)
+- **Input Fields**: Custom data collection fields per node (JSON-defined)
+- **Template Linking**: Associate document templates with specific workflow nodes
+- Mobile app timeline dynamically adapts to admin configuration
+
+#### Default Workflow
+The system seeds with a default 6-node workflow:
+1. Sample Lifted (Start) → 2. Dispatched to Lab → 3. Lab Report Received (Decision)
+   - If Safe → Sample Closed (End)
+   - If Unsafe → Initiate Prosecution
+   - If Substandard → Issue Improvement Notice
+
+#### Admin Panel
+Access at `/admin/workflow` (Super Admin login required: superadmin / Admin@123)
 
 ## Design System
 - **Primary Color**: #1E40AF (Deep authoritative blue)

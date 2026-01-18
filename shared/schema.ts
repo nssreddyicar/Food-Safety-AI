@@ -245,3 +245,62 @@ export const documentTemplates = pgTable("document_templates", {
 });
 
 export type DocumentTemplate = typeof documentTemplates.$inferSelect;
+
+// Sample Workflow Nodes - Dynamic workflow steps controlled by admin
+export const workflowNodes = pgTable("workflow_nodes", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  position: integer("position").notNull().default(0),
+  nodeType: text("node_type").notNull().default("action"), // action, decision, end
+  icon: text("icon").default("circle"), // Feather icon name
+  color: text("color").default("#1E40AF"), // Node color
+  inputFields: jsonb("input_fields"), // JSON array of input field definitions
+  templateIds: jsonb("template_ids"), // Array of related template IDs
+  isStartNode: boolean("is_start_node").default(false),
+  isEndNode: boolean("is_end_node").default(false),
+  autoAdvanceCondition: text("auto_advance_condition"), // e.g., "days_elapsed:14"
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type WorkflowNode = typeof workflowNodes.$inferSelect;
+
+// Workflow Transitions - Connections between nodes with conditions
+export const workflowTransitions = pgTable("workflow_transitions", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  fromNodeId: varchar("from_node_id").notNull(),
+  toNodeId: varchar("to_node_id").notNull(),
+  conditionType: text("condition_type").notNull().default("always"), // always, lab_result, field_value, custom
+  conditionField: text("condition_field"), // e.g., "labResult"
+  conditionOperator: text("condition_operator"), // equals, not_equals, contains, greater_than
+  conditionValue: text("condition_value"), // e.g., "unsafe", "substandard"
+  label: text("label"), // Transition label shown to user
+  displayOrder: integer("display_order").notNull().default(0),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type WorkflowTransition = typeof workflowTransitions.$inferSelect;
+
+// Sample Workflow State - Tracks where each sample is in the workflow
+export const sampleWorkflowState = pgTable("sample_workflow_state", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  sampleId: varchar("sample_id").notNull(),
+  currentNodeId: varchar("current_node_id").notNull(),
+  nodeData: jsonb("node_data"), // Data collected at this node
+  enteredAt: timestamp("entered_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  status: text("status").notNull().default("active"), // active, completed, skipped
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type SampleWorkflowState = typeof sampleWorkflowState.$inferSelect;

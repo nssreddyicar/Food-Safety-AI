@@ -26,40 +26,99 @@ interface DocumentTemplate {
   createdAt: string;
 }
 
+interface WorkflowNode {
+  id: string;
+  name: string;
+  description: string;
+  position: number;
+  nodeType: 'action' | 'decision' | 'end';
+  icon: string;
+  color: string;
+  inputFields: Array<{ name: string; type: string; label: string; required?: boolean; options?: string[] }>;
+  templateIds: string[];
+  isStartNode: boolean;
+  isEndNode: boolean;
+  autoAdvanceCondition?: string;
+  status: string;
+}
+
+interface WorkflowTransition {
+  id: string;
+  fromNodeId: string;
+  toNodeId: string;
+  conditionType: 'always' | 'lab_result' | 'field_value';
+  conditionField?: string;
+  conditionOperator?: 'equals' | 'not_equals' | 'contains';
+  conditionValue?: string;
+  label?: string;
+  status: string;
+}
+
 type RouteParams = {
   SampleDetails: { sampleId: string };
 };
 
-interface TimelineStepProps {
-  icon: keyof typeof Feather.glyphMap;
-  title: string;
+const iconMap: Record<string, keyof typeof Feather.glyphMap> = {
+  'package': 'package',
+  'truck': 'truck',
+  'file-text': 'file-text',
+  'check-circle': 'check-circle',
+  'alert-triangle': 'alert-triangle',
+  'clock': 'clock',
+  'shield': 'shield',
+  'send': 'send',
+};
+
+interface DynamicTimelineStepProps {
+  node: WorkflowNode;
   date?: string;
   isActive: boolean;
   isComplete: boolean;
   isLast?: boolean;
+  isBranch?: boolean;
+  branchLabel?: string;
 }
 
-function TimelineStep({ icon, title, date, isActive, isComplete, isLast }: TimelineStepProps) {
+function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranch, branchLabel }: DynamicTimelineStepProps) {
   const { theme } = useTheme();
-  const color = isComplete ? theme.success : isActive ? theme.primary : theme.textSecondary;
+  const nodeColor = node.color || theme.primary;
+  const color = isComplete ? theme.success : isActive ? nodeColor : theme.textSecondary;
+  const iconName = iconMap[node.icon] || 'circle';
   
   return (
     <View style={styles.timelineStep}>
       <View style={styles.timelineLeft}>
         <View style={[styles.timelineIcon, { backgroundColor: color + '20', borderColor: color }]}>
-          <Feather name={isComplete ? 'check' : icon} size={16} color={color} />
+          <Feather name={isComplete ? 'check' : iconName} size={16} color={color} />
         </View>
         {!isLast ? (
           <View style={[styles.timelineLine, { backgroundColor: isComplete ? theme.success : theme.border }]} />
         ) : null}
       </View>
       <View style={styles.timelineContent}>
-        <ThemedText type="h4" style={{ color }}>{title}</ThemedText>
+        <View style={styles.timelineHeader}>
+          <ThemedText type="h4" style={{ color }}>{node.name}</ThemedText>
+          {node.nodeType === 'decision' ? (
+            <View style={[styles.nodeTypeBadge, { backgroundColor: theme.warning + '20' }]}>
+              <ThemedText type="small" style={{ color: theme.warning, fontSize: 10 }}>DECISION</ThemedText>
+            </View>
+          ) : node.isEndNode ? (
+            <View style={[styles.nodeTypeBadge, { backgroundColor: theme.success + '20' }]}>
+              <ThemedText type="small" style={{ color: theme.success, fontSize: 10 }}>END</ThemedText>
+            </View>
+          ) : null}
+        </View>
+        {isBranch && branchLabel ? (
+          <ThemedText type="small" style={{ color: theme.warning, fontStyle: 'italic' }}>{branchLabel}</ThemedText>
+        ) : null}
         {date ? (
           <ThemedText type="small" style={{ color: theme.textSecondary }}>{date}</ThemedText>
         ) : (
           <ThemedText type="small" style={{ color: theme.textDisabled }}>Pending</ThemedText>
         )}
+        {node.description ? (
+          <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 2 }}>{node.description}</ThemedText>
+        ) : null}
       </View>
     </View>
   );
@@ -87,6 +146,14 @@ export default function SampleDetailsScreen() {
 
   const { data: templates = [] } = useQuery<DocumentTemplate[]>({
     queryKey: ['/api/templates'],
+  });
+
+  const { data: workflowNodes = [] } = useQuery<WorkflowNode[]>({
+    queryKey: ['/api/admin/workflow/nodes'],
+  });
+
+  const { data: workflowTransitions = [] } = useQuery<WorkflowTransition[]>({
+    queryKey: ['/api/admin/workflow/transitions'],
   });
 
   useEffect(() => {
@@ -204,6 +271,139 @@ export default function SampleDetailsScreen() {
   <pre>${content}</pre>
 </body>
 </html>`;
+  };
+
+  const getSampleWorkflowPosition = () => {
+    if (!sample) return { currentNodeIndex: -1, completedNodes: new Set<number>() };
+    
+    const sortedNodes = [...workflowNodes].sort((a, b) => a.position - b.position);
+    const completedNodes = new Set<number>();
+    let currentNodeIndex = 0;
+
+    for (let i = 0; i < sortedNodes.length; i++) {
+      const node = sortedNodes[i];
+      const nodeName = node.name.toLowerCase();
+      
+      if (nodeName.includes('lifted') || nodeName.includes('sample lifted')) {
+        if (sample.liftedDate) {
+          completedNodes.add(i);
+          currentNodeIndex = i + 1;
+        }
+      } else if (nodeName.includes('dispatch') || nodeName.includes('lab')) {
+        if (nodeName.includes('dispatch')) {
+          if (sample.dispatchDate) {
+            completedNodes.add(i);
+            currentNodeIndex = i + 1;
+          }
+        } else if (nodeName.includes('report') || nodeName.includes('received')) {
+          if (sample.labReportDate) {
+            completedNodes.add(i);
+            currentNodeIndex = i + 1;
+          }
+        }
+      } else if (node.nodeType === 'decision' && sample.labReportDate) {
+        completedNodes.add(i);
+        currentNodeIndex = i + 1;
+      }
+    }
+    
+    return { currentNodeIndex: Math.min(currentNodeIndex, sortedNodes.length - 1), completedNodes };
+  };
+
+  const getRelevantBranchNodes = () => {
+    if (!sample?.labResult) return [];
+    
+    const sortedNodes = [...workflowNodes].sort((a, b) => a.position - b.position);
+    const decisionNode = sortedNodes.find(n => n.nodeType === 'decision');
+    if (!decisionNode) return [];
+
+    const relevantTransitions = workflowTransitions.filter(t => 
+      t.fromNodeId === decisionNode.id && 
+      t.conditionType === 'lab_result' &&
+      t.conditionValue?.toLowerCase() === sample.labResult?.toLowerCase()
+    );
+
+    return relevantTransitions.map(t => {
+      const targetNode = workflowNodes.find(n => n.id === t.toNodeId);
+      return { node: targetNode, transition: t };
+    }).filter(item => item.node) as Array<{ node: WorkflowNode; transition: WorkflowTransition }>;
+  };
+
+  const renderDynamicTimeline = () => {
+    if (workflowNodes.length === 0) {
+      return (
+        <View style={styles.emptyWorkflow}>
+          <Feather name="loader" size={24} color={theme.textSecondary} />
+          <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center' }}>
+            Loading workflow configuration...
+          </ThemedText>
+        </View>
+      );
+    }
+
+    const sortedNodes = [...workflowNodes].sort((a, b) => a.position - b.position);
+    const mainNodes = sortedNodes.filter(n => !n.isEndNode && n.nodeType !== 'end' && n.position <= 2);
+    const { currentNodeIndex, completedNodes } = getSampleWorkflowPosition();
+    const branchNodes = getRelevantBranchNodes();
+    
+    const getDateForNode = (node: WorkflowNode) => {
+      const nodeName = node.name.toLowerCase();
+      if (nodeName.includes('lifted')) return formatDate(sample?.liftedDate);
+      if (nodeName.includes('dispatch')) return formatDate(sample?.dispatchDate);
+      if (nodeName.includes('report') || nodeName.includes('received')) return formatDate(sample?.labReportDate);
+      return undefined;
+    };
+
+    const timeline = mainNodes.map((node, idx) => {
+      const isComplete = completedNodes.has(idx);
+      const isActive = idx === currentNodeIndex;
+      const isLast = idx === mainNodes.length - 1 && branchNodes.length === 0;
+      
+      return (
+        <DynamicTimelineStep
+          key={node.id}
+          node={node}
+          date={getDateForNode(node)}
+          isActive={isActive}
+          isComplete={isComplete}
+          isLast={isLast}
+        />
+      );
+    });
+
+    if (branchNodes.length > 0) {
+      branchNodes.forEach((item, idx) => {
+        timeline.push(
+          <DynamicTimelineStep
+            key={item.node.id}
+            node={item.node}
+            date={undefined}
+            isActive={sample?.labReportDate != null}
+            isComplete={false}
+            isLast={idx === branchNodes.length - 1}
+            isBranch={true}
+            branchLabel={item.transition.label}
+          />
+        );
+      });
+    } else if (mainNodes.length > 0) {
+      const decisionNode = sortedNodes.find(n => n.nodeType === 'decision');
+      if (decisionNode && sample?.labReportDate && !sample?.labResult) {
+        const pendingTransitions = workflowTransitions.filter(t => t.fromNodeId === decisionNode.id);
+        if (pendingTransitions.length > 0) {
+          timeline.push(
+            <View key="pending-branch" style={styles.branchInfo}>
+              <Feather name="git-branch" size={16} color={theme.warning} />
+              <ThemedText type="small" style={{ color: theme.warning }}>
+                Awaiting lab result to determine next step...
+              </ThemedText>
+            </View>
+          );
+        }
+      }
+    }
+
+    return timeline;
   };
 
   const handleDownload = async (template: DocumentTemplate) => {
@@ -338,31 +538,10 @@ export default function SampleDetailsScreen() {
         </View>
 
         <View style={[styles.card, { backgroundColor: theme.backgroundDefault }, Shadows.md]}>
-          <ThemedText type="h3" style={styles.sectionTitle}>Sample Timeline</ThemedText>
+          <ThemedText type="h3" style={styles.sectionTitle}>Sample Workflow</ThemedText>
           
           <View style={styles.timeline}>
-            <TimelineStep
-              icon="package"
-              title="Sample Lifted"
-              date={formatDate(sample.liftedDate)}
-              isActive={!sample.dispatchDate}
-              isComplete={!!sample.liftedDate}
-            />
-            <TimelineStep
-              icon="truck"
-              title="Dispatched to Lab"
-              date={formatDate(sample.dispatchDate)}
-              isActive={!!sample.dispatchDate && !sample.labReportDate}
-              isComplete={!!sample.dispatchDate}
-            />
-            <TimelineStep
-              icon="file-text"
-              title="Lab Report Received"
-              date={formatDate(sample.labReportDate)}
-              isActive={!!sample.labReportDate}
-              isComplete={!!sample.labReportDate}
-              isLast
-            />
+            {renderDynamicTimeline()}
           </View>
         </View>
 
@@ -540,6 +719,31 @@ const styles = StyleSheet.create({
     paddingLeft: Spacing.md,
     paddingBottom: Spacing.lg,
     gap: 2,
+  },
+  timelineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    flexWrap: 'wrap',
+  },
+  nodeTypeBadge: {
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.xs,
+  },
+  emptyWorkflow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  branchInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingLeft: 52,
+    paddingVertical: Spacing.sm,
+    marginTop: -Spacing.md,
   },
   templatesHeader: {
     flexDirection: 'row',
