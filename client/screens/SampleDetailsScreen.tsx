@@ -1238,10 +1238,10 @@ export default function SampleDetailsScreen() {
                 )}
               </Pressable>
               <Pressable 
-                style={[styles.zoomBtn, { marginLeft: Spacing.sm }]} 
+                style={[styles.zoomBtn, { marginLeft: Spacing.sm, backgroundColor: '#dc2626' }]} 
                 onPress={() => setPreviewModalVisible(false)}
               >
-                <Feather name="x" size={16} color="white" />
+                <Feather name="x" size={18} color="white" />
               </Pressable>
             </View>
           </View>
@@ -1310,10 +1310,17 @@ export default function SampleDetailsScreen() {
               )
             ) : null}
           </View>
-          <View style={styles.previewPageSizeLabel}>
+          <View style={[styles.previewFooter, { paddingBottom: insets.bottom > 0 ? insets.bottom : Spacing.md }]}>
             <ThemedText type="small" style={{ color: 'rgba(255,255,255,0.7)' }}>
               {previewTemplate?.pageSize || 'A4'} {previewTemplate?.orientation || 'Portrait'} - {previewTemplate?.pageSize === 'A4' ? '210 x 297' : '216 x 279'} mm
             </ThemedText>
+            <Pressable 
+              style={styles.closePreviewBtn}
+              onPress={() => setPreviewModalVisible(false)}
+            >
+              <Feather name="x" size={16} color="white" />
+              <ThemedText type="body" style={{ color: 'white', fontWeight: '600' }}>Close</ThemedText>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -1806,5 +1813,24 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
     alignItems: 'center',
+  },
+  previewFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    backgroundColor: '#1f2937',
+    borderTopWidth: 1,
+    borderTopColor: '#374151',
+  },
+  closePreviewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    backgroundColor: '#dc2626',
+    borderRadius: BorderRadius.md,
   },
 });
