@@ -52,6 +52,7 @@ client/
 │   ├── RootStackNavigator.tsx # Root with auth flow
 │   └── SamplesStackNavigator.tsx
 ├── screens/                   # App screens
+│   ├── ActionDashboardScreen.tsx # Action tracking with category cards
 │   ├── DashboardScreen.tsx
 │   ├── InspectionDetailsScreen.tsx
 │   ├── InspectionsScreen.tsx
@@ -91,6 +92,36 @@ server/
 - Samples in transit
 - Completed this month
 - Urgent actions list with countdown timers
+- Quick access to Action Dashboard
+
+### Action Dashboard System
+Comprehensive action and reminder tracking system with role-based action categories:
+
+**Mobile Dashboard Features:**
+- Summary cards showing: Overdue, Due Today, This Week, Total counts
+- Grouped action categories:
+  - **Legal & Court**: Court cases, adjudication files, penalty recovery
+  - **Inspection & Enforcement**: Pending inspections, follow-ups, seized articles, improvement notices
+  - **Sampling & Laboratory**: Pending samples, lab reports, unsafe/substandard samples
+  - **Administrative**: Special drives, workshops, grievances, license applications
+  - **Protocol & Duties**: VVIP duties
+- Priority indicators (critical/high/normal) with visual badges
+- SLA tracking with overdue highlighting
+- Drill-down navigation to detailed lists
+
+**Admin Configuration (at `/admin/action-dashboard`):**
+- Configure 21+ action categories with enable/disable toggles
+- SLA settings (days) per category
+- Priority levels (critical, high, normal)
+- Show/hide on mobile dashboard
+- Load default categories button
+- Mobile preview panel
+
+**API Endpoints:**
+- `GET /api/action-dashboard` - Aggregated dashboard data with category counts
+- `GET /api/action-categories` - List all action categories
+- `POST /api/action-categories/seed-defaults` - Load default 21 categories
+- `PUT /api/action-categories/:id` - Update category settings
 
 ### Inspections
 - Create new inspections with dynamic form
