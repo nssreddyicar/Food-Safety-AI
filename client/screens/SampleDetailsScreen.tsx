@@ -1,15 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
+import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
 import { ThemedText } from '@/components/ThemedText';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuthContext } from '@/context/AuthContext';
 import { storage } from '@/lib/storage';
-import { Sample } from '@/types';
+import { Sample, Inspection } from '@/types';
 import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
+
+interface DocumentTemplate {
+  id: string;
+  name: string;
+  category: string;
+  contentType: 'plain_text' | 'html';
+  content: string;
+  pageSize: string;
+  orientation: string;
+  createdAt: string;
+}
 
 type RouteParams = {
   SampleDetails: { sampleId: string };
@@ -50,14 +65,29 @@ function TimelineStep({ icon, title, date, isActive, isComplete, isLast }: Timel
   );
 }
 
+interface SampleWithInspection extends Sample {
+  establishmentName?: string;
+  fboName?: string;
+  fboAddress?: string;
+  fboLicense?: string;
+  inspectionDate?: string;
+  inspectionType?: string;
+}
+
 export default function SampleDetailsScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const route = useRoute<RouteProp<RouteParams, 'SampleDetails'>>();
+  const { user, activeJurisdiction } = useAuthContext();
   
-  const [sample, setSample] = useState<Sample | null>(null);
+  const [sample, setSample] = useState<SampleWithInspection | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const { data: templates = [] } = useQuery<DocumentTemplate[]>({
+    queryKey: ['/api/templates'],
+  });
 
   useEffect(() => {
     loadSample();
@@ -65,13 +95,137 @@ export default function SampleDetailsScreen() {
 
   const loadSample = async () => {
     try {
-      const samples = await storage.getSamples();
-      const found = samples.find((s) => s.id === route.params.sampleId);
-      setSample(found || null);
+      const inspections = await storage.getInspections(activeJurisdiction?.unitId);
+      let foundSample: SampleWithInspection | null = null;
+      
+      for (const inspection of inspections) {
+        if (inspection.samples) {
+          const found = inspection.samples.find((s: Sample) => s.id === route.params.sampleId);
+          if (found) {
+            foundSample = {
+              ...found,
+              establishmentName: inspection.fboDetails?.establishmentName,
+              fboName: inspection.fboDetails?.name,
+              fboAddress: inspection.fboDetails?.address,
+              fboLicense: inspection.fboDetails?.licenseNumber || inspection.fboDetails?.registrationNumber,
+              inspectionDate: inspection.createdAt,
+              inspectionType: inspection.type,
+            };
+            break;
+          }
+        }
+      }
+      
+      if (!foundSample) {
+        const samples = await storage.getSamples();
+        const found = samples.find((s) => s.id === route.params.sampleId);
+        if (found) {
+          foundSample = found;
+        }
+      }
+      
+      setSample(foundSample);
     } catch (error) {
       console.error('Failed to load sample:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const replacePlaceholders = (content: string): string => {
+    const now = new Date();
+    
+    const formatDate = (dateStr?: string) => {
+      if (!dateStr) return '[Date]';
+      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+    };
+    
+    const placeholderValues: Record<string, string> = {
+      officer_name: user?.name || '',
+      officer_designation: user?.designation || 'Food Safety Officer',
+      officer_email: user?.email || '',
+      officer_phone: user?.phone || '',
+      officer_employee_id: user?.employeeId || '',
+      jurisdiction_name: user?.jurisdiction?.unitName || activeJurisdiction?.unitName || '',
+      jurisdiction_type: user?.jurisdiction?.roleName || activeJurisdiction?.roleName || '',
+      current_date: now.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
+      current_time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+      fbo_name: sample?.fboName || '[FBO Name]',
+      fbo_address: sample?.fboAddress || '[FBO Address]',
+      fbo_license: sample?.fboLicense || '[FBO License Number]',
+      establishment_name: sample?.establishmentName || '[Establishment Name]',
+      inspection_date: sample?.inspectionDate ? formatDate(sample.inspectionDate) : '[Inspection Date]',
+      inspection_type: sample?.inspectionType || '[Inspection Type]',
+      sample_code: sample?.code || '[Sample Code]',
+      sample_name: sample?.name || '[Sample Name]',
+      sample_type: sample?.sampleType === 'enforcement' ? 'Enforcement' : sample?.sampleType === 'surveillance' ? 'Surveillance' : '[Sample Type]',
+      sample_lifted_date: sample?.liftedDate ? formatDate(sample.liftedDate) : '[Lifted Date]',
+      sample_lifted_place: sample?.liftedPlace || '[Lifted Place]',
+      sample_cost: sample?.cost ? `Rs. ${sample.cost}` : '[Sample Cost]',
+      sample_quantity: sample?.quantityInGrams ? `${sample.quantityInGrams} grams` : '[Quantity]',
+      sample_packing_type: sample?.packingType === 'packed' ? 'Packed' : sample?.packingType === 'loose' ? 'Loose' : '[Packing Type]',
+      sample_preservative: sample?.preservativeAdded ? (sample.preservativeType || 'Yes') : 'No',
+      sample_dispatch_date: sample?.dispatchDate ? formatDate(sample.dispatchDate) : '[Dispatch Date]',
+      sample_dispatch_mode: sample?.dispatchMode || '[Dispatch Mode]',
+      manufacturer_name: sample?.manufacturerDetails?.name || '[Manufacturer Name]',
+      manufacturer_address: sample?.manufacturerDetails?.address || '[Manufacturer Address]',
+      manufacturer_license: sample?.manufacturerDetails?.licenseNumber || '[Manufacturer License]',
+      mfg_date: sample?.mfgDate || '[Manufacturing Date]',
+      expiry_date: sample?.useByDate || '[Expiry Date]',
+      lot_batch_number: sample?.lotBatchNumber || '[Lot/Batch Number]',
+      lab_report_date: sample?.labReportDate ? formatDate(sample.labReportDate) : '[Lab Report Date]',
+      lab_result: sample?.labResult ? sample.labResult.replace('_', ' ').toUpperCase() : '[Lab Result]',
+    };
+
+    let result = content;
+    Object.entries(placeholderValues).forEach(([key, value]) => {
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+    });
+    return result;
+  };
+
+  const generatePdfHtml = (template: DocumentTemplate): string => {
+    const content = replacePlaceholders(template.content);
+    
+    if (template.contentType === 'html') {
+      return content;
+    }
+    
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }
+    pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; }
+  </style>
+</head>
+<body>
+  <pre>${content}</pre>
+</body>
+</html>`;
+  };
+
+  const handleDownload = async (template: DocumentTemplate) => {
+    setDownloadingId(template.id);
+    try {
+      const html = generatePdfHtml(template);
+      const { uri } = await Print.printToFileAsync({ html });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Share ${template.name}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('PDF Generated', `Document saved to: ${uri}`);
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      Alert.alert('Error', 'Failed to generate document. Please try again.');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -220,6 +374,66 @@ export default function SampleDetailsScreen() {
             </ThemedText>
           </View>
         ) : null}
+
+        {/* Document Templates Section */}
+        {templates.length > 0 ? (
+          <View style={[styles.card, { backgroundColor: theme.backgroundDefault }, Shadows.md]}>
+            <View style={styles.templatesHeader}>
+              <View style={[styles.templateIconContainer, { backgroundColor: theme.primary + '15' }]}>
+                <Feather name="file-text" size={20} color={theme.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ThemedText type="h3">Document Templates</ThemedText>
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                  Download documents with this sample's data pre-filled
+                </ThemedText>
+              </View>
+            </View>
+            
+            <View style={styles.templatesList}>
+              {templates.map((template) => (
+                <View 
+                  key={template.id} 
+                  style={[styles.templateItem, { backgroundColor: theme.backgroundRoot, borderColor: theme.border }]}
+                >
+                  <View style={styles.templateInfo}>
+                    <View style={[styles.categoryBadge, { backgroundColor: theme.primary + '15' }]}>
+                      <ThemedText type="small" style={{ color: theme.primary, fontWeight: '600' }}>
+                        {template.category.replace('_', ' ').toUpperCase()}
+                      </ThemedText>
+                    </View>
+                    <ThemedText type="body" style={{ fontWeight: '600', marginTop: Spacing.xs }}>
+                      {template.name}
+                    </ThemedText>
+                    <View style={styles.templateMeta}>
+                      <Feather name="file" size={12} color={theme.textSecondary} />
+                      <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                        {template.contentType === 'html' ? 'HTML' : 'Text'} - {template.pageSize.toUpperCase()}
+                      </ThemedText>
+                    </View>
+                  </View>
+                  
+                  <Pressable
+                    style={[styles.downloadBtn, { backgroundColor: theme.primary }]}
+                    onPress={() => handleDownload(template)}
+                    disabled={downloadingId === template.id}
+                  >
+                    {downloadingId === template.id ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <>
+                        <Feather name="download" size={16} color="white" />
+                        <ThemedText type="small" style={{ color: 'white', fontWeight: '600' }}>
+                          PDF
+                        </ThemedText>
+                      </>
+                    )}
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -326,5 +540,52 @@ const styles = StyleSheet.create({
     paddingLeft: Spacing.md,
     paddingBottom: Spacing.lg,
     gap: 2,
+  },
+  templatesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  templateIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  templatesList: {
+    gap: Spacing.md,
+  },
+  templateItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    gap: Spacing.md,
+  },
+  templateInfo: {
+    flex: 1,
+  },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  templateMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  downloadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
   },
 });
