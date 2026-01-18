@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -126,6 +127,7 @@ export default function TourDiaryScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
   
   const today = new Date();
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
@@ -329,7 +331,7 @@ export default function TourDiaryScreen() {
       
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 80 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + 80 }]}
         showsVerticalScrollIndicator={false}
       >
         <Card style={styles.tableCard}>
@@ -343,7 +345,7 @@ export default function TourDiaryScreen() {
       </ScrollView>
       
       <Pressable
-        style={[styles.fab, { bottom: insets.bottom + Spacing.xl }]}
+        style={[styles.fab, { bottom: tabBarHeight + Spacing.lg }]}
         onPress={() => openEditModal(today.getDate())}
       >
         <Feather name="plus" size={24} color="#fff" />
