@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+  Easing,
+} from 'react-native-reanimated';
 import { useTheme } from '@/hooks/useTheme';
 import { ScannerStackParamList } from '@/navigation/ScannerStackNavigator';
 import { Colors, Spacing, BorderRadius } from '@/constants/theme';
@@ -29,6 +37,8 @@ interface ScannedNote {
 
 const NOTES_STORAGE_KEY = '@scanned_notes';
 
+const SCAN_FRAME_SIZE = 280;
+
 export default function ScannerScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<ScannerStackParamList>>();
@@ -39,6 +49,23 @@ export default function ScannerScreen() {
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastScannedType, setLastScannedType] = useState('');
+
+  const scanLinePosition = useSharedValue(0);
+
+  useEffect(() => {
+    scanLinePosition.value = withRepeat(
+      withSequence(
+        withTiming(SCAN_FRAME_SIZE - 4, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 2000, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      false
+    );
+  }, []);
+
+  const scanLineStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: scanLinePosition.value }],
+  }));
 
   const handleBarCodeScanned = async (result: BarcodeScanningResult) => {
     if (scanned) return;
@@ -193,6 +220,11 @@ export default function ScannerScreen() {
             <View style={[styles.corner, styles.topRight]} />
             <View style={[styles.corner, styles.bottomLeft]} />
             <View style={[styles.corner, styles.bottomRight]} />
+            {!scanned && (
+              <Animated.View style={[styles.scanLine, scanLineStyle]}>
+                <View style={styles.scanLineGradient} />
+              </Animated.View>
+            )}
           </View>
           <Text style={styles.scanHint}>
             Position QR code or barcode within the frame
@@ -312,8 +344,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scanFrame: {
-    width: 280,
-    height: 280,
+    width: SCAN_FRAME_SIZE,
+    height: SCAN_FRAME_SIZE,
     position: 'relative',
   },
   corner: {
@@ -349,6 +381,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 4,
     borderRightWidth: 4,
     borderBottomRightRadius: 12,
+  },
+  scanLine: {
+    position: 'absolute',
+    left: 10,
+    right: 10,
+    height: 4,
+    overflow: 'hidden',
+  },
+  scanLineGradient: {
+    flex: 1,
+    backgroundColor: Colors.light.primary,
+    borderRadius: 2,
+    shadowColor: Colors.light.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 5,
   },
   scanHint: {
     color: 'rgba(255,255,255,0.8)',
