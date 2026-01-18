@@ -134,8 +134,16 @@ export default function ScannerScreen() {
     setIsProcessingImage(true);
     
     try {
+      // Request media library permissions first
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant access to your photo library to select images.');
+        setIsProcessingImage(false);
+        return;
+      }
+      
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
         quality: 1,
       });
@@ -144,20 +152,21 @@ export default function ScannerScreen() {
         const imageUri = result.assets[0].uri;
         
         try {
+          // Use the correct barcode type format for scanFromURLAsync
           const scanResults = await scanFromURLAsync(imageUri, [
             'qr',
-            'ean13',
-            'ean8',
-            'upc_a',
-            'upc_e',
-            'code39',
-            'code93',
-            'code128',
+            'ean-13',
+            'ean-8',
+            'code-39',
+            'code-93',
+            'code-128',
             'codabar',
-            'itf14',
-            'pdf417',
+            'itf-14',
+            'upc-e',
+            'upc-a',
+            'pdf-417',
             'aztec',
-            'datamatrix',
+            'data-matrix',
           ]);
           
           if (scanResults && scanResults.length > 0) {
@@ -192,15 +201,23 @@ export default function ScannerScreen() {
           } else {
             Alert.alert('No Code Found', 'No QR code or barcode was detected in the selected image. Make sure the image contains a clear, readable code.');
           }
-        } catch (scanError) {
+        } catch (scanError: any) {
           console.error('Error scanning image:', scanError);
-          Alert.alert(
-            'Scan Error', 
-            'Could not scan the selected image. Make sure the image contains a clear QR code or barcode and try again.'
-          );
+          // Check if scanFromURLAsync is not available
+          if (scanError?.message?.includes('not a function') || scanError?.message?.includes('undefined')) {
+            Alert.alert(
+              'Feature Not Available',
+              'Gallery scanning requires Expo Go app on your mobile device. This feature may not work on all platforms.'
+            );
+          } else {
+            Alert.alert(
+              'Scan Error', 
+              'Could not scan the selected image. Make sure the image contains a clear QR code or barcode and try again.'
+            );
+          }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error picking image:', error);
       Alert.alert('Error', 'Failed to access the image gallery.');
     } finally {
