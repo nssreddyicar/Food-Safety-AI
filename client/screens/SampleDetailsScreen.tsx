@@ -213,17 +213,17 @@ function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranc
                   <ThemedText type="small" style={{ color: theme.textSecondary, textTransform: 'capitalize' }}>
                     {key.replace(/_/g, ' ')}:
                   </ThemedText>
+                  <View style={styles.savedImageThumbnailContainer}>
+                    <Image source={{ uri: value }} style={styles.savedImageThumbnail} resizeMode="cover" />
+                  </View>
                   <Pressable 
                     onPress={(e) => {
                       e.stopPropagation();
                       onPreviewImage?.(value);
                     }}
-                    style={styles.savedImageThumbnailContainer}
+                    style={[styles.savedImagePreviewBtn, { backgroundColor: theme.primary }]}
                   >
-                    <Image source={{ uri: value }} style={styles.savedImageThumbnail} resizeMode="cover" />
-                    <View style={[styles.savedImagePreviewIcon, { backgroundColor: theme.primary }]}>
-                      <Feather name="eye" size={10} color="#fff" />
-                    </View>
+                    <Feather name="eye" size={12} color="#fff" />
                   </Pressable>
                 </View>
               ) : (
@@ -1572,17 +1572,12 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: BorderRadius.sm,
   },
-  savedImagePreviewIcon: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+  savedImagePreviewBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#fff',
   },
   imagePreviewModalContainer: {
     flex: 1,
