@@ -257,7 +257,10 @@ export default function TemplatesScreen() {
                 display: flex;
                 justify-content: center;
                 padding: 20px;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
               }
+              html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
               .preview-page {
                 background: white;
                 width: ${pageWidthPx}px;
@@ -326,7 +329,10 @@ export default function TemplatesScreen() {
               justify-content: center; 
               padding: 20px;
               min-height: 100vh;
+              scrollbar-width: none;
+              -ms-overflow-style: none;
             }
+            html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
             .page {
               background: white;
               width: ${pageWidthPx}px;
@@ -668,8 +674,8 @@ export default function TemplatesScreen() {
               source={{ html: generatePreviewHtml(previewTemplate, zoomLevel) }}
               style={styles.webview}
               scrollEnabled={true}
-              showsVerticalScrollIndicator={true}
-              showsHorizontalScrollIndicator={true}
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
             />
           ) : previewTemplate && Platform.OS === 'web' ? (
             <View style={styles.webPreview}>
@@ -680,6 +686,7 @@ export default function TemplatesScreen() {
                   height: '100%',
                   border: 'none',
                   backgroundColor: '#4b5563',
+                  overflow: 'auto',
                 } as any}
               />
             </View>
