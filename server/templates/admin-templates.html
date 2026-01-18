@@ -83,9 +83,9 @@
       .zoom-btn.active { background: #1E40AF; }
       .zoom-btn svg { width: 16px; height: 16px; fill: currentColor; }
       .zoom-level { color: white; font-size: 12px; min-width: 50px; text-align: center; background: rgba(255,255,255,0.1); padding: 6px 10px; border-radius: 4px; }
-      .preview-viewport { background: #4b5563; padding: 20px; overflow: hidden; max-height: 600px; display: flex; justify-content: center; align-items: flex-start; }
-      .preview-page-wrapper { display: flex; justify-content: center; align-items: flex-start; }
-      .preview-page { background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transform-origin: top center; transition: transform 0.2s ease; flex-shrink: 0; }
+      .preview-viewport { background: #4b5563; padding: 20px; overflow: hidden; max-height: 600px; display: flex; justify-content: center; align-items: center; }
+      .preview-page-wrapper { display: flex; justify-content: center; align-items: center; position: relative; }
+      .preview-page { background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transform-origin: center center; transition: transform 0.2s ease; flex-shrink: 0; position: absolute; }
       .page-size-label { color: #9ca3af; font-size: 11px; padding: 8px 16px; text-align: center; background: #1f2937; border-top: 1px solid #374151; }
     </style>
   </head>
@@ -600,9 +600,11 @@
                           ));
         
         // Size the wrapper to the scaled dimensions so the page fits visually
+        const scaledWidth = widthPx * zoom;
+        const scaledHeight = heightPx * zoom;
         if (wrapper) {
-          wrapper.style.width = (widthPx * zoom) + 'px';
-          wrapper.style.height = (heightPx * zoom) + 'px';
+          wrapper.style.width = scaledWidth + 'px';
+          wrapper.style.height = scaledHeight + 'px';
         }
         
         page.style.width = widthPx + 'px';
@@ -610,7 +612,10 @@
         // Only apply form margins for plain text, not raw HTML templates
         page.style.padding = isRawHtml ? '0' : `${data.marginTop * mmToPx}px ${data.marginRight * mmToPx}px ${data.marginBottom * mmToPx}px ${data.marginLeft * mmToPx}px`;
         page.style.transform = `scale(${zoom})`;
-        page.style.transformOrigin = 'top left';
+        page.style.transformOrigin = 'center center';
+        // Center the page within the wrapper
+        page.style.left = ((scaledWidth - widthPx) / 2) + 'px';
+        page.style.top = ((scaledHeight - heightPx) / 2) + 'px';
         page.innerHTML = generatePreviewContent(data);
         
         label.textContent = `${dims.label} ${data.orientation.charAt(0).toUpperCase() + data.orientation.slice(1)} - ${dims.width} x ${dims.height} mm`;
