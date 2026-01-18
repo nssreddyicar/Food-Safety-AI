@@ -1201,33 +1201,46 @@ export default function SampleDetailsScreen() {
             </View>
           </View>
           <View style={styles.previewViewport}>
-            <ScrollView 
-              style={styles.previewScrollView}
-              contentContainerStyle={styles.previewScrollContent}
-              showsVerticalScrollIndicator={true}
-              showsHorizontalScrollIndicator={true}
-            >
-              {previewTemplate ? (
-                Platform.OS === 'web' ? (
-                  <View style={[styles.previewPageWrapper, { 
-                    width: (previewTemplate.pageSize === 'A4' ? 794 : 816) * previewZoom,
-                    height: (previewTemplate.pageSize === 'A4' ? 1123 : 1056) * previewZoom,
-                  }]}>
+            {previewTemplate ? (
+              Platform.OS === 'web' ? (
+                <div style={{ 
+                  flex: 1, 
+                  width: '100%', 
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 20,
+                  overflow: 'auto',
+                  backgroundColor: '#374151'
+                }}>
+                  <div style={{
+                    width: 794 * previewZoom,
+                    height: 1123 * previewZoom,
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    backgroundColor: 'white',
+                  }}>
                     <iframe
                       srcDoc={generatePdfHtml(previewTemplate)}
                       style={{ 
-                        width: previewTemplate.pageSize === 'A4' ? 794 : 816,
-                        height: previewTemplate.pageSize === 'A4' ? 1123 : 1056,
+                        width: 794,
+                        height: 1123,
                         border: 'none',
-                        backgroundColor: 'white',
                         transform: `scale(${previewZoom})`,
                         transformOrigin: 'top left',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
                       }}
                       title="Document Preview"
                     />
-                  </View>
-                ) : (
+                  </div>
+                </div>
+              ) : (
+                <ScrollView 
+                  style={styles.previewScrollView}
+                  contentContainerStyle={styles.previewScrollContent}
+                  showsVerticalScrollIndicator={true}
+                  showsHorizontalScrollIndicator={true}
+                >
                   <View style={[styles.previewPageWrapper, { 
                     width: 794 * previewZoom,
                     height: 1123 * previewZoom,
@@ -1243,9 +1256,9 @@ export default function SampleDetailsScreen() {
                       scalesPageToFit={false}
                     />
                   </View>
-                )
-              ) : null}
-            </ScrollView>
+                </ScrollView>
+              )
+            ) : null}
           </View>
           <View style={styles.previewPageSizeLabel}>
             <ThemedText type="small" style={{ color: 'rgba(255,255,255,0.7)' }}>
