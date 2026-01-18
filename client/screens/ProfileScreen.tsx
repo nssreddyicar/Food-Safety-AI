@@ -1,26 +1,227 @@
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import React from 'react';
+import { View, StyleSheet, Image, Pressable, Alert, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
+import { ThemedText } from '@/components/ThemedText';
+import { Button } from '@/components/Button';
+import { useTheme } from '@/hooks/useTheme';
+import { useAuthContext } from '@/context/AuthContext';
+import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
 
-import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
-import { useTheme } from "@/hooks/useTheme";
-import { Spacing } from "@/constants/theme";
+interface MenuItemProps {
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  value?: string;
+  onPress?: () => void;
+  danger?: boolean;
+}
+
+function MenuItem({ icon, label, value, onPress, danger }: MenuItemProps) {
+  const { theme } = useTheme();
+  const color = danger ? theme.accent : theme.text;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.menuItem,
+        { backgroundColor: theme.backgroundDefault },
+        pressed && { opacity: 0.8 },
+      ]}
+    >
+      <View style={[styles.menuIcon, { backgroundColor: (danger ? theme.accent : theme.primary) + '15' }]}>
+        <Feather name={icon} size={18} color={danger ? theme.accent : theme.primary} />
+      </View>
+      <View style={styles.menuContent}>
+        <ThemedText type="body" style={{ color }}>
+          {label}
+        </ThemedText>
+        {value ? (
+          <ThemedText type="small" style={{ color: theme.textSecondary }}>
+            {value}
+          </ThemedText>
+        ) : null}
+      </View>
+      {onPress ? (
+        <Feather name="chevron-right" size={18} color={theme.textSecondary} />
+      ) : null}
+    </Pressable>
+  );
+}
 
 export default function ProfileScreen() {
+  const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
-  const { theme } = useTheme();
+  const { user, logout } = useAuthContext();
+
+  const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      logout();
+      return;
+    }
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out of Food Safety Inspector?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            logout();
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <KeyboardAwareScrollViewCompat
-      style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
-      contentContainerStyle={{
-        paddingTop: headerHeight + Spacing.xl,
-        paddingBottom: tabBarHeight + Spacing.xl,
-        paddingHorizontal: Spacing.lg,
-      }}
+      style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingTop: headerHeight + Spacing.xl,
+          paddingBottom: tabBarHeight + Spacing.xl,
+        },
+      ]}
       scrollIndicatorInsets={{ bottom: insets.bottom }}
-    />
+    >
+      <View style={[styles.profileCard, { backgroundColor: theme.backgroundDefault }, Shadows.md]}>
+        <View style={[styles.avatarContainer, { backgroundColor: theme.primary }]}>
+          <ThemedText type="h1" style={{ color: '#FFFFFF' }}>
+            {user?.name?.charAt(0).toUpperCase() || 'U'}
+          </ThemedText>
+        </View>
+        <ThemedText type="h2" style={styles.name}>
+          {user?.name || 'Officer'}
+        </ThemedText>
+        <ThemedText type="body" style={{ color: theme.textSecondary }}>
+          {user?.email || 'officer@fssai.gov.in'}
+        </ThemedText>
+        <View style={[styles.badge, { backgroundColor: theme.primary + '15' }]}>
+          <Feather name="shield" size={14} color={theme.primary} />
+          <ThemedText type="small" style={{ color: theme.primary, fontWeight: '600' }}>
+            {user?.designation || 'Food Safety Officer'}
+          </ThemedText>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="h4" style={styles.sectionTitle}>
+          Account Information
+        </ThemedText>
+        <View style={[styles.menuGroup, Shadows.sm]}>
+          <MenuItem icon="map-pin" label="District" value={user?.district || 'Not assigned'} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <MenuItem icon="briefcase" label="Role" value={user?.role?.toUpperCase() || 'FSO'} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <MenuItem icon="user" label="User ID" value={user?.id || 'N/A'} />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="h4" style={styles.sectionTitle}>
+          Settings
+        </ThemedText>
+        <View style={[styles.menuGroup, Shadows.sm]}>
+          <MenuItem icon="bell" label="Notifications" onPress={() => {}} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <MenuItem icon="help-circle" label="Help & Support" onPress={() => {}} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <MenuItem icon="info" label="About" value="Version 1.0.0" />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <View style={[styles.menuGroup, Shadows.sm]}>
+          <MenuItem icon="log-out" label="Sign Out" onPress={handleLogout} danger />
+        </View>
+      </View>
+
+      <ThemedText type="small" style={[styles.footer, { color: theme.textSecondary }]}>
+        Food Safety and Standards Authority of India
+      </ThemedText>
+    </KeyboardAwareScrollViewCompat>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.xl,
+  },
+  profileCard: {
+    alignItems: 'center',
+    padding: Spacing['2xl'],
+    borderRadius: BorderRadius.xl,
+    gap: Spacing.sm,
+  },
+  avatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.sm,
+  },
+  name: {
+    textAlign: 'center',
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    marginTop: Spacing.sm,
+  },
+  section: {
+    gap: Spacing.md,
+  },
+  sectionTitle: {
+    marginLeft: Spacing.xs,
+  },
+  menuGroup: {
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    gap: Spacing.md,
+  },
+  menuIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuContent: {
+    flex: 1,
+    gap: 2,
+  },
+  divider: {
+    height: 1,
+    marginLeft: 68,
+  },
+  footer: {
+    textAlign: 'center',
+    marginTop: Spacing.lg,
+  },
+});

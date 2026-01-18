@@ -1,24 +1,24 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import ProfileScreen from "@/screens/ProfileScreen";
+import SamplesScreen from "@/screens/SamplesScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
-export type ProfileStackParamList = {
-  Profile: undefined;
+export type SamplesStackParamList = {
+  Samples: undefined;
 };
 
-const Stack = createNativeStackNavigator<ProfileStackParamList>();
+const Stack = createNativeStackNavigator<SamplesStackParamList>();
 
-export default function ProfileStackNavigator() {
+export default function SamplesStackNavigator() {
   const screenOptions = useScreenOptions();
 
   return (
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
-        name="Profile"
-        component={ProfileScreen}
+        name="Samples"
+        component={SamplesScreen}
         options={{
-          headerTitle: "Profile",
+          headerTitle: "Samples",
         }}
       />
     </Stack.Navigator>

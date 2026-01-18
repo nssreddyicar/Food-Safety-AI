@@ -3,12 +3,16 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
-import HomeStackNavigator from "@/navigation/HomeStackNavigator";
+import DashboardStackNavigator from "@/navigation/DashboardStackNavigator";
+import InspectionsStackNavigator from "@/navigation/InspectionsStackNavigator";
+import SamplesStackNavigator from "@/navigation/SamplesStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
 
 export type MainTabParamList = {
-  HomeTab: undefined;
+  DashboardTab: undefined;
+  InspectionsTab: undefined;
+  SamplesTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -19,7 +23,7 @@ export default function MainTabNavigator() {
 
   return (
     <Tab.Navigator
-      initialRouteName="HomeTab"
+      initialRouteName="DashboardTab"
       screenOptions={{
         tabBarActiveTintColor: theme.tabIconSelected,
         tabBarInactiveTintColor: theme.tabIconDefault,
@@ -28,6 +32,7 @@ export default function MainTabNavigator() {
           backgroundColor: Platform.select({
             ios: "transparent",
             android: theme.backgroundRoot,
+            web: theme.backgroundRoot,
           }),
           borderTopWidth: 0,
           elevation: 0,
@@ -44,12 +49,32 @@ export default function MainTabNavigator() {
       }}
     >
       <Tab.Screen
-        name="HomeTab"
-        component={HomeStackNavigator}
+        name="DashboardTab"
+        component={DashboardStackNavigator}
         options={{
-          title: "Home",
+          title: "Dashboard",
           tabBarIcon: ({ color, size }) => (
             <Feather name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="InspectionsTab"
+        component={InspectionsStackNavigator}
+        options={{
+          title: "Inspections",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="clipboard" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="SamplesTab"
+        component={SamplesStackNavigator}
+        options={{
+          title: "Samples",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="droplet" size={size} color={color} />
           ),
         }}
       />
