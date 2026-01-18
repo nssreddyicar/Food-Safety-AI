@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
-import { officers, districts, inspections, samples, systemSettings, administrativeLevels, jurisdictionUnits, officerRoles, officerCapacities, officerAssignments, documentTemplates, workflowNodes, workflowTransitions, sampleWorkflowState, sampleCodes, sampleCodeAuditLog, fboLicenses, fboRegistrations, grievances, fswActivities, adjudicationCases, prosecutionCases, prosecutionHearings } from "../shared/schema";
+import { officers, districts, inspections, samples, systemSettings, administrativeLevels, jurisdictionUnits, officerRoles, officerCapacities, officerAssignments, documentTemplates, workflowNodes, workflowTransitions, sampleWorkflowState, sampleCodes, sampleCodeAuditLog, fboLicenses, fboRegistrations, grievances, fswActivities, adjudicationCases, prosecutionCases, prosecutionHearings, actionCategories, actionItems, actionItemAuditLog, slASettings, specialDrives, vvipDuties, workshops, improvementNotices, seizedArticles } from "../shared/schema";
 import { desc, asc, count, sql } from "drizzle-orm";
 
 const ADMIN_CREDENTIALS = {
@@ -1941,6 +1941,508 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching upcoming hearings:', error);
       res.status(500).json({ error: "Failed to fetch upcoming hearings" });
+    }
+  });
+
+  // ============ ACTION DASHBOARD ENDPOINTS ============
+
+  // Get all action categories
+  app.get("/api/action-categories", async (_req: Request, res: Response) => {
+    try {
+      const categories = await db.select().from(actionCategories)
+        .orderBy(asc(actionCategories.displayOrder));
+      res.json(categories);
+    } catch (error) {
+      console.error('Error fetching action categories:', error);
+      res.status(500).json({ error: "Failed to fetch action categories" });
+    }
+  });
+
+  // Seed default action categories
+  app.post("/api/action-categories/seed-defaults", requireAuth, async (_req: Request, res: Response) => {
+    try {
+      const defaultCategories = [
+        // Legal & Court
+        { name: 'Court Cases', code: 'court_cases', group: 'legal', entityType: 'prosecution_case', icon: 'briefcase', color: '#DC2626', priority: 'critical', displayOrder: 1, dueDateField: 'nextHearingDate', slaDefaultDays: 7 },
+        { name: 'Adjudication Files', code: 'adjudication_files', group: 'legal', entityType: 'adjudication_case', icon: 'file-text', color: '#DC2626', priority: 'critical', displayOrder: 2, dueDateField: 'orderDate', slaDefaultDays: 14 },
+        { name: 'Penalties Due', code: 'penalties_due', group: 'legal', entityType: 'adjudication_case', icon: 'dollar-sign', color: '#D97706', priority: 'high', displayOrder: 3, slaDefaultDays: 30 },
+        // Inspections & Enforcement
+        { name: 'Follow-up Inspections', code: 'followup_inspections', group: 'inspection', entityType: 'inspection', icon: 'refresh-cw', color: '#1E40AF', priority: 'high', displayOrder: 10, slaDefaultDays: 14 },
+        { name: 'Inspections Pending', code: 'pending_inspections', group: 'inspection', entityType: 'inspection', icon: 'clipboard', color: '#1E40AF', priority: 'normal', displayOrder: 11, slaDefaultDays: 7 },
+        { name: 'Improvement Notices', code: 'improvement_notices', group: 'inspection', entityType: 'improvement_notice', icon: 'alert-triangle', color: '#D97706', priority: 'high', displayOrder: 12, dueDateField: 'complianceDeadline', slaDefaultDays: 14 },
+        { name: 'Seized Articles', code: 'seized_articles', group: 'inspection', entityType: 'seized_article', icon: 'lock', color: '#DC2626', priority: 'high', displayOrder: 13, slaDefaultDays: 30 },
+        { name: 'Destroyed Articles', code: 'destroyed_articles', group: 'inspection', entityType: 'seized_article', icon: 'trash-2', color: '#6B7280', priority: 'normal', displayOrder: 14, slaDefaultDays: 7 },
+        // Sampling & Laboratory
+        { name: 'Samples Pending', code: 'samples_pending', group: 'sampling', entityType: 'sample', icon: 'package', color: '#0EA5E9', priority: 'normal', displayOrder: 20, slaDefaultDays: 3 },
+        { name: 'Lab Reports Awaited', code: 'lab_reports_awaited', group: 'sampling', entityType: 'sample', icon: 'clock', color: '#D97706', priority: 'high', displayOrder: 21, slaDefaultDays: 14 },
+        { name: 'Lab Reports Received', code: 'lab_reports_received', group: 'sampling', entityType: 'sample', icon: 'file-plus', color: '#059669', priority: 'normal', displayOrder: 22, slaDefaultDays: 3 },
+        { name: 'Unsafe Samples', code: 'unsafe_samples', group: 'sampling', entityType: 'sample', icon: 'alert-octagon', color: '#DC2626', priority: 'critical', displayOrder: 23, slaDefaultDays: 1 },
+        { name: 'Sub-standard Samples', code: 'substandard_samples', group: 'sampling', entityType: 'sample', icon: 'alert-circle', color: '#D97706', priority: 'high', displayOrder: 24, slaDefaultDays: 7 },
+        { name: 'Misbranded Samples', code: 'misbranded_samples', group: 'sampling', entityType: 'sample', icon: 'tag', color: '#D97706', priority: 'high', displayOrder: 25, slaDefaultDays: 7 },
+        { name: 'Schedule IV Cases', code: 'schedule_iv_cases', group: 'sampling', entityType: 'sample', icon: 'shield-off', color: '#DC2626', priority: 'critical', displayOrder: 26, slaDefaultDays: 3 },
+        // Administrative & Compliance
+        { name: 'Special Drives', code: 'special_drives', group: 'administrative', entityType: 'special_drive', icon: 'target', color: '#8B5CF6', priority: 'high', displayOrder: 30, slaDefaultDays: 7 },
+        { name: 'Workshops & Trainings', code: 'workshops_trainings', group: 'administrative', entityType: 'workshop', icon: 'users', color: '#0EA5E9', priority: 'normal', displayOrder: 31, slaDefaultDays: 7 },
+        { name: 'DLAC Meetings', code: 'dlac_meetings', group: 'administrative', entityType: 'workshop', icon: 'calendar', color: '#1E40AF', priority: 'normal', displayOrder: 32, slaDefaultDays: 7 },
+        { name: 'FSSAI Initiatives', code: 'fssai_initiatives', group: 'administrative', entityType: 'special_drive', icon: 'star', color: '#059669', priority: 'normal', displayOrder: 33, slaDefaultDays: 14 },
+        { name: 'Grievances', code: 'grievances', group: 'administrative', entityType: 'grievance', icon: 'message-circle', color: '#D97706', priority: 'high', displayOrder: 34, dueDateField: 'dueDate', slaDefaultDays: 7 },
+        // Protocol & Special Duties
+        { name: 'VVIP/ASL Duties', code: 'vvip_duties', group: 'protocol', entityType: 'vvip_duty', icon: 'shield', color: '#DC2626', priority: 'critical', displayOrder: 40, dueDateField: 'eventDate', slaDefaultDays: 1 },
+      ];
+
+      for (const cat of defaultCategories) {
+        await db.insert(actionCategories)
+          .values(cat)
+          .onConflictDoUpdate({
+            target: actionCategories.code,
+            set: { ...cat, updatedAt: new Date() }
+          });
+      }
+
+      const categories = await db.select().from(actionCategories).orderBy(asc(actionCategories.displayOrder));
+      res.json({ message: 'Default categories seeded', categories });
+    } catch (error) {
+      console.error('Error seeding categories:', error);
+      res.status(500).json({ error: "Failed to seed categories" });
+    }
+  });
+
+  // Update action category
+  app.put("/api/action-categories/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const [updated] = await db.update(actionCategories)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(sql`${actionCategories.id} = ${id}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating category:', error);
+      res.status(500).json({ error: "Failed to update category" });
+    }
+  });
+
+  // Get comprehensive action dashboard data
+  app.get("/api/action-dashboard", async (req: Request, res: Response) => {
+    try {
+      const { jurisdictionId } = req.query;
+      const today = new Date();
+      const weekFromNow = new Date();
+      weekFromNow.setDate(today.getDate() + 7);
+
+      // Get all enabled categories
+      const categories = await db.select().from(actionCategories)
+        .where(sql`${actionCategories.isEnabled} = true AND ${actionCategories.showOnDashboard} = true`)
+        .orderBy(asc(actionCategories.displayOrder));
+
+      const dashboardData: any[] = [];
+
+      for (const category of categories) {
+        let counts = { total: 0, pending: 0, overdue: 0, dueThisWeek: 0, dueToday: 0 };
+        
+        switch (category.code) {
+          case 'court_cases': {
+            const baseWhere = jurisdictionId 
+              ? sql`${prosecutionCases.jurisdictionId} = ${jurisdictionId}`
+              : sql`1=1`;
+            
+            const allCases = await db.select({ count: count() }).from(prosecutionCases)
+              .where(sql`${baseWhere} AND ${prosecutionCases.status} IN ('pending', 'ongoing')`);
+            counts.total = allCases[0]?.count || 0;
+            
+            const pending = await db.select({ count: count() }).from(prosecutionCases)
+              .where(sql`${baseWhere} AND ${prosecutionCases.status} = 'pending'`);
+            counts.pending = pending[0]?.count || 0;
+            
+            const overdue = await db.select({ count: count() }).from(prosecutionCases)
+              .where(sql`${baseWhere} AND ${prosecutionCases.nextHearingDate} < ${today} AND ${prosecutionCases.status} IN ('pending', 'ongoing')`);
+            counts.overdue = overdue[0]?.count || 0;
+            
+            const thisWeek = await db.select({ count: count() }).from(prosecutionCases)
+              .where(sql`${baseWhere} AND ${prosecutionCases.nextHearingDate} >= ${today} AND ${prosecutionCases.nextHearingDate} <= ${weekFromNow} AND ${prosecutionCases.status} IN ('pending', 'ongoing')`);
+            counts.dueThisWeek = thisWeek[0]?.count || 0;
+            
+            const todayDue = await db.select({ count: count() }).from(prosecutionCases)
+              .where(sql`${baseWhere} AND DATE(${prosecutionCases.nextHearingDate}) = DATE(${today}) AND ${prosecutionCases.status} IN ('pending', 'ongoing')`);
+            counts.dueToday = todayDue[0]?.count || 0;
+            break;
+          }
+          case 'adjudication_files': {
+            const baseWhere = jurisdictionId 
+              ? sql`${adjudicationCases.jurisdictionId} = ${jurisdictionId}`
+              : sql`1=1`;
+            
+            const allCases = await db.select({ count: count() }).from(adjudicationCases)
+              .where(sql`${baseWhere} AND ${adjudicationCases.status} IN ('pending', 'hearing')`);
+            counts.total = allCases[0]?.count || 0;
+            counts.pending = counts.total;
+            break;
+          }
+          case 'pending_inspections': {
+            const baseWhere = jurisdictionId 
+              ? sql`${inspections.jurisdictionId} = ${jurisdictionId}`
+              : sql`1=1`;
+            
+            const allInsp = await db.select({ count: count() }).from(inspections)
+              .where(sql`${baseWhere} AND ${inspections.status} = 'draft'`);
+            counts.total = allInsp[0]?.count || 0;
+            counts.pending = counts.total;
+            break;
+          }
+          case 'samples_pending': {
+            const baseWhere = jurisdictionId 
+              ? sql`${samples.jurisdictionId} = ${jurisdictionId}`
+              : sql`1=1`;
+            
+            const allSamples = await db.select({ count: count() }).from(samples)
+              .where(sql`${baseWhere} AND ${samples.status} = 'pending'`);
+            counts.total = allSamples[0]?.count || 0;
+            counts.pending = counts.total;
+            break;
+          }
+          case 'lab_reports_awaited': {
+            const baseWhere = jurisdictionId 
+              ? sql`${samples.jurisdictionId} = ${jurisdictionId}`
+              : sql`1=1`;
+            
+            const awaiting = await db.select({ count: count() }).from(samples)
+              .where(sql`${baseWhere} AND ${samples.status} = 'dispatched' AND ${samples.labReportDate} IS NULL`);
+            counts.total = awaiting[0]?.count || 0;
+            
+            // Overdue = dispatched more than 14 days ago with no report
+            const fourteenDaysAgo = new Date();
+            fourteenDaysAgo.setDate(today.getDate() - 14);
+            const overdue = await db.select({ count: count() }).from(samples)
+              .where(sql`${baseWhere} AND ${samples.status} = 'dispatched' AND ${samples.labReportDate} IS NULL AND ${samples.dispatchDate} < ${fourteenDaysAgo}`);
+            counts.overdue = overdue[0]?.count || 0;
+            counts.pending = counts.total - counts.overdue;
+            break;
+          }
+          case 'unsafe_samples': {
+            const baseWhere = jurisdictionId 
+              ? sql`${samples.jurisdictionId} = ${jurisdictionId}`
+              : sql`1=1`;
+            
+            const unsafe = await db.select({ count: count() }).from(samples)
+              .where(sql`${baseWhere} AND ${samples.labResult} = 'unsafe'`);
+            counts.total = unsafe[0]?.count || 0;
+            counts.pending = counts.total;
+            break;
+          }
+          case 'substandard_samples': {
+            const baseWhere = jurisdictionId 
+              ? sql`${samples.jurisdictionId} = ${jurisdictionId}`
+              : sql`1=1`;
+            
+            const substandard = await db.select({ count: count() }).from(samples)
+              .where(sql`${baseWhere} AND ${samples.labResult} = 'substandard'`);
+            counts.total = substandard[0]?.count || 0;
+            counts.pending = counts.total;
+            break;
+          }
+          case 'grievances': {
+            const baseWhere = jurisdictionId 
+              ? sql`${grievances.jurisdictionId} = ${jurisdictionId}`
+              : sql`1=1`;
+            
+            const allGrievances = await db.select({ count: count() }).from(grievances)
+              .where(sql`${baseWhere} AND ${grievances.status} IN ('pending', 'investigating')`);
+            counts.total = allGrievances[0]?.count || 0;
+            
+            const pending = await db.select({ count: count() }).from(grievances)
+              .where(sql`${baseWhere} AND ${grievances.status} = 'pending'`);
+            counts.pending = pending[0]?.count || 0;
+            
+            const overdue = await db.select({ count: count() }).from(grievances)
+              .where(sql`${baseWhere} AND ${grievances.dueDate} < ${today} AND ${grievances.status} IN ('pending', 'investigating')`);
+            counts.overdue = overdue[0]?.count || 0;
+            break;
+          }
+          case 'improvement_notices': {
+            const baseWhere = jurisdictionId 
+              ? sql`${improvementNotices.jurisdictionId} = ${jurisdictionId}`
+              : sql`1=1`;
+            
+            const allNotices = await db.select({ count: count() }).from(improvementNotices)
+              .where(sql`${baseWhere} AND ${improvementNotices.status} = 'issued'`);
+            counts.total = allNotices[0]?.count || 0;
+            
+            const overdue = await db.select({ count: count() }).from(improvementNotices)
+              .where(sql`${baseWhere} AND ${improvementNotices.complianceDeadline} < ${today} AND ${improvementNotices.status} = 'issued'`);
+            counts.overdue = overdue[0]?.count || 0;
+            counts.pending = counts.total - counts.overdue;
+            break;
+          }
+          case 'seized_articles': {
+            const baseWhere = jurisdictionId 
+              ? sql`${seizedArticles.jurisdictionId} = ${jurisdictionId}`
+              : sql`1=1`;
+            
+            const allSeized = await db.select({ count: count() }).from(seizedArticles)
+              .where(sql`${baseWhere} AND ${seizedArticles.status} = 'seized'`);
+            counts.total = allSeized[0]?.count || 0;
+            counts.pending = counts.total;
+            break;
+          }
+          case 'special_drives': {
+            const baseWhere = jurisdictionId 
+              ? sql`${specialDrives.jurisdictionId} = ${jurisdictionId} OR ${specialDrives.jurisdictionId} IS NULL`
+              : sql`1=1`;
+            
+            const active = await db.select({ count: count() }).from(specialDrives)
+              .where(sql`${baseWhere} AND ${specialDrives.status} = 'active'`);
+            counts.total = active[0]?.count || 0;
+            
+            const upcoming = await db.select({ count: count() }).from(specialDrives)
+              .where(sql`${baseWhere} AND ${specialDrives.status} = 'upcoming' AND ${specialDrives.startDate} <= ${weekFromNow}`);
+            counts.dueThisWeek = upcoming[0]?.count || 0;
+            counts.pending = counts.total;
+            break;
+          }
+          case 'vvip_duties': {
+            const baseWhere = jurisdictionId 
+              ? sql`${vvipDuties.jurisdictionId} = ${jurisdictionId}`
+              : sql`1=1`;
+            
+            const scheduled = await db.select({ count: count() }).from(vvipDuties)
+              .where(sql`${baseWhere} AND ${vvipDuties.status} = 'scheduled' AND ${vvipDuties.eventDate} >= ${today}`);
+            counts.total = scheduled[0]?.count || 0;
+            
+            const thisWeek = await db.select({ count: count() }).from(vvipDuties)
+              .where(sql`${baseWhere} AND ${vvipDuties.status} = 'scheduled' AND ${vvipDuties.eventDate} >= ${today} AND ${vvipDuties.eventDate} <= ${weekFromNow}`);
+            counts.dueThisWeek = thisWeek[0]?.count || 0;
+            
+            const todayDuty = await db.select({ count: count() }).from(vvipDuties)
+              .where(sql`${baseWhere} AND ${vvipDuties.status} = 'scheduled' AND DATE(${vvipDuties.eventDate}) = DATE(${today})`);
+            counts.dueToday = todayDuty[0]?.count || 0;
+            counts.pending = counts.total;
+            break;
+          }
+          case 'workshops_trainings': {
+            const baseWhere = jurisdictionId 
+              ? sql`${workshops.jurisdictionId} = ${jurisdictionId} OR ${workshops.jurisdictionId} IS NULL`
+              : sql`1=1`;
+            
+            const scheduled = await db.select({ count: count() }).from(workshops)
+              .where(sql`${baseWhere} AND ${workshops.status} = 'scheduled' AND ${workshops.workshopType} IN ('training', 'workshop', 'seminar')`);
+            counts.total = scheduled[0]?.count || 0;
+            
+            const thisWeek = await db.select({ count: count() }).from(workshops)
+              .where(sql`${baseWhere} AND ${workshops.status} = 'scheduled' AND ${workshops.eventDate} >= ${today} AND ${workshops.eventDate} <= ${weekFromNow} AND ${workshops.workshopType} IN ('training', 'workshop', 'seminar')`);
+            counts.dueThisWeek = thisWeek[0]?.count || 0;
+            counts.pending = counts.total;
+            break;
+          }
+          case 'dlac_meetings': {
+            const baseWhere = jurisdictionId 
+              ? sql`${workshops.jurisdictionId} = ${jurisdictionId} OR ${workshops.jurisdictionId} IS NULL`
+              : sql`1=1`;
+            
+            const scheduled = await db.select({ count: count() }).from(workshops)
+              .where(sql`${baseWhere} AND ${workshops.status} = 'scheduled' AND ${workshops.workshopType} = 'dlac_meeting'`);
+            counts.total = scheduled[0]?.count || 0;
+            counts.pending = counts.total;
+            break;
+          }
+        }
+
+        dashboardData.push({
+          ...category,
+          counts
+        });
+      }
+
+      // Group by category group
+      const grouped = {
+        legal: dashboardData.filter(d => d.group === 'legal'),
+        inspection: dashboardData.filter(d => d.group === 'inspection'),
+        sampling: dashboardData.filter(d => d.group === 'sampling'),
+        administrative: dashboardData.filter(d => d.group === 'administrative'),
+        protocol: dashboardData.filter(d => d.group === 'protocol'),
+      };
+
+      // Calculate totals
+      const totals = {
+        totalItems: dashboardData.reduce((sum, d) => sum + d.counts.total, 0),
+        pendingItems: dashboardData.reduce((sum, d) => sum + d.counts.pending, 0),
+        overdueItems: dashboardData.reduce((sum, d) => sum + d.counts.overdue, 0),
+        dueThisWeek: dashboardData.reduce((sum, d) => sum + d.counts.dueThisWeek, 0),
+        dueToday: dashboardData.reduce((sum, d) => sum + d.counts.dueToday, 0),
+        criticalItems: dashboardData.filter(d => d.priority === 'critical').reduce((sum, d) => sum + d.counts.total, 0),
+      };
+
+      res.json({ categories: dashboardData, grouped, totals });
+    } catch (error) {
+      console.error('Error fetching action dashboard:', error);
+      res.status(500).json({ error: "Failed to fetch action dashboard" });
+    }
+  });
+
+  // ============ SPECIAL DRIVES ENDPOINTS ============
+  app.get("/api/special-drives", async (req: Request, res: Response) => {
+    try {
+      const { jurisdictionId, status } = req.query;
+      let whereClause = sql`1=1`;
+      
+      if (jurisdictionId) {
+        whereClause = sql`${whereClause} AND (${specialDrives.jurisdictionId} = ${jurisdictionId} OR ${specialDrives.jurisdictionId} IS NULL)`;
+      }
+      if (status) {
+        whereClause = sql`${whereClause} AND ${specialDrives.status} = ${status}`;
+      }
+      
+      const drives = await db.select().from(specialDrives)
+        .where(whereClause)
+        .orderBy(desc(specialDrives.startDate));
+      res.json(drives);
+    } catch (error) {
+      console.error('Error fetching special drives:', error);
+      res.status(500).json({ error: "Failed to fetch special drives" });
+    }
+  });
+
+  app.post("/api/special-drives", async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(specialDrives).values(req.body).returning();
+      res.json(created);
+    } catch (error) {
+      console.error('Error creating special drive:', error);
+      res.status(500).json({ error: "Failed to create special drive" });
+    }
+  });
+
+  // ============ VVIP DUTIES ENDPOINTS ============
+  app.get("/api/vvip-duties", async (req: Request, res: Response) => {
+    try {
+      const { jurisdictionId, status } = req.query;
+      let whereClause = sql`1=1`;
+      
+      if (jurisdictionId) {
+        whereClause = sql`${whereClause} AND ${vvipDuties.jurisdictionId} = ${jurisdictionId}`;
+      }
+      if (status) {
+        whereClause = sql`${whereClause} AND ${vvipDuties.status} = ${status}`;
+      }
+      
+      const duties = await db.select().from(vvipDuties)
+        .where(whereClause)
+        .orderBy(asc(vvipDuties.eventDate));
+      res.json(duties);
+    } catch (error) {
+      console.error('Error fetching VVIP duties:', error);
+      res.status(500).json({ error: "Failed to fetch VVIP duties" });
+    }
+  });
+
+  app.post("/api/vvip-duties", async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(vvipDuties).values(req.body).returning();
+      res.json(created);
+    } catch (error) {
+      console.error('Error creating VVIP duty:', error);
+      res.status(500).json({ error: "Failed to create VVIP duty" });
+    }
+  });
+
+  // ============ WORKSHOPS ENDPOINTS ============
+  app.get("/api/workshops", async (req: Request, res: Response) => {
+    try {
+      const { jurisdictionId, status, type } = req.query;
+      let whereClause = sql`1=1`;
+      
+      if (jurisdictionId) {
+        whereClause = sql`${whereClause} AND (${workshops.jurisdictionId} = ${jurisdictionId} OR ${workshops.jurisdictionId} IS NULL)`;
+      }
+      if (status) {
+        whereClause = sql`${whereClause} AND ${workshops.status} = ${status}`;
+      }
+      if (type) {
+        whereClause = sql`${whereClause} AND ${workshops.workshopType} = ${type}`;
+      }
+      
+      const workshopList = await db.select().from(workshops)
+        .where(whereClause)
+        .orderBy(asc(workshops.eventDate));
+      res.json(workshopList);
+    } catch (error) {
+      console.error('Error fetching workshops:', error);
+      res.status(500).json({ error: "Failed to fetch workshops" });
+    }
+  });
+
+  app.post("/api/workshops", async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(workshops).values(req.body).returning();
+      res.json(created);
+    } catch (error) {
+      console.error('Error creating workshop:', error);
+      res.status(500).json({ error: "Failed to create workshop" });
+    }
+  });
+
+  // ============ IMPROVEMENT NOTICES ENDPOINTS ============
+  app.get("/api/improvement-notices", async (req: Request, res: Response) => {
+    try {
+      const { jurisdictionId, status } = req.query;
+      let whereClause = sql`1=1`;
+      
+      if (jurisdictionId) {
+        whereClause = sql`${whereClause} AND ${improvementNotices.jurisdictionId} = ${jurisdictionId}`;
+      }
+      if (status) {
+        whereClause = sql`${whereClause} AND ${improvementNotices.status} = ${status}`;
+      }
+      
+      const notices = await db.select().from(improvementNotices)
+        .where(whereClause)
+        .orderBy(desc(improvementNotices.issueDate));
+      res.json(notices);
+    } catch (error) {
+      console.error('Error fetching improvement notices:', error);
+      res.status(500).json({ error: "Failed to fetch improvement notices" });
+    }
+  });
+
+  app.post("/api/improvement-notices", async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(improvementNotices).values(req.body).returning();
+      res.json(created);
+    } catch (error) {
+      console.error('Error creating improvement notice:', error);
+      res.status(500).json({ error: "Failed to create improvement notice" });
+    }
+  });
+
+  // ============ SEIZED ARTICLES ENDPOINTS ============
+  app.get("/api/seized-articles", async (req: Request, res: Response) => {
+    try {
+      const { jurisdictionId, status } = req.query;
+      let whereClause = sql`1=1`;
+      
+      if (jurisdictionId) {
+        whereClause = sql`${whereClause} AND ${seizedArticles.jurisdictionId} = ${jurisdictionId}`;
+      }
+      if (status) {
+        whereClause = sql`${whereClause} AND ${seizedArticles.status} = ${status}`;
+      }
+      
+      const articles = await db.select().from(seizedArticles)
+        .where(whereClause)
+        .orderBy(desc(seizedArticles.seizureDate));
+      res.json(articles);
+    } catch (error) {
+      console.error('Error fetching seized articles:', error);
+      res.status(500).json({ error: "Failed to fetch seized articles" });
+    }
+  });
+
+  app.post("/api/seized-articles", async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(seizedArticles).values(req.body).returning();
+      res.json(created);
+    } catch (error) {
+      console.error('Error creating seized article:', error);
+      res.status(500).json({ error: "Failed to create seized article" });
     }
   });
 

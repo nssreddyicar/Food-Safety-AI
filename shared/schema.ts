@@ -531,3 +531,219 @@ export const prosecutionHearings = pgTable("prosecution_hearings", {
 });
 
 export type ProsecutionHearing = typeof prosecutionHearings.$inferSelect;
+
+// Action Dashboard Categories - Admin-configurable action categories
+export const actionCategories = pgTable("action_categories", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(), // e.g., 'court_cases', 'pending_inspections'
+  description: text("description"),
+  icon: text("icon").notNull().default("alert-circle"), // Feather icon name
+  color: text("color").notNull().default("#1E40AF"),
+  group: text("group").notNull(), // 'legal', 'inspection', 'sampling', 'administrative', 'protocol'
+  entityType: text("entity_type").notNull(), // 'prosecution_case', 'inspection', 'sample', etc.
+  countQuery: text("count_query"), // SQL or entity filter for counting items
+  dueDateField: text("due_date_field"), // Field name for due date calculation
+  slaDefaultDays: integer("sla_default_days").default(7), // Default SLA in days
+  priority: text("priority").notNull().default("normal"), // critical, high, normal
+  displayOrder: integer("display_order").notNull().default(0),
+  isEnabled: boolean("is_enabled").default(true),
+  showOnDashboard: boolean("show_on_dashboard").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type ActionCategory = typeof actionCategories.$inferSelect;
+
+// Action Items - Individual action items derived from various entities
+export const actionItems = pgTable("action_items", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  categoryId: varchar("category_id").notNull(),
+  entityType: text("entity_type").notNull(), // 'prosecution_case', 'inspection', 'sample', etc.
+  entityId: varchar("entity_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  priority: text("priority").notNull().default("normal"), // critical, high, normal
+  status: text("status").notNull().default("pending"), // pending, in_progress, completed, overdue
+  dueDate: timestamp("due_date"),
+  completedDate: timestamp("completed_date"),
+  assignedOfficerId: varchar("assigned_officer_id"),
+  jurisdictionId: varchar("jurisdiction_id"),
+  metadata: jsonb("metadata"), // Additional entity-specific data
+  reminderSent: boolean("reminder_sent").default(false),
+  escalated: boolean("escalated").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type ActionItem = typeof actionItems.$inferSelect;
+
+// Action Item Audit Log - Immutable audit trail for action status changes
+export const actionItemAuditLog = pgTable("action_item_audit_log", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  actionItemId: varchar("action_item_id").notNull(),
+  previousStatus: text("previous_status"),
+  newStatus: text("new_status").notNull(),
+  changedByOfficerId: varchar("changed_by_officer_id"),
+  changedByName: text("changed_by_name"),
+  changeReason: text("change_reason"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type ActionItemAuditLog = typeof actionItemAuditLog.$inferSelect;
+
+// Dashboard SLA Settings - Global SLA configuration per category
+export const slASettings = pgTable("sla_settings", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  categoryId: varchar("category_id").notNull(),
+  slaDays: integer("sla_days").notNull().default(7),
+  warningDays: integer("warning_days").notNull().default(2), // Days before due to show warning
+  criticalDays: integer("critical_days").notNull().default(0), // Days to mark as critical
+  autoEscalateDays: integer("auto_escalate_days"), // Days after due to auto-escalate
+  reminderEnabled: boolean("reminder_enabled").default(true),
+  escalationEnabled: boolean("escalation_enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type SLASetting = typeof slASettings.$inferSelect;
+
+// Special Drives - Admin-defined special inspection drives
+export const specialDrives = pgTable("special_drives", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  targetCount: integer("target_count").default(0), // Target number of inspections
+  completedCount: integer("completed_count").default(0),
+  status: text("status").notNull().default("upcoming"), // upcoming, active, completed, cancelled
+  priority: text("priority").notNull().default("high"),
+  jurisdictionId: varchar("jurisdiction_id"), // null for all jurisdictions
+  createdByOfficerId: varchar("created_by_officer_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type SpecialDrive = typeof specialDrives.$inferSelect;
+
+// VVIP Protocol Duties - Special duty assignments
+export const vvipDuties = pgTable("vvip_duties", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  dutyType: text("duty_type").notNull(), // 'vvip', 'asl', 'event'
+  title: text("title").notNull(),
+  description: text("description"),
+  location: text("location"),
+  eventDate: timestamp("event_date").notNull(),
+  startTime: text("start_time"),
+  endTime: text("end_time"),
+  vvipName: text("vvip_name"),
+  vvipDesignation: text("vvip_designation"),
+  securityLevel: text("security_level"), // 'z_plus', 'z', 'y', 'x'
+  assignedOfficerIds: jsonb("assigned_officer_ids"), // Array of officer IDs
+  status: text("status").notNull().default("scheduled"), // scheduled, completed, cancelled
+  remarks: text("remarks"),
+  images: jsonb("images"),
+  jurisdictionId: varchar("jurisdiction_id"),
+  createdByOfficerId: varchar("created_by_officer_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type VvipDuty = typeof vvipDuties.$inferSelect;
+
+// Workshops & Trainings - Training and workshop records
+export const workshops = pgTable("workshops", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  workshopType: text("workshop_type").notNull(), // 'training', 'workshop', 'seminar', 'dlac_meeting'
+  venue: text("venue"),
+  eventDate: timestamp("event_date").notNull(),
+  startTime: text("start_time"),
+  endTime: text("end_time"),
+  organizerName: text("organizer_name"),
+  targetAudience: text("target_audience"),
+  maxParticipants: integer("max_participants"),
+  registeredParticipants: integer("registered_participants").default(0),
+  attendedParticipants: integer("attended_participants").default(0),
+  status: text("status").notNull().default("scheduled"), // scheduled, ongoing, completed, cancelled
+  isCompulsory: boolean("is_compulsory").default(false),
+  assignedOfficerIds: jsonb("assigned_officer_ids"),
+  remarks: text("remarks"),
+  materials: jsonb("materials"), // Array of attachment URLs
+  jurisdictionId: varchar("jurisdiction_id"),
+  createdByOfficerId: varchar("created_by_officer_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type Workshop = typeof workshops.$inferSelect;
+
+// Improvement Notices - Regulatory notices issued to FBOs
+export const improvementNotices = pgTable("improvement_notices", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  noticeNumber: text("notice_number").notNull().unique(),
+  inspectionId: varchar("inspection_id"),
+  fboName: text("fbo_name").notNull(),
+  fboAddress: text("fbo_address"),
+  fboLicenseNumber: text("fbo_license_number"),
+  issueDate: timestamp("issue_date").notNull(),
+  complianceDeadline: timestamp("compliance_deadline").notNull(),
+  deviations: jsonb("deviations"), // Array of deviations to be corrected
+  status: text("status").notNull().default("issued"), // issued, compliance_verified, non_compliant, escalated
+  verificationDate: timestamp("verification_date"),
+  verificationRemarks: text("verification_remarks"),
+  followUpInspectionId: varchar("follow_up_inspection_id"),
+  issuedByOfficerId: varchar("issued_by_officer_id"),
+  jurisdictionId: varchar("jurisdiction_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type ImprovementNotice = typeof improvementNotices.$inferSelect;
+
+// Seized Articles - Records of seized food articles
+export const seizedArticles = pgTable("seized_articles", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  seizureNumber: text("seizure_number").notNull().unique(),
+  inspectionId: varchar("inspection_id"),
+  fboName: text("fbo_name").notNull(),
+  fboAddress: text("fbo_address"),
+  articleName: text("article_name").notNull(),
+  quantity: text("quantity"),
+  estimatedValue: integer("estimated_value"),
+  seizureDate: timestamp("seizure_date").notNull(),
+  reasonForSeizure: text("reason_for_seizure"),
+  storageLocation: text("storage_location"),
+  status: text("status").notNull().default("seized"), // seized, destroyed, released, disposed
+  disposalDate: timestamp("disposal_date"),
+  disposalMethod: text("disposal_method"),
+  disposalWitness: text("disposal_witness"),
+  images: jsonb("images"),
+  seizedByOfficerId: varchar("seized_by_officer_id"),
+  jurisdictionId: varchar("jurisdiction_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type SeizedArticle = typeof seizedArticles.$inferSelect;
