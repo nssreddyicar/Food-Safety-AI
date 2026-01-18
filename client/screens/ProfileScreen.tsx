@@ -186,17 +186,6 @@ export default function ProfileScreen() {
         </View>
       ) : null}
 
-      {user?.showAdminPanel ? (
-        <View style={styles.section}>
-          <ThemedText type="h4" style={styles.sectionTitle}>
-            Administration
-          </ThemedText>
-          <View style={[styles.menuGroup, Shadows.sm]}>
-            <MenuItem icon="settings" label="Super Admin Panel" onPress={handleOpenAdminPanel} />
-          </View>
-        </View>
-      ) : null}
-
       <View style={styles.section}>
         <ThemedText type="h4" style={styles.sectionTitle}>
           Settings
@@ -209,6 +198,17 @@ export default function ProfileScreen() {
           <MenuItem icon="info" label="About" value="Version 1.0.0" />
         </View>
       </View>
+
+      {user?.showAdminPanel ? (
+        <View style={styles.section}>
+          <ThemedText type="h4" style={styles.sectionTitle}>
+            Administration
+          </ThemedText>
+          <View style={[styles.menuGroup, Shadows.sm]}>
+            <MenuItem icon="shield" label="Super Admin Panel" onPress={handleOpenAdminPanel} />
+          </View>
+        </View>
+      ) : null}
 
       <View style={styles.section}>
         <View style={[styles.menuGroup, Shadows.sm]}>
