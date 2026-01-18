@@ -624,6 +624,18 @@ export default function SampleDetailsScreen() {
 
   const handlePreviewTemplate = (template: DocumentTemplate) => {
     setPreviewTemplate(template);
+    // Calculate optimal zoom to fit A4 page in viewport
+    // A4 at 96 DPI: 794 x 1123 pixels
+    const pageWidth = 794;
+    const pageHeight = 1123;
+    // Get viewport dimensions (approximate, accounting for header and padding)
+    const viewportWidth = (typeof window !== 'undefined' ? window.innerWidth : 400) - 80;
+    const viewportHeight = (typeof window !== 'undefined' ? window.innerHeight : 700) - 150;
+    // Calculate zoom to fit both dimensions
+    const zoomX = viewportWidth / pageWidth;
+    const zoomY = viewportHeight / pageHeight;
+    const optimalZoom = Math.min(zoomX, zoomY, 1); // Max zoom 100%
+    setPreviewZoom(Math.max(optimalZoom, 0.2)); // Min zoom 20%
     setPreviewModalVisible(true);
   };
 
@@ -1222,45 +1234,40 @@ export default function SampleDetailsScreen() {
           <View style={styles.previewViewport}>
             {previewTemplate ? (
               Platform.OS === 'web' ? (
-                <div style={{ 
-                  flex: 1, 
-                  width: '100%', 
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 20,
-                  overflow: 'hidden',
-                  backgroundColor: '#4b5563'
-                }}>
+                <div 
+                  id="preview-container"
+                  style={{ 
+                    flex: 1, 
+                    width: '100%', 
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 16,
+                    overflow: 'hidden',
+                    backgroundColor: '#4b5563'
+                  }}
+                >
                   <div style={{
                     width: 794 * previewZoom,
                     height: 1123 * previewZoom,
-                    position: 'relative',
+                    backgroundColor: 'white',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
                     flexShrink: 0,
+                    overflow: 'hidden',
                   }}>
-                    <div style={{
-                      width: 794,
-                      height: 1123,
-                      backgroundColor: 'white',
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-                      transform: `scale(${previewZoom})`,
-                      transformOrigin: 'top left',
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                    }}>
-                      <iframe
-                        srcDoc={generatePdfHtml(previewTemplate)}
-                        style={{ 
-                          width: '100%',
-                          height: '100%',
-                          border: 'none',
-                          backgroundColor: 'white',
-                        }}
-                        title="Document Preview"
-                      />
-                    </div>
+                    <iframe
+                      srcDoc={generatePdfHtml(previewTemplate)}
+                      style={{ 
+                        width: 794,
+                        height: 1123,
+                        border: 'none',
+                        backgroundColor: 'white',
+                        transform: `scale(${previewZoom})`,
+                        transformOrigin: 'top left',
+                      }}
+                      title="Document Preview"
+                    />
                   </div>
                 </div>
               ) : (
