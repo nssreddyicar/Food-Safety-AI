@@ -866,7 +866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/templates", async (req: Request, res: Response) => {
     try {
-      const { name, description, category, content, placeholders, pageSize, orientation, marginTop, marginBottom, marginLeft, marginRight, fontFamily, fontSize, showPageNumbers, headerText, footerText, status } = req.body;
+      const { name, description, category, content, placeholders, pageSize, orientation, marginTop, marginBottom, marginLeft, marginRight, fontFamily, fontSize, showPageNumbers, pageNumberPosition, pageNumberOffset, showHeader, showFooter, headerText, footerText, headerAlignment, footerAlignment, status } = req.body;
       const [newTemplate] = await db.insert(documentTemplates).values({
         name,
         description,
@@ -882,8 +882,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fontFamily: fontFamily || "Times New Roman",
         fontSize: fontSize || 12,
         showPageNumbers: showPageNumbers !== false,
+        pageNumberPosition: pageNumberPosition || "center",
+        pageNumberOffset: pageNumberOffset || 0,
+        showHeader: showHeader !== false,
+        showFooter: showFooter !== false,
         headerText,
         footerText,
+        headerAlignment: headerAlignment || "center",
+        footerAlignment: footerAlignment || "center",
         status: status || "active",
       }).returning();
       res.json(newTemplate);
@@ -895,7 +901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/admin/templates/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { name, description, category, content, placeholders, pageSize, orientation, marginTop, marginBottom, marginLeft, marginRight, fontFamily, fontSize, showPageNumbers, headerText, footerText, status } = req.body;
+      const { name, description, category, content, placeholders, pageSize, orientation, marginTop, marginBottom, marginLeft, marginRight, fontFamily, fontSize, showPageNumbers, pageNumberPosition, pageNumberOffset, showHeader, showFooter, headerText, footerText, headerAlignment, footerAlignment, status } = req.body;
       const [updated] = await db.update(documentTemplates)
         .set({
           name,
@@ -912,8 +918,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fontFamily,
           fontSize,
           showPageNumbers,
+          pageNumberPosition,
+          pageNumberOffset,
+          showHeader,
+          showFooter,
           headerText,
           footerText,
+          headerAlignment,
+          footerAlignment,
           status,
           updatedAt: new Date(),
         })

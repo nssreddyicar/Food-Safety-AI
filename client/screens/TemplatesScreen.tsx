@@ -30,8 +30,14 @@ interface DocumentTemplate {
   fontFamily: string;
   fontSize: number;
   showPageNumbers: boolean;
+  pageNumberPosition: string;
+  pageNumberOffset: number;
+  showHeader: boolean;
+  showFooter: boolean;
   headerText?: string;
   footerText?: string;
+  headerAlignment: string;
+  footerAlignment: string;
   status: string;
 }
 
@@ -162,6 +168,32 @@ export default function TemplatesScreen() {
   const generatePdfHtml = (template: DocumentTemplate): string => {
     const processedContent = replacePlaceholders(template.content);
     const contentWithLineBreaks = processedContent.replace(/\n/g, '<br>');
+    
+    const pageNumberPosition = template.pageNumberPosition || 'center';
+    const pageNumberOffset = template.pageNumberOffset || 0;
+    const headerAlignment = template.headerAlignment || 'center';
+    const footerAlignment = template.footerAlignment || 'center';
+    
+    let pageNumberStyle = `text-align: ${pageNumberPosition};`;
+    if (pageNumberPosition === 'left') {
+      pageNumberStyle += ` padding-left: ${template.marginLeft + pageNumberOffset}mm;`;
+    } else if (pageNumberPosition === 'right') {
+      pageNumberStyle += ` padding-right: ${template.marginRight - pageNumberOffset}mm;`;
+    } else {
+      pageNumberStyle += ` margin-left: ${pageNumberOffset}mm;`;
+    }
+
+    const headerHtml = template.showHeader !== false && template.headerText 
+      ? `<div class="header" style="text-align: ${headerAlignment};">${template.headerText}</div>` 
+      : '';
+    
+    const footerHtml = template.showFooter !== false && template.footerText 
+      ? `<div class="footer" style="text-align: ${footerAlignment};">${template.footerText}</div>` 
+      : '';
+    
+    const pageNumberHtml = template.showPageNumbers !== false 
+      ? `<div class="page-number" style="${pageNumberStyle}">Page 1</div>` 
+      : '';
 
     return `
       <!DOCTYPE html>
@@ -174,6 +206,7 @@ export default function TemplatesScreen() {
               size: ${template.pageSize} ${template.orientation};
               margin: ${template.marginTop}mm ${template.marginRight}mm ${template.marginBottom}mm ${template.marginLeft}mm;
             }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
             body {
               font-family: "${template.fontFamily}", serif;
               font-size: ${template.fontSize}pt;
@@ -181,28 +214,40 @@ export default function TemplatesScreen() {
               color: #1f2937;
             }
             .header {
-              text-align: center;
               padding-bottom: 16px;
               border-bottom: 1px solid #e5e7eb;
               margin-bottom: 24px;
+              font-weight: 600;
             }
             .footer {
-              text-align: center;
               padding-top: 16px;
               border-top: 1px solid #e5e7eb;
               margin-top: 24px;
               font-size: 10pt;
               color: #6b7280;
             }
+            .page-number {
+              margin-top: 20px;
+              font-size: 10pt;
+              color: #6b7280;
+            }
             .content {
               white-space: pre-wrap;
             }
+            table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+            th, td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; }
+            th { background: #f3f4f6; font-weight: 600; }
+            h1, h2, h3, h4, h5, h6 { margin: 16px 0 8px 0; }
+            p { margin: 8px 0; }
+            ul, ol { margin: 8px 0; padding-left: 24px; }
+            .signature-line { border-bottom: 1px solid #000; width: 200px; display: inline-block; margin-top: 40px; }
           </style>
         </head>
         <body>
-          ${template.headerText ? `<div class="header">${template.headerText}</div>` : ''}
+          ${headerHtml}
           <div class="content">${contentWithLineBreaks}</div>
-          ${template.footerText ? `<div class="footer">${template.footerText}</div>` : ''}
+          ${footerHtml}
+          ${pageNumberHtml}
         </body>
       </html>
     `;
