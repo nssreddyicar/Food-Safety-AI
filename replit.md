@@ -137,18 +137,24 @@ Admin-configurable workflow engine for sample lifecycle management:
 - **Transitions**: Define movement between nodes with conditions (always, lab_result, field_value)
 - **Conditional Logic**: Branch to different paths based on lab results (safe → closed, unsafe → prosecution, substandard → notice)
 - **Input Fields**: Custom data collection fields per node (JSON-defined)
-- **Template Linking**: Associate document templates with specific workflow nodes
+  - Field types: `text`, `date` (calendar picker with DD-MM-YYYY format), `select`, `textarea`, `number`, `image` (camera/gallery upload)
+- **Template Linking**: Associate document templates with specific workflow nodes (shown on mobile timeline)
 - Mobile app timeline dynamically adapts to admin configuration
+- Interactive workflow nodes - tap any node to open modal with dynamic input fields
+- Image upload support with camera and gallery options
 
 #### Default Workflow
-The system seeds with a default 6-node workflow:
-1. Sample Lifted (Start) → 2. Dispatched to Lab → 3. Lab Report Received (Decision)
+The system seeds with a default 6-node workflow with comprehensive input fields:
+1. **Sample Lifted** (Start): Date, place, image upload, remarks
+2. **Dispatched to Lab**: Date, mode, courier name, tracking number, image, remarks
+3. **Lab Report Received** (Decision): Report date, report number, covering letter details, analyst name/opinion, result, image
    - If Safe → Sample Closed (End)
    - If Unsafe → Initiate Prosecution
    - If Substandard → Issue Improvement Notice
 
 #### Admin Panel
-Access at `/admin/workflow` (Super Admin login required: superadmin / Admin@123)
+Access at `/admin/workflow` to configure workflow nodes, transitions, input fields, and template assignments
+- Use "Load Default Workflow" button to seed/reset the default workflow with enhanced fields
 
 ## Design System
 - **Primary Color**: #1E40AF (Deep authoritative blue)
