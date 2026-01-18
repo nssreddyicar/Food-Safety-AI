@@ -122,6 +122,17 @@ export default function ScannerScreen() {
   const pickImageFromGallery = async () => {
     if (isProcessingImage) return;
     
+    // Gallery scanning works best on native platforms
+    if (Platform.OS === 'web') {
+      Alert.alert(
+        'Feature Unavailable',
+        'Gallery scanning works best in the Expo Go app. Please use your phone to scan images from gallery.'
+      );
+      return;
+    }
+    
+    setIsProcessingImage(true);
+    
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
@@ -130,7 +141,6 @@ export default function ScannerScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setIsProcessingImage(true);
         const imageUri = result.assets[0].uri;
         
         try {
@@ -180,15 +190,19 @@ export default function ScannerScreen() {
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 2000);
           } else {
-            Alert.alert('No Code Found', 'No QR code or barcode was detected in the selected image.');
+            Alert.alert('No Code Found', 'No QR code or barcode was detected in the selected image. Make sure the image contains a clear, readable code.');
           }
         } catch (scanError) {
           console.error('Error scanning image:', scanError);
-          Alert.alert('Scan Error', 'Could not scan the selected image. Please try another image.');
+          Alert.alert(
+            'Scan Error', 
+            'Could not scan the selected image. Make sure the image contains a clear QR code or barcode and try again.'
+          );
         }
       }
     } catch (error) {
       console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to access the image gallery.');
     } finally {
       setIsProcessingImage(false);
     }
