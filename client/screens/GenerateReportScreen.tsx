@@ -1,0 +1,442 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, ActivityIndicator, Alert, Platform, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { useRoute } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { Card } from '@/components/Card';
+import { Button } from '@/components/Button';
+import { useTheme } from '@/hooks/useTheme';
+import { useAuthContext } from '@/context/AuthContext';
+import { getApiUrl } from '@/lib/query-client';
+import { generateReportHTML } from '@/lib/report-template';
+import { TimeSelection, getDateRangeForSelection, getFilterDisplayLabel } from '@/components/TimeFilter';
+import { DashboardMetrics, ActionDashboardData } from '@/types';
+import { Spacing, BorderRadius } from '@/constants/theme';
+
+export default function GenerateReportScreen() {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
+  const route = useRoute<any>();
+  const { user } = useAuthContext();
+
+  const timeSelection: TimeSelection = route.params?.timeSelection || { 
+    category: 'month', 
+    value: `${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}` 
+  };
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [actionData, setActionData] = useState<ActionDashboardData | null>(null);
+  const [pdfUri, setPdfUri] = useState<string | null>(null);
+
+  const jurisdictionId = user?.jurisdiction?.unitId;
+  const timePeriodLabel = getFilterDisplayLabel(timeSelection);
+  const dateRange = getDateRangeForSelection(timeSelection);
+
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
+      const metricsUrl = new URL('/api/dashboard/metrics', getApiUrl());
+      const actionUrl = new URL('/api/action-dashboard', getApiUrl());
+      
+      if (jurisdictionId) {
+        metricsUrl.searchParams.set('jurisdictionId', jurisdictionId);
+        actionUrl.searchParams.set('jurisdictionId', jurisdictionId);
+      }
+      
+      metricsUrl.searchParams.set('startDate', dateRange.startDate);
+      metricsUrl.searchParams.set('endDate', dateRange.endDate);
+      actionUrl.searchParams.set('startDate', dateRange.startDate);
+      actionUrl.searchParams.set('endDate', dateRange.endDate);
+
+      const [metricsRes, actionRes] = await Promise.all([
+        fetch(metricsUrl.toString()),
+        fetch(actionUrl.toString()),
+      ]);
+
+      if (metricsRes.ok) {
+        const metricsData = await metricsRes.json();
+        setMetrics(metricsData);
+      }
+
+      if (actionRes.ok) {
+        const actionDashboardData = await actionRes.json();
+        setActionData(actionDashboardData);
+      }
+    } catch (error) {
+      console.error('Failed to load report data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [jurisdictionId, dateRange.startDate, dateRange.endDate]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const generatePDF = async () => {
+    if (!metrics || !actionData) {
+      Alert.alert('Error', 'Data not loaded yet. Please wait.');
+      return;
+    }
+
+    try {
+      setIsGenerating(true);
+
+      const html = generateReportHTML({
+        timePeriod: timePeriodLabel,
+        dateRange,
+        actionData,
+        metrics,
+        officerName: user?.name || 'FSO Officer',
+        jurisdictionName: user?.jurisdiction?.unitName || 'Jurisdiction',
+        generatedAt: new Date().toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      });
+
+      const { uri } = await Print.printToFileAsync({
+        html,
+        base64: false,
+      });
+
+      const fileName = `FSI_Report_${timePeriodLabel.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+      const newUri = `${FileSystem.cacheDirectory}${fileName}`;
+      
+      await FileSystem.moveAsync({
+        from: uri,
+        to: newUri,
+      });
+
+      setPdfUri(newUri);
+      Alert.alert('Success', 'Report generated successfully!');
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
+      Alert.alert('Error', 'Failed to generate PDF report.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const sharePDF = async () => {
+    if (!pdfUri) {
+      Alert.alert('Error', 'Please generate the report first.');
+      return;
+    }
+
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Error', 'Sharing is not available on this device.');
+        return;
+      }
+
+      await Sharing.shareAsync(pdfUri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `Share FSI Report - ${timePeriodLabel}`,
+        UTI: 'com.adobe.pdf',
+      });
+    } catch (error) {
+      console.error('Failed to share PDF:', error);
+      Alert.alert('Error', 'Failed to share the report.');
+    }
+  };
+
+  const downloadPDF = async () => {
+    if (!pdfUri) {
+      Alert.alert('Error', 'Please generate the report first.');
+      return;
+    }
+
+    if (Platform.OS === 'web') {
+      const link = document.createElement('a');
+      link.href = pdfUri;
+      link.download = `FSI_Report_${timePeriodLabel.replace(/\s+/g, '_')}.pdf`;
+      link.click();
+    } else {
+      await sharePDF();
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  return (
+    <ThemedView style={styles.container}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: headerHeight + Spacing.lg,
+            paddingBottom: insets.bottom + Spacing.xl,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <View style={[styles.iconContainer, { backgroundColor: theme.primary + '15' }]}>
+            <Feather name="file-text" size={32} color={theme.primary} />
+          </View>
+          <ThemedText type="h1" style={styles.title}>Generate Report</ThemedText>
+          <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center' }}>
+            Create a professional PDF report for the selected time period
+          </ThemedText>
+        </View>
+
+        <Card style={styles.periodCard}>
+          <View style={styles.periodHeader}>
+            <Feather name="calendar" size={20} color={theme.primary} />
+            <ThemedText type="body" style={{ fontWeight: '600' }}>Report Period</ThemedText>
+          </View>
+          <View style={styles.periodDetails}>
+            <View style={styles.periodRow}>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>Selected Period</ThemedText>
+              <ThemedText type="body" style={{ fontWeight: '600' }}>{timePeriodLabel}</ThemedText>
+            </View>
+            <View style={styles.periodRow}>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>Date Range</ThemedText>
+              <ThemedText type="body">{formatDate(dateRange.startDate)} - {formatDate(dateRange.endDate)}</ThemedText>
+            </View>
+          </View>
+        </Card>
+
+        {isLoading ? (
+          <Card style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <ThemedText type="body" style={{ marginTop: Spacing.md, color: theme.textSecondary }}>
+              Loading report data...
+            </ThemedText>
+          </Card>
+        ) : (
+          <>
+            <Card style={styles.previewCard}>
+              <ThemedText type="body" style={{ marginBottom: Spacing.md, fontWeight: '600' }}>Report Contents</ThemedText>
+              
+              <View style={styles.contentItem}>
+                <View style={[styles.contentIcon, { backgroundColor: '#DC262620' }]}>
+                  <Feather name="alert-circle" size={16} color="#DC2626" />
+                </View>
+                <View style={styles.contentText}>
+                  <ThemedText type="body">Action Dashboard Summary</ThemedText>
+                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    Overdue, Due Today, This Week, Total actions
+                  </ThemedText>
+                </View>
+              </View>
+
+              <View style={styles.contentItem}>
+                <View style={[styles.contentIcon, { backgroundColor: '#1E40AF20' }]}>
+                  <Feather name="list" size={16} color="#1E40AF" />
+                </View>
+                <View style={styles.contentText}>
+                  <ThemedText type="body">Action Categories Breakdown</ThemedText>
+                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    {actionData?.categories.length || 0} categories across 5 groups
+                  </ThemedText>
+                </View>
+              </View>
+
+              <View style={styles.contentItem}>
+                <View style={[styles.contentIcon, { backgroundColor: '#05966920' }]}>
+                  <Feather name="bar-chart-2" size={16} color="#059669" />
+                </View>
+                <View style={styles.contentText}>
+                  <ThemedText type="body">Statistics Overview</ThemedText>
+                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    Licenses, Registrations, Inspections, Grievances, FSW, Adjudication
+                  </ThemedText>
+                </View>
+              </View>
+
+              <View style={styles.contentItem}>
+                <View style={[styles.contentIcon, { backgroundColor: '#D9770620' }]}>
+                  <Feather name="dollar-sign" size={16} color="#D97706" />
+                </View>
+                <View style={styles.contentText}>
+                  <ThemedText type="body">Financial Summary</ThemedText>
+                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    Revenue from licenses, registrations, and penalties
+                  </ThemedText>
+                </View>
+              </View>
+            </Card>
+
+            <View style={styles.actions}>
+              <Button
+                onPress={generatePDF}
+                disabled={isGenerating || !metrics || !actionData}
+                style={styles.generateButton}
+              >
+                {isGenerating ? "Generating..." : "Generate PDF Report"}
+              </Button>
+
+              {pdfUri ? (
+                <View style={styles.shareActions}>
+                  <Pressable 
+                    onPress={sharePDF}
+                    style={[styles.secondaryButton, { borderColor: theme.primary }]}
+                  >
+                    <Feather name="share-2" size={18} color={theme.primary} />
+                    <ThemedText type="body" style={{ color: theme.primary, fontWeight: '600' }}>Share</ThemedText>
+                  </Pressable>
+                  <Pressable 
+                    onPress={downloadPDF}
+                    style={[styles.secondaryButton, { borderColor: theme.primary }]}
+                  >
+                    <Feather name="download" size={18} color={theme.primary} />
+                    <ThemedText type="body" style={{ color: theme.primary, fontWeight: '600' }}>Download</ThemedText>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
+
+            {pdfUri ? (
+              <View style={styles.successCard}>
+                <View style={styles.successContent}>
+                  <Feather name="check-circle" size={24} color="#059669" />
+                  <View style={styles.successText}>
+                    <ThemedText type="body" style={{ color: '#047857', fontWeight: '600' }}>
+                      Report Ready
+                    </ThemedText>
+                    <ThemedText type="small" style={{ color: '#065F46' }}>
+                      Your PDF report has been generated and is ready to share or download.
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+          </>
+        )}
+      </ScrollView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.lg,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  iconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: Spacing.xs,
+  },
+  periodCard: {
+    padding: Spacing.lg,
+  },
+  periodHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  periodDetails: {
+    gap: Spacing.sm,
+  },
+  periodRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  loadingCard: {
+    padding: Spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewCard: {
+    padding: Spacing.lg,
+  },
+  contentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  contentIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contentText: {
+    flex: 1,
+    gap: 2,
+  },
+  actions: {
+    gap: Spacing.md,
+  },
+  generateButton: {
+    width: '100%',
+  },
+  shareActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  actionButton: {
+    flex: 1,
+  },
+  secondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 2,
+    backgroundColor: 'transparent',
+  },
+  successCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: '#D1FAE5',
+  },
+  successContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  successText: {
+    flex: 1,
+    gap: 2,
+  },
+});

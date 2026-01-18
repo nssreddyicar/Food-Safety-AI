@@ -373,10 +373,18 @@ export default function DashboardScreen() {
                 {getFilterDisplayLabel(timeSelection)} overview
               </ThemedText>
             </View>
-            <TimeFilter 
-              selected={timeSelection} 
-              onSelect={handleTimeSelectionChange}
-            />
+            <View style={styles.headerActions}>
+              <TimeFilter 
+                selected={timeSelection} 
+                onSelect={handleTimeSelectionChange}
+              />
+              <Pressable
+                onPress={() => navigation.navigate('GenerateReport', { timeSelection })}
+                style={[styles.reportButton, { backgroundColor: theme.primary + '15' }]}
+              >
+                <Feather name="file-text" size={18} color={theme.primary} />
+              </Pressable>
+            </View>
           </View>
         </Animated.View>
 
@@ -671,6 +679,18 @@ const styles = StyleSheet.create({
   },
   headerText: {
     flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  reportButton: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 26,
