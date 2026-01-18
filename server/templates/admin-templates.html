@@ -83,7 +83,8 @@
       .zoom-btn.active { background: #1E40AF; }
       .zoom-btn svg { width: 16px; height: 16px; fill: currentColor; }
       .zoom-level { color: white; font-size: 12px; min-width: 50px; text-align: center; background: rgba(255,255,255,0.1); padding: 6px 10px; border-radius: 4px; }
-      .preview-viewport { background: #4b5563; padding: 20px; overflow: auto; max-height: 600px; display: flex; justify-content: center; }
+      .preview-viewport { background: #4b5563; padding: 20px; overflow: auto; max-height: 600px; display: flex; justify-content: center; scrollbar-width: none; -ms-overflow-style: none; }
+      .preview-viewport::-webkit-scrollbar { display: none; }
       .preview-page { background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transform-origin: top center; transition: transform 0.2s ease; }
       .page-size-label { color: #9ca3af; font-size: 11px; padding: 8px 16px; text-align: center; background: #1f2937; border-top: 1px solid #374151; }
     </style>
