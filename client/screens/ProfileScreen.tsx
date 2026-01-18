@@ -222,6 +222,20 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <ThemedText type="h4" style={styles.sectionTitle}>
+          Travel Records
+        </ThemedText>
+        <View style={[styles.menuGroup, Shadows.sm]}>
+          <MenuItem 
+            icon="map" 
+            label="Tour Diary" 
+            value="Monthly travel log & distance tracking"
+            onPress={() => navigation.navigate('TourDiary')} 
+          />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="h4" style={styles.sectionTitle}>
           Settings
         </ThemedText>
         <View style={[styles.menuGroup, Shadows.sm]}>

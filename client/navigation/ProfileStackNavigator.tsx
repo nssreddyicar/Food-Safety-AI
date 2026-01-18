@@ -6,6 +6,7 @@ import SampleCodeBankScreen from "@/screens/SampleCodeBankScreen";
 import CourtCasesScreen from "@/screens/CourtCasesScreen";
 import CaseDetailsScreen from "@/screens/CaseDetailsScreen";
 import NewCaseScreen from "@/screens/NewCaseScreen";
+import TourDiaryScreen from "@/screens/TourDiaryScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type ProfileStackParamList = {
@@ -15,6 +16,7 @@ export type ProfileStackParamList = {
   CourtCases: undefined;
   CaseDetails: { caseId: string };
   NewCase: undefined;
+  TourDiary: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -64,6 +66,13 @@ export default function ProfileStackNavigator() {
         component={NewCaseScreen}
         options={{
           headerTitle: "New Court Case",
+        }}
+      />
+      <Stack.Screen
+        name="TourDiary"
+        component={TourDiaryScreen}
+        options={{
+          headerTitle: "Tour Diary",
         }}
       />
     </Stack.Navigator>
