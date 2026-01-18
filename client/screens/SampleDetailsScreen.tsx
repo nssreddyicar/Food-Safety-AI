@@ -101,6 +101,7 @@ interface DynamicTimelineStepProps {
   isLast?: boolean;
   isBranch?: boolean;
   branchLabel?: string;
+  isLocked?: boolean;
   savedData?: Record<string, any> | null;
   templates?: DocumentTemplate[];
   onPress: () => void;
@@ -118,7 +119,7 @@ function isImageUri(value: any): boolean {
          /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(value);
 }
 
-function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranch, branchLabel, savedData, templates = [], onPress, onPreviewTemplate, onDownloadTemplate, onPreviewImage }: DynamicTimelineStepProps) {
+function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranch, branchLabel, isLocked, savedData, templates = [], onPress, onPreviewTemplate, onDownloadTemplate, onPreviewImage }: DynamicTimelineStepProps) {
   const { theme } = useTheme();
   const nodeColor = node.color || theme.primary;
   const color = isComplete ? theme.success : isActive ? nodeColor : theme.textSecondary;
@@ -148,10 +149,17 @@ function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranc
               <ThemedText type="small" style={{ color: theme.success, fontSize: 10 }}>END</ThemedText>
             </View>
           ) : null}
-          <View style={[styles.tapBadge, { backgroundColor: theme.primary + '15' }]}>
-            <Feather name="edit-2" size={10} color={theme.primary} />
-            <ThemedText type="small" style={{ color: theme.primary, fontSize: 10 }}>TAP</ThemedText>
-          </View>
+          {isLocked ? (
+            <View style={[styles.tapBadge, { backgroundColor: theme.textSecondary + '15' }]}>
+              <Feather name="lock" size={10} color={theme.textSecondary} />
+              <ThemedText type="small" style={{ color: theme.textSecondary, fontSize: 10 }}>LOCKED</ThemedText>
+            </View>
+          ) : (
+            <View style={[styles.tapBadge, { backgroundColor: theme.primary + '15' }]}>
+              <Feather name="edit-2" size={10} color={theme.primary} />
+              <ThemedText type="small" style={{ color: theme.primary, fontSize: 10 }}>TAP</ThemedText>
+            </View>
+          )}
         </View>
         {isBranch && branchLabel ? (
           <ThemedText type="small" style={{ color: theme.warning, fontStyle: 'italic' }}>{branchLabel}</ThemedText>
@@ -302,6 +310,16 @@ export default function SampleDetailsScreen() {
     enabled: !!sampleId,
   });
 
+  const { data: workflowSettings } = useQuery<{ nodeEditHours: number; allowNodeEdit: boolean }>({
+    queryKey: ['/api/workflow/settings'],
+    queryFn: async () => {
+      const url = new URL('/api/workflow/settings', getApiUrl());
+      const response = await fetch(url.toString());
+      if (!response.ok) return { nodeEditHours: 48, allowNodeEdit: true };
+      return response.json();
+    },
+  });
+
   const saveWorkflowStateMutation = useMutation({
     mutationFn: async ({ nodeId, nodeData }: { nodeId: string; nodeData: Record<string, any> }) => {
       return apiRequest('POST', `/api/samples/${sampleId}/workflow-state`, { nodeId, nodeData });
@@ -359,7 +377,40 @@ export default function SampleDetailsScreen() {
     return workflowStates.find(s => s.currentNodeId === nodeId);
   }, [workflowStates]);
 
+  const isNodeEditable = useCallback((nodeId: string): { editable: boolean; reason?: string } => {
+    if (!workflowSettings?.allowNodeEdit) {
+      return { editable: false, reason: 'Node editing is disabled by administrator' };
+    }
+    
+    const nodeState = getStateForNode(nodeId);
+    if (!nodeState?.completedAt) {
+      return { editable: true }; // Node not completed yet, always editable
+    }
+    
+    const completedAt = new Date(nodeState.completedAt);
+    const now = new Date();
+    const hoursSinceCompletion = (now.getTime() - completedAt.getTime()) / (1000 * 60 * 60);
+    const editHours = workflowSettings?.nodeEditHours ?? 48;
+    
+    if (hoursSinceCompletion > editHours) {
+      const hoursAgo = Math.round(hoursSinceCompletion);
+      return { 
+        editable: false, 
+        reason: `This node was completed ${hoursAgo} hours ago. Editing is only allowed within ${editHours} hours of completion.` 
+      };
+    }
+    
+    return { editable: true };
+  }, [workflowStates, workflowSettings, getStateForNode]);
+
   const openNodeModal = (node: WorkflowNode) => {
+    const { editable, reason } = isNodeEditable(node.id);
+    
+    if (!editable) {
+      Alert.alert('Node Locked', reason || 'This node cannot be edited.');
+      return;
+    }
+    
     const existingState = getStateForNode(node.id);
     setSelectedNode(node);
     setFormData(existingState?.nodeData || {});
@@ -586,6 +637,7 @@ export default function SampleDetailsScreen() {
       const isActive = idx === currentNodeIndex;
       const isLast = idx === mainNodes.length - 1 && branchNodes.length === 0;
       const nodeState = getStateForNode(node.id);
+      const { editable } = isNodeEditable(node.id);
       
       return (
         <DynamicTimelineStep
@@ -595,6 +647,7 @@ export default function SampleDetailsScreen() {
           isActive={isActive}
           isComplete={isComplete}
           isLast={isLast}
+          isLocked={!editable}
           savedData={nodeState?.nodeData}
           templates={templates}
           onPress={() => openNodeModal(node)}
@@ -611,6 +664,7 @@ export default function SampleDetailsScreen() {
     if (branchNodes.length > 0) {
       branchNodes.forEach((item, idx) => {
         const nodeState = getStateForNode(item.node.id);
+        const { editable: branchEditable } = isNodeEditable(item.node.id);
         timeline.push(
           <DynamicTimelineStep
             key={item.node.id}
@@ -621,6 +675,7 @@ export default function SampleDetailsScreen() {
             isLast={idx === branchNodes.length - 1}
             isBranch={true}
             branchLabel={item.transition.label}
+            isLocked={!branchEditable}
             savedData={nodeState?.nodeData}
             templates={templates}
             onPress={() => openNodeModal(item.node)}
