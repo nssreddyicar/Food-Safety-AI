@@ -537,6 +537,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public API to get workflow settings for mobile app
+  app.get("/api/workflow/settings", async (_req: Request, res: Response) => {
+    try {
+      const workflowSettings = await db.select().from(systemSettings)
+        .where(sql`${systemSettings.category} = 'workflow'`);
+      
+      // Convert to key-value object with defaults
+      const settingsObj: Record<string, any> = {
+        nodeEditHours: 48,
+        allowNodeEdit: true,
+      };
+      
+      workflowSettings.forEach(s => {
+        if (s.key === 'workflow_node_edit_hours') {
+          settingsObj.nodeEditHours = parseInt(s.value || '48', 10);
+        } else if (s.key === 'workflow_allow_node_edit') {
+          settingsObj.allowNodeEdit = s.value === 'true';
+        }
+      });
+      
+      res.json(settingsObj);
+    } catch (error) {
+      // Return defaults on error
+      res.json({ nodeEditHours: 48, allowNodeEdit: true });
+    }
+  });
+
   // ========== JURISDICTION MANAGEMENT API ROUTES ==========
 
   // Administrative Levels CRUD
