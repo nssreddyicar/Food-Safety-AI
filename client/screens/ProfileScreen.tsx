@@ -194,6 +194,20 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <ThemedText type="h4" style={styles.sectionTitle}>
+          Sample Management
+        </ThemedText>
+        <View style={[styles.menuGroup, Shadows.sm]}>
+          <MenuItem 
+            icon="database" 
+            label="Sample Code Bank" 
+            value="Generate & manage sample codes"
+            onPress={() => navigation.navigate('SampleCodeBank')} 
+          />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="h4" style={styles.sectionTitle}>
           Settings
         </ThemedText>
         <View style={[styles.menuGroup, Shadows.sm]}>

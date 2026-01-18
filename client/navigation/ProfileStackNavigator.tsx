@@ -2,11 +2,13 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ProfileScreen from "@/screens/ProfileScreen";
 import TemplatesScreen from "@/screens/TemplatesScreen";
+import SampleCodeBankScreen from "@/screens/SampleCodeBankScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type ProfileStackParamList = {
   Profile: undefined;
   Templates: undefined;
+  SampleCodeBank: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -28,6 +30,13 @@ export default function ProfileStackNavigator() {
         component={TemplatesScreen}
         options={{
           headerTitle: "Document Templates",
+        }}
+      />
+      <Stack.Screen
+        name="SampleCodeBank"
+        component={SampleCodeBankScreen}
+        options={{
+          headerTitle: "Sample Code Bank",
         }}
       />
     </Stack.Navigator>
