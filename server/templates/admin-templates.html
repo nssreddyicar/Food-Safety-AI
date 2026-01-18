@@ -83,9 +83,9 @@
       .zoom-btn.active { background: #1E40AF; }
       .zoom-btn svg { width: 16px; height: 16px; fill: currentColor; }
       .zoom-level { color: white; font-size: 12px; min-width: 50px; text-align: center; background: rgba(255,255,255,0.1); padding: 6px 10px; border-radius: 4px; }
-      .preview-viewport { background: #4b5563; padding: 20px; overflow: auto; max-height: 600px; display: flex; justify-content: center; scrollbar-width: none; -ms-overflow-style: none; }
-      .preview-viewport::-webkit-scrollbar { display: none; }
-      .preview-page { background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transform-origin: top center; transition: transform 0.2s ease; }
+      .preview-viewport { background: #4b5563; padding: 20px; overflow: hidden; max-height: 600px; display: flex; justify-content: center; align-items: flex-start; }
+      .preview-page-wrapper { display: flex; justify-content: center; align-items: flex-start; }
+      .preview-page { background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transform-origin: top center; transition: transform 0.2s ease; flex-shrink: 0; }
       .page-size-label { color: #9ca3af; font-size: 11px; padding: 8px 16px; text-align: center; background: #1f2937; border-top: 1px solid #374151; }
     </style>
   </head>
@@ -342,7 +342,9 @@
                   </div>
                 </div>
                 <div class="preview-viewport" id="preview-viewport">
-                  <div class="preview-page" id="preview-page"></div>
+                  <div class="preview-page-wrapper" id="preview-page-wrapper">
+                    <div class="preview-page" id="preview-page"></div>
+                  </div>
                 </div>
                 <div class="page-size-label" id="page-size-label">A4 Portrait - 210 x 297 mm</div>
               </div>
@@ -385,7 +387,9 @@
             </div>
           </div>
           <div class="preview-viewport" id="fullscreen-preview-viewport" style="max-height: 70vh;">
-            <div class="preview-page" id="fullscreen-preview-page"></div>
+            <div class="preview-page-wrapper" id="fullscreen-preview-page-wrapper">
+              <div class="preview-page" id="fullscreen-preview-page"></div>
+            </div>
           </div>
           <div class="page-size-label" id="fullscreen-page-size-label">A4 Portrait - 210 x 297 mm</div>
         </div>
@@ -580,6 +584,7 @@
         const dims = getPageDimensions(data.pageSize, data.orientation);
         const page = document.getElementById(pageId);
         const label = document.getElementById(labelId);
+        const wrapper = document.getElementById(pageId + '-wrapper');
         
         const widthPx = dims.width * mmToPx;
         const heightPx = dims.height * mmToPx;
@@ -594,11 +599,18 @@
                             trimmedContent.includes('<table')
                           ));
         
+        // Size the wrapper to the scaled dimensions so the page fits visually
+        if (wrapper) {
+          wrapper.style.width = (widthPx * zoom) + 'px';
+          wrapper.style.height = (heightPx * zoom) + 'px';
+        }
+        
         page.style.width = widthPx + 'px';
         page.style.height = heightPx + 'px';
         // Only apply form margins for plain text, not raw HTML templates
         page.style.padding = isRawHtml ? '0' : `${data.marginTop * mmToPx}px ${data.marginRight * mmToPx}px ${data.marginBottom * mmToPx}px ${data.marginLeft * mmToPx}px`;
         page.style.transform = `scale(${zoom})`;
+        page.style.transformOrigin = 'top left';
         page.innerHTML = generatePreviewContent(data);
         
         label.textContent = `${dims.label} ${data.orientation.charAt(0).toUpperCase() + data.orientation.slice(1)} - ${dims.width} x ${dims.height} mm`;
