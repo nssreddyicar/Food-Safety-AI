@@ -241,6 +241,7 @@ export default function SampleDetailsScreen() {
   const [activeDateField, setActiveDateField] = useState<string | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<DocumentTemplate | null>(null);
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [previewZoom, setPreviewZoom] = useState(0.5);
 
   const sampleId = route.params.sampleId;
 
@@ -1135,60 +1136,121 @@ export default function SampleDetailsScreen() {
       <Modal
         visible={previewModalVisible}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle="fullScreen"
         onRequestClose={() => setPreviewModalVisible(false)}
       >
-        <View style={[styles.modalContainer, { backgroundColor: theme.backgroundDefault }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: theme.border, paddingTop: insets.top > 0 ? insets.top : Spacing.md }]}>
-            <Pressable onPress={() => setPreviewModalVisible(false)} style={styles.modalCloseBtn}>
-              <Feather name="x" size={24} color={theme.text} />
-            </Pressable>
-            <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-              <ThemedText type="h3" numberOfLines={1}>{previewTemplate?.name || 'Document Preview'}</ThemedText>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>{previewTemplate?.category}</ThemedText>
+        <View style={[styles.previewModalContainer, { backgroundColor: '#1f2937' }]}>
+          <View style={[styles.previewModalHeader, { paddingTop: insets.top > 0 ? insets.top + Spacing.sm : Spacing.md }]}>
+            <View style={styles.previewTitleRow}>
+              <Feather name="eye" size={18} color="white" />
+              <ThemedText type="body" style={{ color: 'white', fontWeight: '600', marginLeft: Spacing.sm }}>
+                Template Preview
+              </ThemedText>
             </View>
-            <Pressable
-              style={[styles.downloadBtn, { backgroundColor: theme.success }]}
-              onPress={() => {
-                if (previewTemplate) {
-                  handleDownload(previewTemplate);
-                }
-              }}
-              disabled={downloadingId === previewTemplate?.id}
-            >
-              {downloadingId === previewTemplate?.id ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <>
+            <View style={styles.previewControlsRow}>
+              <Pressable 
+                style={styles.zoomBtn} 
+                onPress={() => setPreviewZoom(prev => Math.max(prev - 0.1, 0.2))}
+              >
+                <Feather name="minus" size={16} color="white" />
+              </Pressable>
+              <View style={styles.zoomLevelBadge}>
+                <ThemedText type="small" style={{ color: 'white' }}>
+                  {Math.round(previewZoom * 100)}%
+                </ThemedText>
+              </View>
+              <Pressable 
+                style={styles.zoomBtn} 
+                onPress={() => setPreviewZoom(prev => Math.min(prev + 0.1, 1.5))}
+              >
+                <Feather name="plus" size={16} color="white" />
+              </Pressable>
+              <Pressable 
+                style={styles.zoomBtn} 
+                onPress={() => setPreviewZoom(0.5)}
+              >
+                <Feather name="maximize-2" size={16} color="white" />
+              </Pressable>
+              <Pressable 
+                style={styles.zoomBtn} 
+                onPress={() => setPreviewZoom(1)}
+              >
+                <Feather name="square" size={16} color="white" />
+              </Pressable>
+              <Pressable
+                style={[styles.zoomBtn, { backgroundColor: theme.success, marginLeft: Spacing.sm }]}
+                onPress={() => {
+                  if (previewTemplate) {
+                    handleDownload(previewTemplate);
+                  }
+                }}
+                disabled={downloadingId === previewTemplate?.id}
+              >
+                {downloadingId === previewTemplate?.id ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
                   <Feather name="download" size={16} color="white" />
-                  <ThemedText type="small" style={{ color: 'white', fontWeight: '600' }}>PDF</ThemedText>
-                </>
-              )}
-            </Pressable>
+                )}
+              </Pressable>
+              <Pressable 
+                style={[styles.zoomBtn, { marginLeft: Spacing.sm }]} 
+                onPress={() => setPreviewModalVisible(false)}
+              >
+                <Feather name="x" size={16} color="white" />
+              </Pressable>
+            </View>
           </View>
-          <View style={styles.previewContent}>
-            {previewTemplate ? (
-              Platform.OS === 'web' ? (
-                <iframe
-                  srcDoc={generatePdfHtml(previewTemplate)}
-                  style={{ 
-                    flex: 1, 
-                    width: '100%', 
-                    height: '100%', 
-                    border: 'none',
-                    backgroundColor: 'white'
-                  }}
-                  title="Document Preview"
-                />
-              ) : (
-                <WebView
-                  source={{ html: generatePdfHtml(previewTemplate) }}
-                  style={styles.webview}
-                  originWhitelist={['*']}
-                  scalesPageToFit={true}
-                />
-              )
-            ) : null}
+          <View style={styles.previewViewport}>
+            <ScrollView 
+              style={styles.previewScrollView}
+              contentContainerStyle={styles.previewScrollContent}
+              showsVerticalScrollIndicator={true}
+              showsHorizontalScrollIndicator={true}
+            >
+              {previewTemplate ? (
+                Platform.OS === 'web' ? (
+                  <View style={[styles.previewPageWrapper, { 
+                    width: (previewTemplate.pageSize === 'A4' ? 794 : 816) * previewZoom,
+                    height: (previewTemplate.pageSize === 'A4' ? 1123 : 1056) * previewZoom,
+                  }]}>
+                    <iframe
+                      srcDoc={generatePdfHtml(previewTemplate)}
+                      style={{ 
+                        width: previewTemplate.pageSize === 'A4' ? 794 : 816,
+                        height: previewTemplate.pageSize === 'A4' ? 1123 : 1056,
+                        border: 'none',
+                        backgroundColor: 'white',
+                        transform: `scale(${previewZoom})`,
+                        transformOrigin: 'top left',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                      }}
+                      title="Document Preview"
+                    />
+                  </View>
+                ) : (
+                  <View style={[styles.previewPageWrapper, { 
+                    width: 794 * previewZoom,
+                    height: 1123 * previewZoom,
+                  }]}>
+                    <WebView
+                      source={{ html: generatePdfHtml(previewTemplate) }}
+                      style={{ 
+                        width: 794,
+                        height: 1123,
+                        transform: [{ scale: previewZoom }],
+                      }}
+                      originWhitelist={['*']}
+                      scalesPageToFit={false}
+                    />
+                  </View>
+                )
+              ) : null}
+            </ScrollView>
+          </View>
+          <View style={styles.previewPageSizeLabel}>
+            <ThemedText type="small" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              {previewTemplate?.pageSize || 'A4'} {previewTemplate?.orientation || 'Portrait'} - {previewTemplate?.pageSize === 'A4' ? '210 x 297' : '216 x 279'} mm
+            </ThemedText>
           </View>
         </View>
       </Modal>
@@ -1617,5 +1679,69 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     minHeight: 500,
     overflow: 'hidden',
+  },
+  previewModalContainer: {
+    flex: 1,
+  },
+  previewModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 0,
+  },
+  previewTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  previewControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  zoomBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomLevelBadge: {
+    minWidth: 50,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: BorderRadius.xs,
+    alignItems: 'center',
+  },
+  previewViewport: {
+    flex: 1,
+    backgroundColor: '#374151',
+    overflow: 'hidden',
+  },
+  previewScrollView: {
+    flex: 1,
+  },
+  previewScrollContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    padding: Spacing.lg,
+  },
+  previewPageWrapper: {
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  previewPageSizeLabel: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    alignItems: 'center',
   },
 });
