@@ -131,6 +131,16 @@ export default function ScannerScreen() {
               <Text style={styles.permissionButtonText}>Enable Camera</Text>
             </Pressable>
           )}
+          <Pressable
+            style={styles.viewNotesLink}
+            onPress={() => navigation.navigate('ScannedNotes')}
+            testID="view-scanned-notes"
+          >
+            <Feather name="file-text" size={18} color={Colors.light.primary} />
+            <Text style={[styles.viewNotesLinkText, { color: Colors.light.primary }]}>
+              View Saved Notes
+            </Text>
+          </Pressable>
         </View>
       </View>
     );
@@ -314,6 +324,18 @@ const styles = StyleSheet.create({
   webMessage: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  viewNotesLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.xl,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+  },
+  viewNotesLinkText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

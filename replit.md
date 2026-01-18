@@ -14,6 +14,7 @@ MVP implementation with core features:
 - Jurisdiction-bound data (inspections/samples linked to jurisdictions, not officers)
 - Document templates with dynamic placeholders and PDF generation
 - Admin panel access control (per-officer configuration)
+- QR/barcode scanner with notes management (scan, save, view, share)
 
 ## Project Architecture
 
@@ -50,7 +51,8 @@ client/
 │   ├── MainTabNavigator.tsx   # Bottom tab navigator
 │   ├── ProfileStackNavigator.tsx
 │   ├── RootStackNavigator.tsx # Root with auth flow
-│   └── SamplesStackNavigator.tsx
+│   ├── SamplesStackNavigator.tsx
+│   └── ScannerStackNavigator.tsx # Scanner navigation stack
 ├── screens/                   # App screens
 │   ├── ActionDashboardScreen.tsx # Action tracking with category cards
 │   ├── DashboardScreen.tsx
@@ -58,9 +60,12 @@ client/
 │   ├── InspectionsScreen.tsx
 │   ├── LoginScreen.tsx
 │   ├── NewInspectionScreen.tsx
+│   ├── NoteDetailScreen.tsx   # View individual scanned note
 │   ├── ProfileScreen.tsx
 │   ├── SampleDetailsScreen.tsx
 │   ├── SamplesScreen.tsx
+│   ├── ScannedNotesScreen.tsx # List of saved scanned notes
+│   ├── ScannerScreen.tsx      # QR/barcode scanner with camera
 │   └── TemplatesScreen.tsx    # Document templates with PDF download
 └── types/index.ts             # TypeScript types
 ```
@@ -236,6 +241,35 @@ Each hearing records:
 - Notes/remarks
 - Image attachments (for orders, documents)
 - Next hearing date (updates case's nextHearingDate)
+
+### QR/Barcode Scanner
+Camera-based scanner with notes management system:
+
+**Scanner Features:**
+- Real-time camera scanning using expo-camera
+- Supported formats: QR, EAN-13, EAN-8, UPC-A, UPC-E, Code39, Code93, Code128, Codabar, ITF14, PDF417, Aztec, DataMatrix
+- Flash/torch toggle for low-light scanning
+- Scan frame overlay with visual guides
+- Haptic feedback on successful scan
+
+**Notes Management:**
+- Save scanned data with custom heading/title
+- Timestamp automatically recorded
+- View all saved notes in list format
+- Detail view with full data display
+- Copy to clipboard functionality
+- Share via device share sheet
+- Delete individual notes
+- Pull-to-refresh for list updates
+
+**Screens:**
+- `ScannerScreen.tsx` - Camera view with barcode detection
+- `ScannedNotesScreen.tsx` - List of saved scan notes
+- `NoteDetailScreen.tsx` - Individual note with actions (copy, share, delete)
+
+**Data Storage:**
+- AsyncStorage with key `@scanned_notes`
+- Each note: `{ id, data, type, heading, scannedAt }`
 
 ## Design System
 - **Primary Color**: #1E40AF (Deep authoritative blue)
