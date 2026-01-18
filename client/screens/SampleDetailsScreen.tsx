@@ -9,6 +9,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import * as ImagePicker from 'expo-image-picker';
+import { WebView } from 'react-native-webview';
 import { ThemedText } from '@/components/ThemedText';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useTheme } from '@/hooks/useTheme';
@@ -101,9 +102,11 @@ interface DynamicTimelineStepProps {
   savedData?: Record<string, any> | null;
   templates?: DocumentTemplate[];
   onPress: () => void;
+  onPreviewTemplate?: (template: DocumentTemplate) => void;
+  onDownloadTemplate?: (template: DocumentTemplate) => void;
 }
 
-function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranch, branchLabel, savedData, templates = [], onPress }: DynamicTimelineStepProps) {
+function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranch, branchLabel, savedData, templates = [], onPress, onPreviewTemplate, onDownloadTemplate }: DynamicTimelineStepProps) {
   const { theme } = useTheme();
   const nodeColor = node.color || theme.primary;
   const color = isComplete ? theme.success : isActive ? nodeColor : theme.textSecondary;
@@ -155,12 +158,33 @@ function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranc
               <Feather name="file-text" size={12} color={theme.primary} />
               <ThemedText type="small" style={{ color: theme.primary, fontWeight: '600' }}>Documents</ThemedText>
             </View>
-            <View style={styles.nodeTemplatesList}>
+            <View style={styles.nodeTemplatesListVertical}>
               {assignedTemplates.map(template => (
-                <View key={template.id} style={[styles.nodeTemplateChip, { backgroundColor: theme.primary + '15' }]}>
-                  <ThemedText type="small" style={{ color: theme.primary, fontSize: 11 }} numberOfLines={1}>
+                <View key={template.id} style={[styles.nodeTemplateRow, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+                  <Feather name="file" size={14} color={theme.primary} />
+                  <ThemedText type="small" style={[styles.nodeTemplateName, { color: theme.text }]} numberOfLines={1}>
                     {template.name}
                   </ThemedText>
+                  <View style={styles.nodeTemplateActions}>
+                    <Pressable 
+                      style={[styles.templateActionBtn, { backgroundColor: theme.primary + '15' }]}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        onPreviewTemplate?.(template);
+                      }}
+                    >
+                      <Feather name="eye" size={14} color={theme.primary} />
+                    </Pressable>
+                    <Pressable 
+                      style={[styles.templateActionBtn, { backgroundColor: theme.success + '15' }]}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        onDownloadTemplate?.(template);
+                      }}
+                    >
+                      <Feather name="download" size={14} color={theme.success} />
+                    </Pressable>
+                  </View>
                 </View>
               ))}
             </View>
@@ -215,6 +239,8 @@ export default function SampleDetailsScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [activeDateField, setActiveDateField] = useState<string | null>(null);
+  const [previewTemplate, setPreviewTemplate] = useState<DocumentTemplate | null>(null);
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
 
   const sampleId = route.params.sampleId;
 
@@ -506,6 +532,8 @@ export default function SampleDetailsScreen() {
           savedData={nodeState?.nodeData}
           templates={templates}
           onPress={() => openNodeModal(node)}
+          onPreviewTemplate={handlePreviewTemplate}
+          onDownloadTemplate={handleDownload}
         />
       );
     });
@@ -526,6 +554,8 @@ export default function SampleDetailsScreen() {
             savedData={nodeState?.nodeData}
             templates={templates}
             onPress={() => openNodeModal(item.node)}
+            onPreviewTemplate={handlePreviewTemplate}
+            onDownloadTemplate={handleDownload}
           />
         );
       });
@@ -570,6 +600,11 @@ export default function SampleDetailsScreen() {
     } finally {
       setDownloadingId(null);
     }
+  };
+
+  const handlePreviewTemplate = (template: DocumentTemplate) => {
+    setPreviewTemplate(template);
+    setPreviewModalVisible(true);
   };
 
   const renderInputField = (field: InputField) => {
@@ -1096,6 +1131,53 @@ export default function SampleDetailsScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <Modal
+        visible={previewModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setPreviewModalVisible(false)}
+      >
+        <View style={[styles.modalContainer, { backgroundColor: theme.backgroundDefault }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: theme.border, paddingTop: insets.top > 0 ? insets.top : Spacing.md }]}>
+            <Pressable onPress={() => setPreviewModalVisible(false)} style={styles.modalCloseBtn}>
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+            <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+              <ThemedText type="h3" numberOfLines={1}>{previewTemplate?.name || 'Document Preview'}</ThemedText>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>{previewTemplate?.category}</ThemedText>
+            </View>
+            <Pressable
+              style={[styles.downloadBtn, { backgroundColor: theme.success }]}
+              onPress={() => {
+                if (previewTemplate) {
+                  handleDownload(previewTemplate);
+                }
+              }}
+              disabled={downloadingId === previewTemplate?.id}
+            >
+              {downloadingId === previewTemplate?.id ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Feather name="download" size={16} color="white" />
+                  <ThemedText type="small" style={{ color: 'white', fontWeight: '600' }}>PDF</ThemedText>
+                </>
+              )}
+            </Pressable>
+          </View>
+          <View style={styles.previewContent}>
+            {previewTemplate ? (
+              <WebView
+                source={{ html: generatePdfHtml(previewTemplate) }}
+                style={styles.webview}
+                originWhitelist={['*']}
+                scalesPageToFit={true}
+              />
+            ) : null}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1477,5 +1559,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: BorderRadius.sm,
+  },
+  nodeTemplatesListVertical: {
+    gap: Spacing.xs,
+  },
+  nodeTemplateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    gap: Spacing.sm,
+  },
+  nodeTemplateName: {
+    flex: 1,
+    fontSize: 12,
+  },
+  nodeTemplateActions: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+  },
+  templateActionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewContent: {
+    flex: 1,
+  },
+  webview: {
+    flex: 1,
   },
 });
