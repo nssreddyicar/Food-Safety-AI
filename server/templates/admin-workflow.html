@@ -871,7 +871,7 @@
             { name: 'coveringLetterDate', type: 'date', label: 'Covering Letter Date' },
             { name: 'analystName', type: 'text', label: 'Analyst Name' },
             { name: 'analystOpinion', type: 'textarea', label: 'Analyst Opinion', required: true },
-            { name: 'labResult', type: 'select', label: 'Result', required: true, options: ['safe', 'unsafe', 'substandard', 'misbranded'] },
+            { name: 'labResult', type: 'select', label: 'Result', required: true, options: ['notunsafe', 'unsafe', 'substandard', 'misbranded'] },
             { name: 'labReportImage', type: 'image', label: 'Lab Report Scan' }
           ] 
         },
@@ -929,7 +929,7 @@
         const defaultTransitions = [
           { fromNodeId: nodeMap['Sample Lifted'], toNodeId: nodeMap['Dispatched to Lab'], conditionType: 'always' },
           { fromNodeId: nodeMap['Dispatched to Lab'], toNodeId: nodeMap['Lab Report Received'], conditionType: 'always' },
-          { fromNodeId: nodeMap['Lab Report Received'], toNodeId: nodeMap['Sample Safe - Closed'], conditionType: 'lab_result', conditionField: 'labResult', conditionOperator: 'equals', conditionValue: 'safe', label: 'If Safe' },
+          { fromNodeId: nodeMap['Lab Report Received'], toNodeId: nodeMap['Sample Safe - Closed'], conditionType: 'lab_result', conditionField: 'labResult', conditionOperator: 'equals', conditionValue: 'notunsafe', label: 'If Not Unsafe' },
           { fromNodeId: nodeMap['Lab Report Received'], toNodeId: nodeMap['Initiate Prosecution'], conditionType: 'lab_result', conditionField: 'labResult', conditionOperator: 'equals', conditionValue: 'unsafe', label: 'If Unsafe' },
           { fromNodeId: nodeMap['Lab Report Received'], toNodeId: nodeMap['Issue Improvement Notice'], conditionType: 'lab_result', conditionField: 'labResult', conditionOperator: 'equals', conditionValue: 'substandard', label: 'If Substandard' }
         ];
