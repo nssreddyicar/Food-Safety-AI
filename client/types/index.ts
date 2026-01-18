@@ -96,6 +96,7 @@ export interface RelabellerDetails {
 export interface Sample {
   id: string;
   inspectionId: string;
+  jurisdictionId?: string;
   sampleType: SampleType;
   name: string;
   code: string;
@@ -150,6 +151,7 @@ export interface Inspection {
   fsoId: string;
   fsoName: string;
   district: string;
+  jurisdictionId?: string;
 }
 
 export interface DashboardStats {

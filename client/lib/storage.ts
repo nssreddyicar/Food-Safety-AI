@@ -25,7 +25,20 @@ export const storage = {
     await AsyncStorage.removeItem(KEYS.USER);
   },
 
-  async getInspections(): Promise<Inspection[]> {
+  async getInspections(jurisdictionId?: string): Promise<Inspection[]> {
+    try {
+      const data = await AsyncStorage.getItem(KEYS.INSPECTIONS);
+      const inspections: Inspection[] = data ? JSON.parse(data) : [];
+      if (jurisdictionId) {
+        return inspections.filter(i => i.jurisdictionId === jurisdictionId);
+      }
+      return inspections;
+    } catch {
+      return [];
+    }
+  },
+
+  async getAllInspections(): Promise<Inspection[]> {
     try {
       const data = await AsyncStorage.getItem(KEYS.INSPECTIONS);
       return data ? JSON.parse(data) : [];
@@ -39,13 +52,13 @@ export const storage = {
   },
 
   async addInspection(inspection: Inspection): Promise<void> {
-    const inspections = await this.getInspections();
+    const inspections = await this.getAllInspections();
     inspections.unshift(inspection);
     await this.setInspections(inspections);
   },
 
   async updateInspection(updatedInspection: Inspection): Promise<void> {
-    const inspections = await this.getInspections();
+    const inspections = await this.getAllInspections();
     const index = inspections.findIndex(i => i.id === updatedInspection.id);
     if (index !== -1) {
       inspections[index] = updatedInspection;
@@ -53,15 +66,15 @@ export const storage = {
     }
   },
 
-  async getSamples(): Promise<Sample[]> {
-    const inspections = await this.getInspections();
+  async getSamples(jurisdictionId?: string): Promise<Sample[]> {
+    const inspections = await this.getInspections(jurisdictionId);
     const samples: Sample[] = [];
     inspections.forEach(inspection => {
       inspection.samples.forEach(sample => {
         const daysRemaining = sample.dispatchDate
           ? Math.max(0, 14 - Math.floor((Date.now() - new Date(sample.dispatchDate).getTime()) / (1000 * 60 * 60 * 24)))
           : undefined;
-        samples.push({ ...sample, daysRemaining });
+        samples.push({ ...sample, jurisdictionId: inspection.jurisdictionId, daysRemaining });
       });
     });
     return samples.sort((a, b) => {
@@ -72,9 +85,9 @@ export const storage = {
     });
   },
 
-  async getDashboardStats(): Promise<DashboardStats> {
-    const inspections = await this.getInspections();
-    const samples = await this.getSamples();
+  async getDashboardStats(jurisdictionId?: string): Promise<DashboardStats> {
+    const inspections = await this.getInspections(jurisdictionId);
+    const samples = await this.getSamples(jurisdictionId);
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -86,8 +99,8 @@ export const storage = {
     };
   },
 
-  async getUrgentActions(): Promise<UrgentAction[]> {
-    const samples = await this.getSamples();
+  async getUrgentActions(jurisdictionId?: string): Promise<UrgentAction[]> {
+    const samples = await this.getSamples(jurisdictionId);
     const urgentActions: UrgentAction[] = [];
 
     samples.forEach(sample => {
