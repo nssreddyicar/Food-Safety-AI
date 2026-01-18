@@ -3,8 +3,8 @@ import { createServer, type Server } from "node:http";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
-import { officers, districts, inspections, samples, systemSettings } from "../shared/schema";
-import { desc, count, sql } from "drizzle-orm";
+import { officers, districts, inspections, samples, systemSettings, administrativeLevels, jurisdictionUnits, officerRoles, officerCapacities, officerAssignments } from "../shared/schema";
+import { desc, asc, count, sql } from "drizzle-orm";
 
 const ADMIN_CREDENTIALS = {
   username: "superadmin",
@@ -100,6 +100,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.redirect("/admin");
     }
     const templatePath = path.resolve(process.cwd(), "server", "templates", "admin-settings.html");
+    const html = fs.readFileSync(templatePath, "utf-8");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  });
+
+  // Jurisdiction Management Pages
+  app.get("/admin/jurisdiction", (req: Request, res: Response) => {
+    const sessionToken = getSessionToken(req);
+    if (!sessionToken || !isValidSession(sessionToken)) {
+      return res.redirect("/admin");
+    }
+    const templatePath = path.resolve(process.cwd(), "server", "templates", "admin-jurisdiction.html");
+    const html = fs.readFileSync(templatePath, "utf-8");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  });
+
+  app.get("/admin/jurisdiction/levels", (req: Request, res: Response) => {
+    const sessionToken = getSessionToken(req);
+    if (!sessionToken || !isValidSession(sessionToken)) {
+      return res.redirect("/admin");
+    }
+    const templatePath = path.resolve(process.cwd(), "server", "templates", "admin-jurisdiction-levels.html");
+    const html = fs.readFileSync(templatePath, "utf-8");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  });
+
+  app.get("/admin/jurisdiction/units", (req: Request, res: Response) => {
+    const sessionToken = getSessionToken(req);
+    if (!sessionToken || !isValidSession(sessionToken)) {
+      return res.redirect("/admin");
+    }
+    const templatePath = path.resolve(process.cwd(), "server", "templates", "admin-jurisdiction-units.html");
+    const html = fs.readFileSync(templatePath, "utf-8");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  });
+
+  app.get("/admin/jurisdiction/assignments", (req: Request, res: Response) => {
+    const sessionToken = getSessionToken(req);
+    if (!sessionToken || !isValidSession(sessionToken)) {
+      return res.redirect("/admin");
+    }
+    const templatePath = path.resolve(process.cwd(), "server", "templates", "admin-jurisdiction-assignments.html");
+    const html = fs.readFileSync(templatePath, "utf-8");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  });
+
+  app.get("/admin/jurisdiction/roles", (req: Request, res: Response) => {
+    const sessionToken = getSessionToken(req);
+    if (!sessionToken || !isValidSession(sessionToken)) {
+      return res.redirect("/admin");
+    }
+    const templatePath = path.resolve(process.cwd(), "server", "templates", "admin-jurisdiction-roles.html");
     const html = fs.readFileSync(templatePath, "utf-8");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.status(200).send(html);
@@ -365,6 +421,287 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete setting" });
+    }
+  });
+
+  // ========== JURISDICTION MANAGEMENT API ROUTES ==========
+
+  // Administrative Levels CRUD
+  app.get("/api/admin/levels", async (_req: Request, res: Response) => {
+    try {
+      const levels = await db.select().from(administrativeLevels).orderBy(asc(administrativeLevels.displayOrder));
+      res.json(levels);
+    } catch (error) {
+      res.json([]);
+    }
+  });
+
+  app.post("/api/admin/levels", async (req: Request, res: Response) => {
+    try {
+      const { levelNumber, levelName, displayOrder, status } = req.body;
+      const [newLevel] = await db.insert(administrativeLevels).values({
+        levelNumber,
+        levelName,
+        displayOrder,
+        status: status || "active",
+      }).returning();
+      res.json(newLevel);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create level" });
+    }
+  });
+
+  app.put("/api/admin/levels/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { levelNumber, levelName, displayOrder, status } = req.body;
+      const [updated] = await db.update(administrativeLevels)
+        .set({ levelNumber, levelName, displayOrder, status, updatedAt: new Date() })
+        .where(sql`${administrativeLevels.id} = ${id}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update level" });
+    }
+  });
+
+  app.delete("/api/admin/levels/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(administrativeLevels).where(sql`${administrativeLevels.id} = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete level" });
+    }
+  });
+
+  // Jurisdiction Units CRUD
+  app.get("/api/admin/units", async (_req: Request, res: Response) => {
+    try {
+      const units = await db.select().from(jurisdictionUnits).orderBy(asc(jurisdictionUnits.name));
+      res.json(units);
+    } catch (error) {
+      res.json([]);
+    }
+  });
+
+  app.post("/api/admin/units", async (req: Request, res: Response) => {
+    try {
+      const { name, code, levelId, parentId, status } = req.body;
+      const [newUnit] = await db.insert(jurisdictionUnits).values({
+        name,
+        code,
+        levelId,
+        parentId: parentId || null,
+        status: status || "active",
+      }).returning();
+      res.json(newUnit);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create unit" });
+    }
+  });
+
+  app.put("/api/admin/units/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, code, levelId, parentId, status } = req.body;
+      const [updated] = await db.update(jurisdictionUnits)
+        .set({ name, code, levelId, parentId: parentId || null, status, updatedAt: new Date() })
+        .where(sql`${jurisdictionUnits.id} = ${id}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update unit" });
+    }
+  });
+
+  app.delete("/api/admin/units/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(jurisdictionUnits).where(sql`${jurisdictionUnits.id} = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete unit" });
+    }
+  });
+
+  // Officer Roles CRUD
+  app.get("/api/admin/roles", async (_req: Request, res: Response) => {
+    try {
+      const roles = await db.select().from(officerRoles).orderBy(asc(officerRoles.displayOrder));
+      res.json(roles);
+    } catch (error) {
+      res.json([]);
+    }
+  });
+
+  app.post("/api/admin/roles", async (req: Request, res: Response) => {
+    try {
+      const { name, description, displayOrder, status } = req.body;
+      const [newRole] = await db.insert(officerRoles).values({
+        name,
+        description,
+        displayOrder: displayOrder || 0,
+        status: status || "active",
+      }).returning();
+      res.json(newRole);
+    } catch (error: any) {
+      if (error.code === "23505") {
+        res.status(400).json({ error: "Role name already exists" });
+      } else {
+        res.status(500).json({ error: "Failed to create role" });
+      }
+    }
+  });
+
+  app.put("/api/admin/roles/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, description, displayOrder, status } = req.body;
+      const [updated] = await db.update(officerRoles)
+        .set({ name, description, displayOrder, status, updatedAt: new Date() })
+        .where(sql`${officerRoles.id} = ${id}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update role" });
+    }
+  });
+
+  app.delete("/api/admin/roles/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(officerRoles).where(sql`${officerRoles.id} = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete role" });
+    }
+  });
+
+  // Officer Capacities CRUD
+  app.get("/api/admin/capacities", async (_req: Request, res: Response) => {
+    try {
+      const capacities = await db.select().from(officerCapacities).orderBy(asc(officerCapacities.displayOrder));
+      res.json(capacities);
+    } catch (error) {
+      res.json([]);
+    }
+  });
+
+  app.post("/api/admin/capacities", async (req: Request, res: Response) => {
+    try {
+      const { name, description, displayOrder, status } = req.body;
+      const [newCapacity] = await db.insert(officerCapacities).values({
+        name,
+        description,
+        displayOrder: displayOrder || 0,
+        status: status || "active",
+      }).returning();
+      res.json(newCapacity);
+    } catch (error: any) {
+      if (error.code === "23505") {
+        res.status(400).json({ error: "Capacity name already exists" });
+      } else {
+        res.status(500).json({ error: "Failed to create capacity" });
+      }
+    }
+  });
+
+  app.put("/api/admin/capacities/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, description, displayOrder, status } = req.body;
+      const [updated] = await db.update(officerCapacities)
+        .set({ name, description, displayOrder, status, updatedAt: new Date() })
+        .where(sql`${officerCapacities.id} = ${id}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update capacity" });
+    }
+  });
+
+  app.delete("/api/admin/capacities/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(officerCapacities).where(sql`${officerCapacities.id} = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete capacity" });
+    }
+  });
+
+  // Officer Assignments CRUD
+  app.get("/api/admin/assignments", async (_req: Request, res: Response) => {
+    try {
+      const assignments = await db.select().from(officerAssignments).orderBy(desc(officerAssignments.createdAt));
+      res.json(assignments);
+    } catch (error) {
+      res.json([]);
+    }
+  });
+
+  app.post("/api/admin/assignments", async (req: Request, res: Response) => {
+    try {
+      const { officerId, jurisdictionId, roleId, capacityId, startDate, endDate, isPrimary, status } = req.body;
+      const [newAssignment] = await db.insert(officerAssignments).values({
+        officerId,
+        jurisdictionId,
+        roleId,
+        capacityId,
+        startDate: new Date(startDate),
+        endDate: endDate ? new Date(endDate) : null,
+        isPrimary: isPrimary || false,
+        status: status || "active",
+      }).returning();
+      res.json(newAssignment);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create assignment" });
+    }
+  });
+
+  app.put("/api/admin/assignments/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { officerId, jurisdictionId, roleId, capacityId, startDate, endDate, isPrimary, status } = req.body;
+      const [updated] = await db.update(officerAssignments)
+        .set({
+          officerId,
+          jurisdictionId,
+          roleId,
+          capacityId,
+          startDate: new Date(startDate),
+          endDate: endDate ? new Date(endDate) : null,
+          isPrimary: isPrimary || false,
+          status,
+          updatedAt: new Date(),
+        })
+        .where(sql`${officerAssignments.id} = ${id}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update assignment" });
+    }
+  });
+
+  app.delete("/api/admin/assignments/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(officerAssignments).where(sql`${officerAssignments.id} = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete assignment" });
+    }
+  });
+
+  // Get jurisdiction hierarchy tree
+  app.get("/api/admin/jurisdiction-tree", async (_req: Request, res: Response) => {
+    try {
+      const levels = await db.select().from(administrativeLevels).orderBy(asc(administrativeLevels.displayOrder));
+      const units = await db.select().from(jurisdictionUnits);
+      res.json({ levels, units });
+    } catch (error) {
+      res.json({ levels: [], units: [] });
     }
   });
 

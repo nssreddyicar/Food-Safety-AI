@@ -126,3 +126,83 @@ export const insertSettingSchema = createInsertSchema(systemSettings).omit({
 
 export type InsertSetting = z.infer<typeof insertSettingSchema>;
 export type SystemSetting = typeof systemSettings.$inferSelect;
+
+// Dynamic Administrative Levels (State, District, Zone, Mandal, etc.)
+export const administrativeLevels = pgTable("administrative_levels", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  levelNumber: integer("level_number").notNull(),
+  levelName: text("level_name").notNull(),
+  displayOrder: integer("display_order").notNull(),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type AdministrativeLevel = typeof administrativeLevels.$inferSelect;
+
+// Jurisdiction Units (Telangana, Hyderabad, North Zone, etc.)
+export const jurisdictionUnits = pgTable("jurisdiction_units", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  code: text("code").notNull(),
+  levelId: varchar("level_id").notNull(),
+  parentId: varchar("parent_id"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type JurisdictionUnit = typeof jurisdictionUnits.$inferSelect;
+
+// Officer Roles (FSO, DO, FAC, Inspector, etc.) - Super Admin controlled
+export const officerRoles = pgTable("officer_roles", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  displayOrder: integer("display_order").notNull().default(0),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type OfficerRole = typeof officerRoles.$inferSelect;
+
+// Officer Capacities (Regular, In-Charge, FAC, Temporary, etc.) - Super Admin controlled
+export const officerCapacities = pgTable("officer_capacities", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  displayOrder: integer("display_order").notNull().default(0),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type OfficerCapacity = typeof officerCapacities.$inferSelect;
+
+// Officer Assignments to Jurisdictions (time-bound, audit-preserved)
+export const officerAssignments = pgTable("officer_assignments", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  officerId: varchar("officer_id").notNull(),
+  jurisdictionId: varchar("jurisdiction_id").notNull(),
+  roleId: varchar("role_id").notNull(),
+  capacityId: varchar("capacity_id").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  isPrimary: boolean("is_primary").default(false),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type OfficerAssignment = typeof officerAssignments.$inferSelect;
