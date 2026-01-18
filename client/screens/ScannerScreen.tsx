@@ -252,16 +252,33 @@ export default function ScannerScreen() {
               <Text style={styles.permissionButtonText}>Enable Camera</Text>
             </Pressable>
           )}
-          <Pressable
-            style={styles.viewNotesLink}
-            onPress={() => navigation.navigate('ScannedNotes')}
-            testID="view-scanned-notes"
-          >
-            <Feather name="file-text" size={18} color={Colors.light.primary} />
-            <Text style={[styles.viewNotesLinkText, { color: Colors.light.primary }]}>
-              View Saved Notes
-            </Text>
-          </Pressable>
+          <View style={styles.permissionLinks}>
+            <Pressable
+              style={styles.permissionLinkButton}
+              onPress={pickImageFromGallery}
+              disabled={isProcessingImage}
+            >
+              <View style={[styles.permissionLinkIcon, { backgroundColor: Colors.light.primary + '15' }]}>
+                <Feather name="image" size={20} color={Colors.light.primary} />
+              </View>
+              <Text style={[styles.permissionLinkText, { color: Colors.light.primary }]}>
+                Pick from Gallery
+              </Text>
+            </Pressable>
+            
+            <Pressable
+              style={styles.permissionLinkButton}
+              onPress={() => navigation.navigate('ScannedNotes')}
+              testID="view-scanned-notes"
+            >
+              <View style={[styles.permissionLinkIcon, { backgroundColor: Colors.light.primary + '15' }]}>
+                <Feather name="file-text" size={20} color={Colors.light.primary} />
+              </View>
+              <Text style={[styles.permissionLinkText, { color: Colors.light.primary }]}>
+                View Saved Notes
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     );
@@ -408,16 +425,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  viewNotesLink: {
+  permissionLinks: {
     flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.xl,
+    marginTop: Spacing['3xl'],
+  },
+  permissionLinkButton: {
     alignItems: 'center',
     gap: Spacing.sm,
-    marginTop: Spacing.xl,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
   },
-  viewNotesLinkText: {
-    fontSize: 16,
+  permissionLinkIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  permissionLinkText: {
+    fontSize: 12,
     fontWeight: '500',
   },
   overlay: {
