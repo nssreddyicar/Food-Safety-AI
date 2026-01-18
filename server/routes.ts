@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
-import { officers, districts, inspections, samples, systemSettings, administrativeLevels, jurisdictionUnits, officerRoles, officerCapacities, officerAssignments, documentTemplates, workflowNodes, workflowTransitions, sampleWorkflowState } from "../shared/schema";
+import { officers, districts, inspections, samples, systemSettings, administrativeLevels, jurisdictionUnits, officerRoles, officerCapacities, officerAssignments, documentTemplates, workflowNodes, workflowTransitions, sampleWorkflowState, sampleCodes, sampleCodeAuditLog } from "../shared/schema";
 import { desc, asc, count, sql } from "drizzle-orm";
 
 const ADMIN_CREDENTIALS = {
@@ -1267,6 +1267,288 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update sample workflow state" });
+    }
+  });
+
+  // ============ SAMPLE CODE BANK APIs ============
+
+  // Get sample codes with optional filters
+  app.get("/api/sample-codes", async (req: Request, res: Response) => {
+    try {
+      const { sampleType, status, jurisdictionId, prefix, middle, suffix, limit = '100', offset = '0' } = req.query;
+      
+      let query = db.select().from(sampleCodes);
+      const conditions: any[] = [];
+      
+      if (sampleType) {
+        conditions.push(sql`${sampleCodes.sampleType} = ${sampleType}`);
+      }
+      if (status) {
+        conditions.push(sql`${sampleCodes.status} = ${status}`);
+      }
+      if (jurisdictionId) {
+        conditions.push(sql`${sampleCodes.jurisdictionId} = ${jurisdictionId}`);
+      }
+      if (prefix) {
+        conditions.push(sql`${sampleCodes.prefix} LIKE ${`%${prefix}%`}`);
+      }
+      if (middle) {
+        conditions.push(sql`${sampleCodes.middle} LIKE ${`%${middle}%`}`);
+      }
+      if (suffix) {
+        conditions.push(sql`${sampleCodes.suffix} LIKE ${`%${suffix}%`}`);
+      }
+      
+      const whereClause = conditions.length > 0 
+        ? sql.join(conditions, sql` AND `)
+        : sql`1=1`;
+      
+      const codes = await db.select().from(sampleCodes)
+        .where(whereClause)
+        .orderBy(desc(sampleCodes.createdAt))
+        .limit(parseInt(limit as string))
+        .offset(parseInt(offset as string));
+      
+      // Get counts
+      const [availableCount] = await db.select({ count: count() }).from(sampleCodes)
+        .where(sql`${sampleCodes.status} = 'available' AND ${conditions.length > 0 ? sql.join(conditions.filter(c => !c.queryChunks?.includes('status')), sql` AND `) : sql`1=1`}`);
+      const [usedCount] = await db.select({ count: count() }).from(sampleCodes)
+        .where(sql`${sampleCodes.status} = 'used' AND ${conditions.length > 0 ? sql.join(conditions.filter(c => !c.queryChunks?.includes('status')), sql` AND `) : sql`1=1`}`);
+      
+      res.json({
+        codes,
+        counts: {
+          available: availableCount?.count || 0,
+          used: usedCount?.count || 0,
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching sample codes:', error);
+      res.status(500).json({ error: "Failed to fetch sample codes" });
+    }
+  });
+
+  // Generate new sample codes
+  app.post("/api/sample-codes/generate", async (req: Request, res: Response) => {
+    try {
+      const { 
+        sampleType,
+        prefixStart,
+        middleStart,
+        suffixStart,
+        prefixIncrement,
+        middleIncrement,
+        suffixIncrement,
+        prefixIncrementEnabled,
+        middleIncrementEnabled,
+        suffixIncrementEnabled,
+        quantity,
+        officerId,
+        officerName,
+        jurisdictionId,
+      } = req.body;
+
+      if (!sampleType || !prefixStart || !middleStart || !suffixStart || !quantity) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const batchId = `batch_${Date.now()}`;
+      const generatedCodes: any[] = [];
+      const duplicates: string[] = [];
+
+      let currentPrefix = parseInt(prefixStart);
+      let currentMiddle = parseInt(middleStart);
+      let currentSuffix = parseInt(suffixStart);
+
+      for (let i = 0; i < quantity; i++) {
+        const prefix = String(currentPrefix).padStart(prefixStart.length, '0');
+        const middle = String(currentMiddle).padStart(middleStart.length, '0');
+        const suffix = String(currentSuffix).padStart(suffixStart.length, '0');
+        const fullCode = `${prefix}-${middle}-${suffix}`;
+
+        // Check for duplicates
+        const [existing] = await db.select().from(sampleCodes)
+          .where(sql`${sampleCodes.fullCode} = ${fullCode}`);
+
+        if (existing) {
+          duplicates.push(fullCode);
+        } else {
+          const [created] = await db.insert(sampleCodes)
+            .values({
+              prefix,
+              middle,
+              suffix,
+              fullCode,
+              sampleType,
+              status: 'available',
+              generatedByOfficerId: officerId,
+              batchId,
+              jurisdictionId,
+            })
+            .returning();
+          
+          generatedCodes.push(created);
+
+          // Create audit log
+          await db.insert(sampleCodeAuditLog)
+            .values({
+              sampleCodeId: created.id,
+              action: 'generated',
+              performedByOfficerId: officerId,
+              performedByName: officerName,
+              details: { batchId, sampleType },
+            });
+        }
+
+        // Increment values
+        if (prefixIncrementEnabled) {
+          currentPrefix += parseInt(prefixIncrement) || 1;
+        }
+        if (middleIncrementEnabled) {
+          currentMiddle += parseInt(middleIncrement) || 1;
+        }
+        if (suffixIncrementEnabled) {
+          currentSuffix += parseInt(suffixIncrement) || 1;
+        }
+      }
+
+      res.json({
+        success: true,
+        generated: generatedCodes.length,
+        duplicatesSkipped: duplicates.length,
+        duplicates,
+        batchId,
+        codes: generatedCodes,
+      });
+    } catch (error) {
+      console.error('Error generating sample codes:', error);
+      res.status(500).json({ error: "Failed to generate sample codes" });
+    }
+  });
+
+  // Get single sample code with audit trail
+  app.get("/api/sample-codes/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      
+      const [code] = await db.select().from(sampleCodes)
+        .where(sql`${sampleCodes.id} = ${id}`);
+      
+      if (!code) {
+        return res.status(404).json({ error: "Sample code not found" });
+      }
+
+      const auditLog = await db.select().from(sampleCodeAuditLog)
+        .where(sql`${sampleCodeAuditLog.sampleCodeId} = ${id}`)
+        .orderBy(desc(sampleCodeAuditLog.createdAt));
+
+      res.json({ code, auditLog });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch sample code" });
+    }
+  });
+
+  // Mark sample code as used
+  app.post("/api/sample-codes/:id/use", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { officerId, officerName, linkedSampleId, linkedSampleReference, usageLocation } = req.body;
+
+      // Check if code exists and is available
+      const [code] = await db.select().from(sampleCodes)
+        .where(sql`${sampleCodes.id} = ${id}`);
+
+      if (!code) {
+        return res.status(404).json({ error: "Sample code not found" });
+      }
+
+      if (code.status === 'used') {
+        return res.status(400).json({ error: "Sample code has already been used" });
+      }
+
+      // Update code status
+      const [updated] = await db.update(sampleCodes)
+        .set({
+          status: 'used',
+          usedByOfficerId: officerId,
+          usedAt: new Date(),
+          linkedSampleId,
+          linkedSampleReference,
+          usageLocation,
+          updatedAt: new Date(),
+        })
+        .where(sql`${sampleCodes.id} = ${id}`)
+        .returning();
+
+      // Create audit log
+      await db.insert(sampleCodeAuditLog)
+        .values({
+          sampleCodeId: id,
+          action: 'used',
+          performedByOfficerId: officerId,
+          performedByName: officerName,
+          details: { linkedSampleId, linkedSampleReference, usageLocation },
+        });
+
+      res.json(updated);
+    } catch (error) {
+      console.error('Error marking sample code as used:', error);
+      res.status(500).json({ error: "Failed to mark sample code as used" });
+    }
+  });
+
+  // Get available codes for a sample type (for picker)
+  app.get("/api/sample-codes/available/:sampleType", async (req: Request, res: Response) => {
+    try {
+      const { sampleType } = req.params;
+      const { jurisdictionId, limit = '50' } = req.query;
+      
+      let whereClause = sql`${sampleCodes.sampleType} = ${sampleType} AND ${sampleCodes.status} = 'available'`;
+      
+      if (jurisdictionId) {
+        whereClause = sql`${whereClause} AND ${sampleCodes.jurisdictionId} = ${jurisdictionId}`;
+      }
+      
+      const codes = await db.select().from(sampleCodes)
+        .where(whereClause)
+        .orderBy(asc(sampleCodes.fullCode))
+        .limit(parseInt(limit as string));
+      
+      res.json(codes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch available sample codes" });
+    }
+  });
+
+  // Get sample code statistics
+  app.get("/api/sample-codes/stats/:jurisdictionId", async (req: Request, res: Response) => {
+    try {
+      const { jurisdictionId } = req.params;
+      
+      const [enforcementAvailable] = await db.select({ count: count() }).from(sampleCodes)
+        .where(sql`${sampleCodes.jurisdictionId} = ${jurisdictionId} AND ${sampleCodes.sampleType} = 'enforcement' AND ${sampleCodes.status} = 'available'`);
+      
+      const [enforcementUsed] = await db.select({ count: count() }).from(sampleCodes)
+        .where(sql`${sampleCodes.jurisdictionId} = ${jurisdictionId} AND ${sampleCodes.sampleType} = 'enforcement' AND ${sampleCodes.status} = 'used'`);
+      
+      const [surveillanceAvailable] = await db.select({ count: count() }).from(sampleCodes)
+        .where(sql`${sampleCodes.jurisdictionId} = ${jurisdictionId} AND ${sampleCodes.sampleType} = 'surveillance' AND ${sampleCodes.status} = 'available'`);
+      
+      const [surveillanceUsed] = await db.select({ count: count() }).from(sampleCodes)
+        .where(sql`${sampleCodes.jurisdictionId} = ${jurisdictionId} AND ${sampleCodes.sampleType} = 'surveillance' AND ${sampleCodes.status} = 'used'`);
+      
+      res.json({
+        enforcement: {
+          available: enforcementAvailable?.count || 0,
+          used: enforcementUsed?.count || 0,
+        },
+        surveillance: {
+          available: surveillanceAvailable?.count || 0,
+          used: surveillanceUsed?.count || 0,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch sample code statistics" });
     }
   });
 

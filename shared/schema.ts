@@ -305,3 +305,47 @@ export const sampleWorkflowState = pgTable("sample_workflow_state", {
 });
 
 export type SampleWorkflowState = typeof sampleWorkflowState.$inferSelect;
+
+// Sample Code Bank - Pre-generated sample codes for officers
+export const sampleCodes = pgTable("sample_codes", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  prefix: text("prefix").notNull(),
+  middle: text("middle").notNull(),
+  suffix: text("suffix").notNull(),
+  fullCode: text("full_code").notNull().unique(), // Concatenated code for quick lookup
+  sampleType: text("sample_type").notNull(), // 'enforcement' or 'surveillance'
+  status: text("status").notNull().default("available"), // 'available' or 'used'
+  generatedByOfficerId: varchar("generated_by_officer_id"),
+  generatedAt: timestamp("generated_at").defaultNow(),
+  batchId: varchar("batch_id"), // Groups codes generated together
+  jurisdictionId: varchar("jurisdiction_id"),
+  // Usage tracking fields (populated when code is used)
+  usedByOfficerId: varchar("used_by_officer_id"),
+  usedAt: timestamp("used_at"),
+  linkedSampleId: varchar("linked_sample_id"),
+  linkedSampleReference: text("linked_sample_reference"),
+  usageLocation: text("usage_location"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type SampleCode = typeof sampleCodes.$inferSelect;
+
+// Sample Code Audit Log - Immutable audit trail for code operations
+export const sampleCodeAuditLog = pgTable("sample_code_audit_log", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  sampleCodeId: varchar("sample_code_id").notNull(),
+  action: text("action").notNull(), // 'generated', 'used', 'voided'
+  performedByOfficerId: varchar("performed_by_officer_id"),
+  performedByName: text("performed_by_name"),
+  details: jsonb("details"), // Additional context
+  ipAddress: text("ip_address"),
+  deviceInfo: text("device_info"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type SampleCodeAuditLog = typeof sampleCodeAuditLog.$inferSelect;
