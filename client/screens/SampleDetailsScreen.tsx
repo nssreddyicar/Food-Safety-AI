@@ -1169,20 +1169,17 @@ export default function SampleDetailsScreen() {
           <View style={styles.previewContent}>
             {previewTemplate ? (
               Platform.OS === 'web' ? (
-                <ScrollView style={styles.webPreviewScroll} contentContainerStyle={styles.webPreviewContent}>
-                  <View style={[styles.webPreviewCard, { backgroundColor: 'white', borderColor: theme.border }]}>
-                    {previewTemplate.contentType === 'html' ? (
-                      <div 
-                        style={{ padding: 20, fontFamily: 'Arial, sans-serif' }}
-                        dangerouslySetInnerHTML={{ __html: replacePlaceholders(previewTemplate.content) }} 
-                      />
-                    ) : (
-                      <ThemedText type="body" style={{ padding: Spacing.lg, whiteSpace: 'pre-wrap' } as any}>
-                        {replacePlaceholders(previewTemplate.content)}
-                      </ThemedText>
-                    )}
-                  </View>
-                </ScrollView>
+                <iframe
+                  srcDoc={generatePdfHtml(previewTemplate)}
+                  style={{ 
+                    flex: 1, 
+                    width: '100%', 
+                    height: '100%', 
+                    border: 'none',
+                    backgroundColor: 'white'
+                  }}
+                  title="Document Preview"
+                />
               ) : (
                 <WebView
                   source={{ html: generatePdfHtml(previewTemplate) }}
