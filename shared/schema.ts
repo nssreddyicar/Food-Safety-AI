@@ -30,6 +30,8 @@ export const officers = pgTable("officers", {
   role: text("role").notNull().default("fso"),
   designation: text("designation"),
   districtId: varchar("district_id"),
+  dateOfJoining: timestamp("date_of_joining"),
+  employeeId: text("employee_id"),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
