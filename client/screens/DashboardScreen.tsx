@@ -9,6 +9,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ThemedText } from '@/components/ThemedText';
 import { Card } from '@/components/Card';
 import { StatCardSkeleton } from '@/components/SkeletonLoader';
+import { TimeFilter, TimePeriod, getDateRangeForPeriod, getFilterLabel } from '@/components/TimeFilter';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthContext } from '@/context/AuthContext';
 import { getApiUrl } from '@/lib/query-client';
@@ -239,11 +240,14 @@ export default function DashboardScreen() {
   const [upcomingCases, setUpcomingCases] = useState<ProsecutionCase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('this_month');
 
   const jurisdictionId = user?.jurisdiction?.unitId;
 
   const loadData = useCallback(async () => {
     try {
+      const dateRange = getDateRangeForPeriod(timePeriod);
+      
       const metricsUrl = new URL('/api/dashboard/metrics', getApiUrl());
       const actionUrl = new URL('/api/action-dashboard', getApiUrl());
       const casesUrl = new URL('/api/upcoming-hearings', getApiUrl());
@@ -253,6 +257,11 @@ export default function DashboardScreen() {
         actionUrl.searchParams.set('jurisdictionId', jurisdictionId);
         casesUrl.searchParams.set('jurisdictionId', jurisdictionId);
       }
+      
+      metricsUrl.searchParams.set('startDate', dateRange.startDate);
+      metricsUrl.searchParams.set('endDate', dateRange.endDate);
+      actionUrl.searchParams.set('startDate', dateRange.startDate);
+      actionUrl.searchParams.set('endDate', dateRange.endDate);
       casesUrl.searchParams.set('days', '30');
 
       const [metricsRes, actionRes, casesRes] = await Promise.all([
@@ -281,7 +290,12 @@ export default function DashboardScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [jurisdictionId]);
+  }, [jurisdictionId, timePeriod]);
+
+  const handleTimePeriodChange = (period: TimePeriod) => {
+    setTimePeriod(period);
+    setIsLoading(true);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -354,8 +368,15 @@ export default function DashboardScreen() {
         <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.header}>
           <ThemedText type="h1" style={styles.title}>Action Dashboard</ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            Today's overview
+            {getFilterLabel(timePeriod)} overview
           </ThemedText>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(120).duration(400)}>
+          <TimeFilter 
+            selected={timePeriod} 
+            onSelect={handleTimePeriodChange}
+          />
         </Animated.View>
 
         {actionData ? (
