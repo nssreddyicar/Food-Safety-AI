@@ -99,14 +99,17 @@ interface DynamicTimelineStepProps {
   isBranch?: boolean;
   branchLabel?: string;
   savedData?: Record<string, any> | null;
+  templates?: DocumentTemplate[];
   onPress: () => void;
 }
 
-function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranch, branchLabel, savedData, onPress }: DynamicTimelineStepProps) {
+function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranch, branchLabel, savedData, templates = [], onPress }: DynamicTimelineStepProps) {
   const { theme } = useTheme();
   const nodeColor = node.color || theme.primary;
   const color = isComplete ? theme.success : isActive ? nodeColor : theme.textSecondary;
   const iconName = iconMap[node.icon] || 'circle';
+  
+  const assignedTemplates = templates.filter(t => node.templateIds?.includes(t.id));
   
   return (
     <Pressable onPress={onPress} style={styles.timelineStep}>
@@ -145,6 +148,23 @@ function DynamicTimelineStep({ node, date, isActive, isComplete, isLast, isBranc
         )}
         {node.description ? (
           <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 2 }}>{node.description}</ThemedText>
+        ) : null}
+        {assignedTemplates.length > 0 ? (
+          <View style={[styles.nodeTemplatesContainer, { backgroundColor: theme.primary + '08', borderColor: theme.primary + '20' }]}>
+            <View style={styles.nodeTemplatesHeader}>
+              <Feather name="file-text" size={12} color={theme.primary} />
+              <ThemedText type="small" style={{ color: theme.primary, fontWeight: '600' }}>Documents</ThemedText>
+            </View>
+            <View style={styles.nodeTemplatesList}>
+              {assignedTemplates.map(template => (
+                <View key={template.id} style={[styles.nodeTemplateChip, { backgroundColor: theme.primary + '15' }]}>
+                  <ThemedText type="small" style={{ color: theme.primary, fontSize: 11 }} numberOfLines={1}>
+                    {template.name}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          </View>
         ) : null}
         {savedData && Object.keys(savedData).length > 0 ? (
           <View style={[styles.savedDataContainer, { backgroundColor: theme.success + '10', borderColor: theme.success + '30' }]}>
@@ -484,6 +504,7 @@ export default function SampleDetailsScreen() {
           isComplete={isComplete}
           isLast={isLast}
           savedData={nodeState?.nodeData}
+          templates={templates}
           onPress={() => openNodeModal(node)}
         />
       );
@@ -503,6 +524,7 @@ export default function SampleDetailsScreen() {
             isBranch={true}
             branchLabel={item.transition.label}
             savedData={nodeState?.nodeData}
+            templates={templates}
             onPress={() => openNodeModal(item.node)}
           />
         );
@@ -1433,5 +1455,27 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  nodeTemplatesContainer: {
+    marginTop: Spacing.sm,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    gap: Spacing.xs,
+  },
+  nodeTemplatesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  nodeTemplatesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+  },
+  nodeTemplateChip: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
   },
 });
