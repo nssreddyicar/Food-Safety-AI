@@ -23,6 +23,7 @@ interface TourEntry {
   date: number;
   from: string;
   to: string;
+  oneWayDistance?: string;
   distance: string;
   modeOfTravel: string;
   purposeOfVisit: string;
@@ -119,6 +120,7 @@ export default function TourDiaryScreen() {
       date: day,
       from: '',
       to: '',
+      oneWayDistance: '',
       distance: '',
       modeOfTravel: '',
       purposeOfVisit: '',
@@ -136,6 +138,7 @@ export default function TourDiaryScreen() {
         date: editingDay,
         from: editForm.from || '',
         to: editForm.to || '',
+        oneWayDistance: editForm.oneWayDistance || '',
         distance: editForm.distance || '',
         modeOfTravel: editForm.modeOfTravel || '',
         purposeOfVisit: editForm.purposeOfVisit || '',
@@ -305,15 +308,28 @@ export default function TourDiaryScreen() {
               </View>
               
               <View style={styles.formGroup}>
-                <Text style={[styles.label, { color: theme.textSecondary }]}>Distance (To & Fro) in km</Text>
+                <Text style={[styles.label, { color: theme.textSecondary }]}>One-way Distance (km)</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                  placeholder="e.g., 50"
+                  placeholder="e.g., 25"
                   placeholderTextColor={theme.textSecondary}
                   keyboardType="numeric"
-                  value={editForm.distance}
-                  onChangeText={(text) => setEditForm({ ...editForm, distance: text })}
+                  value={editForm.oneWayDistance || ''}
+                  onChangeText={(text) => {
+                    const oneWay = parseFloat(text) || 0;
+                    const toFro = oneWay * 2;
+                    setEditForm({ 
+                      ...editForm, 
+                      oneWayDistance: text,
+                      distance: toFro > 0 ? toFro.toString() : '' 
+                    });
+                  }}
                 />
+                {editForm.distance ? (
+                  <Text style={[styles.calculatedDistance, { color: Colors.light.success }]}>
+                    To & Fro Distance: {editForm.distance} km
+                  </Text>
+                ) : null}
               </View>
               
               <View style={styles.formGroup}>
@@ -511,6 +527,11 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     marginBottom: Spacing.xs,
+  },
+  calculatedDistance: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: Spacing.xs,
   },
   input: {
     borderWidth: 1,
