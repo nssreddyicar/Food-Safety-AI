@@ -42,9 +42,9 @@
       .modal.show { display: flex; }
       .modal-content { background: white; border-radius: 12px; padding: 24px; width: 100%; max-width: 1400px; margin: 20px 0; }
       .modal-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; color: #1f2937; }
-      .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-      .form-column { max-height: 80vh; overflow-y: auto; padding-right: 16px; }
-      .preview-column { position: sticky; top: 0; }
+      .modal-grid { display: grid; grid-template-columns: minmax(400px, 1fr) minmax(300px, 1fr); gap: 24px; }
+      .form-column { max-height: 80vh; overflow-y: auto; padding-right: 16px; min-width: 400px; }
+      .preview-column { position: sticky; top: 0; min-width: 300px; overflow: hidden; }
       .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
       .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
       .form-row-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
@@ -170,7 +170,7 @@
               <div class="form-row-3">
                 <div class="form-group">
                   <label class="form-label">Page Size</label>
-                  <select class="form-select" id="pageSize" onchange="updatePreview()">
+                  <select class="form-select" id="pageSize" onchange="updatePreview(true)">
                     <option value="A4">A4 (210 x 297 mm)</option>
                     <option value="Letter">Letter (8.5 x 11 in)</option>
                     <option value="Legal">Legal (8.5 x 14 in)</option>
@@ -179,7 +179,7 @@
                 </div>
                 <div class="form-group">
                   <label class="form-label">Orientation</label>
-                  <select class="form-select" id="orientation" onchange="updatePreview()">
+                  <select class="form-select" id="orientation" onchange="updatePreview(true)">
                     <option value="portrait">Portrait</option>
                     <option value="landscape">Landscape</option>
                   </select>
@@ -517,10 +517,21 @@
         `;
       }
 
-      function updatePreview() {
+      function updatePreview(autoFit = false) {
         clearTimeout(previewTimeout);
         previewTimeout = setTimeout(() => {
           const data = getFormData();
+          if (autoFit) {
+            const viewport = document.getElementById('preview-viewport');
+            const dims = getPageDimensions(data.pageSize, data.orientation);
+            const pageWidth = dims.width * mmToPx;
+            const pageHeight = dims.height * mmToPx;
+            const viewportWidth = viewport.clientWidth - 40;
+            const viewportHeight = viewport.clientHeight - 40;
+            currentZoom = Math.min(viewportWidth / pageWidth, viewportHeight / pageHeight, 0.8);
+            currentZoom = Math.max(currentZoom, 0.15);
+            document.getElementById('zoom-level').textContent = Math.round(currentZoom * 100) + '%';
+          }
           renderPreviewPage(data, 'preview-page', 'page-size-label', currentZoom);
         }, 100);
       }
@@ -562,7 +573,8 @@
         const pageHeight = dims.height * mmToPx;
         const viewportWidth = viewport.clientWidth - 40;
         const viewportHeight = viewport.clientHeight - 40;
-        currentZoom = Math.min(viewportWidth / pageWidth, viewportHeight / pageHeight, 1);
+        currentZoom = Math.min(viewportWidth / pageWidth, viewportHeight / pageHeight, 0.8);
+        currentZoom = Math.max(currentZoom, 0.15);
         document.getElementById('zoom-level').textContent = Math.round(currentZoom * 100) + '%';
         updatePreview();
       }
@@ -692,7 +704,7 @@
         }
         
         modal.classList.add('show');
-        setTimeout(() => updatePreview(), 50);
+        setTimeout(() => updatePreview(true), 50);
       }
 
       function closeModal() {
