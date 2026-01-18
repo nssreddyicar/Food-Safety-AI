@@ -857,6 +857,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).send(html);
   });
 
+  // Action Dashboard Admin Page
+  app.get("/admin/action-dashboard", (req: Request, res: Response) => {
+    const sessionToken = getSessionToken(req);
+    if (!sessionToken || !isValidSession(sessionToken)) {
+      return res.redirect("/admin");
+    }
+    const templatePath = path.resolve(process.cwd(), "server", "templates", "admin-action-dashboard.html");
+    const html = fs.readFileSync(templatePath, "utf-8");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  });
+
   // Sample Workflow Admin Page
   app.get("/admin/workflow", (req: Request, res: Response) => {
     const sessionToken = getSessionToken(req);
