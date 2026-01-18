@@ -29,6 +29,7 @@ interface TourEntry {
   distance: string;
   modeOfTravel: string;
   purposeOfVisit: string;
+  customPurpose?: string;
   signature: string;
 }
 
@@ -44,6 +45,29 @@ const MONTHS = [
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const MODE_OPTIONS = ['Car', 'Bike', 'Bus', 'Train', 'Auto', 'Walking', 'Other'];
+
+const PURPOSE_OPTIONS = [
+  'Routine Inspection',
+  'Special Drive',
+  'VVIP Protocol',
+  'VVIP ASL',
+  'VVIP Coordination Meeting',
+  'District Collector Coordination Meeting',
+  'DLAC Meeting',
+  'Prajavani',
+  'Review Meeting',
+  'Hyderabad Head Office Visit',
+  'On Leave',
+  'Complaint Based Inspection',
+  'Court Case Appearing',
+  'Adjudication Case Appearing',
+  'Awareness Programme Attended',
+  'Workshop Programme Attended',
+  'MDM School Inspection',
+  'Anganwadi Centre Inspection',
+  'Residential Institution Inspection',
+  'Other',
+];
 
 const TOUR_DIARY_KEY = '@tour_diary';
 
@@ -219,6 +243,7 @@ export default function TourDiaryScreen() {
       distance: '',
       modeOfTravel: '',
       purposeOfVisit: '',
+      customPurpose: '',
       signature: '',
     });
     setEditModalVisible(true);
@@ -226,6 +251,10 @@ export default function TourDiaryScreen() {
   
   const saveEntry = async () => {
     if (editingDay === null) return;
+    
+    const finalPurpose = editForm.purposeOfVisit === 'Other' 
+      ? (editForm.customPurpose || 'Other') 
+      : (editForm.purposeOfVisit || '');
     
     const newData = {
       ...monthData,
@@ -236,7 +265,8 @@ export default function TourDiaryScreen() {
         oneWayDistance: editForm.oneWayDistance || '',
         distance: editForm.distance || '',
         modeOfTravel: editForm.modeOfTravel || '',
-        purposeOfVisit: editForm.purposeOfVisit || '',
+        purposeOfVisit: finalPurpose,
+        customPurpose: editForm.purposeOfVisit === 'Other' ? editForm.customPurpose : '',
         signature: editForm.signature || '',
       },
     };
@@ -652,15 +682,45 @@ export default function TourDiaryScreen() {
               
               <View style={styles.formGroup}>
                 <Text style={[styles.label, { color: theme.textSecondary }]}>Purpose of Visit</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                  placeholder="Describe the purpose of your visit"
-                  placeholderTextColor={theme.textSecondary}
-                  multiline
-                  numberOfLines={3}
-                  value={editForm.purposeOfVisit}
-                  onChangeText={(text) => setEditForm({ ...editForm, purposeOfVisit: text })}
-                />
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.purposeScrollContainer}
+                  contentContainerStyle={styles.purposeScrollContent}
+                >
+                  {PURPOSE_OPTIONS.map((purpose) => (
+                    <Pressable
+                      key={purpose}
+                      style={[
+                        styles.purposeChip,
+                        {
+                          backgroundColor: editForm.purposeOfVisit === purpose ? Colors.light.primary : theme.backgroundSecondary,
+                          borderColor: editForm.purposeOfVisit === purpose ? Colors.light.primary : theme.border,
+                        },
+                      ]}
+                      onPress={() => setEditForm({ ...editForm, purposeOfVisit: purpose, customPurpose: '' })}
+                    >
+                      <Text
+                        style={[
+                          styles.purposeChipText,
+                          { color: editForm.purposeOfVisit === purpose ? '#fff' : theme.text },
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {purpose}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+                {editForm.purposeOfVisit === 'Other' ? (
+                  <TextInput
+                    style={[styles.input, styles.otherInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                    placeholder="Enter custom purpose..."
+                    placeholderTextColor={theme.textSecondary}
+                    value={editForm.customPurpose}
+                    onChangeText={(text) => setEditForm({ ...editForm, customPurpose: text })}
+                  />
+                ) : null}
               </View>
               
               <View style={styles.formGroup}>
@@ -989,6 +1049,28 @@ const styles = StyleSheet.create({
   },
   modeChipText: {
     fontSize: 14,
+  },
+  purposeScrollContainer: {
+    marginBottom: Spacing.sm,
+  },
+  purposeScrollContent: {
+    gap: Spacing.sm,
+    paddingRight: Spacing.md,
+  },
+  purposeChip: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    minWidth: 100,
+    maxWidth: 160,
+  },
+  purposeChipText: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  otherInput: {
+    marginTop: Spacing.sm,
   },
   modalButtons: {
     flexDirection: 'row',
