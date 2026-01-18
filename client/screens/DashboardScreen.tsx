@@ -11,9 +11,86 @@ import { Card } from '@/components/Card';
 import { StatCardSkeleton } from '@/components/SkeletonLoader';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthContext } from '@/context/AuthContext';
-import { getApiUrl, apiRequest } from '@/lib/query-client';
-import { DashboardMetrics, ProsecutionCase } from '@/types';
+import { getApiUrl } from '@/lib/query-client';
+import { DashboardMetrics, ProsecutionCase, ActionDashboardData, ActionCategory, ActionCategoryGroup } from '@/types';
 import { Spacing, BorderRadius } from '@/constants/theme';
+
+const GROUP_INFO: Record<ActionCategoryGroup, { name: string; icon: keyof typeof Feather.glyphMap }> = {
+  legal: { name: 'LEGAL & COURT', icon: 'briefcase' },
+  inspection: { name: 'INSPECTIONS & ENFORCEMENT', icon: 'search' },
+  sampling: { name: 'SAMPLING & LABORATORY', icon: 'thermometer' },
+  administrative: { name: 'ADMINISTRATIVE', icon: 'folder' },
+  protocol: { name: 'PROTOCOL & DUTIES', icon: 'shield' },
+};
+
+interface SummaryCardProps {
+  title: string;
+  value: number;
+  color: string;
+  bgColor: string;
+}
+
+function SummaryCard({ title, value, color, bgColor }: SummaryCardProps) {
+  return (
+    <View style={[styles.summaryCard, { backgroundColor: bgColor }]}>
+      <ThemedText type="h1" style={[styles.summaryValue, { color }]}>{value}</ThemedText>
+      <ThemedText type="small" style={[styles.summaryLabel, { color }]}>{title}</ThemedText>
+    </View>
+  );
+}
+
+interface ActionCategoryCardProps {
+  category: ActionCategory;
+  onPress: () => void;
+}
+
+function ActionCategoryCard({ category, onPress }: ActionCategoryCardProps) {
+  const { theme } = useTheme();
+  
+  const getFeatherIcon = (iconName: string): keyof typeof Feather.glyphMap => {
+    const iconMap: Record<string, keyof typeof Feather.glyphMap> = {
+      'briefcase': 'briefcase',
+      'file-text': 'file-text',
+      'dollar-sign': 'dollar-sign',
+      'refresh-cw': 'refresh-cw',
+      'clipboard': 'clipboard',
+      'alert-triangle': 'alert-triangle',
+      'lock': 'lock',
+      'trash-2': 'trash-2',
+      'package': 'package',
+      'clock': 'clock',
+      'file-plus': 'file-plus',
+      'alert-octagon': 'alert-octagon',
+      'alert-circle': 'alert-circle',
+      'tag': 'tag',
+      'shield-off': 'shield-off',
+      'target': 'target',
+      'users': 'users',
+      'calendar': 'calendar',
+      'star': 'star',
+      'message-circle': 'message-circle',
+      'shield': 'shield',
+    };
+    return iconMap[iconName] || 'folder';
+  };
+
+  return (
+    <Card style={styles.actionCategoryCard} onPress={onPress}>
+      <View style={styles.actionCategoryRow}>
+        <View style={[styles.actionCategoryIcon, { backgroundColor: category.color + '20' }]}>
+          <Feather name={getFeatherIcon(category.icon)} size={18} color={category.color} />
+        </View>
+        <View style={styles.actionCategoryContent}>
+          <ThemedText type="body" style={styles.actionCategoryName}>{category.name}</ThemedText>
+          <ThemedText type="small" style={{ color: theme.textSecondary }}>
+            {category.counts.pending} pending · {category.counts.overdue} overdue
+          </ThemedText>
+        </View>
+        <ThemedText type="h2" style={styles.actionCategoryCount}>{category.counts.total}</ThemedText>
+      </View>
+    </Card>
+  );
+}
 
 interface MetricCardProps {
   title: string;
@@ -158,6 +235,7 @@ export default function DashboardScreen() {
   const { user } = useAuthContext();
 
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [actionData, setActionData] = useState<ActionDashboardData | null>(null);
   const [upcomingCases, setUpcomingCases] = useState<ProsecutionCase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -167,18 +245,19 @@ export default function DashboardScreen() {
   const loadData = useCallback(async () => {
     try {
       const metricsUrl = new URL('/api/dashboard/metrics', getApiUrl());
+      const actionUrl = new URL('/api/action-dashboard', getApiUrl());
+      const casesUrl = new URL('/api/upcoming-hearings', getApiUrl());
+      
       if (jurisdictionId) {
         metricsUrl.searchParams.set('jurisdictionId', jurisdictionId);
-      }
-
-      const casesUrl = new URL('/api/upcoming-hearings', getApiUrl());
-      if (jurisdictionId) {
+        actionUrl.searchParams.set('jurisdictionId', jurisdictionId);
         casesUrl.searchParams.set('jurisdictionId', jurisdictionId);
       }
       casesUrl.searchParams.set('days', '30');
 
-      const [metricsRes, casesRes] = await Promise.all([
+      const [metricsRes, actionRes, casesRes] = await Promise.all([
         fetch(metricsUrl.toString()),
+        fetch(actionUrl.toString()),
         fetch(casesUrl.toString()),
       ]);
 
@@ -187,9 +266,14 @@ export default function DashboardScreen() {
         setMetrics(metricsData);
       }
 
+      if (actionRes.ok) {
+        const actionDashboardData = await actionRes.json();
+        setActionData(actionDashboardData);
+      }
+
       if (casesRes.ok) {
         const casesData = await casesRes.json();
-        setUpcomingCases(casesData.slice(0, 5));
+        setUpcomingCases(casesData.slice(0, 3));
       }
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -210,12 +294,43 @@ export default function DashboardScreen() {
     loadData();
   };
 
+  const handleCategoryPress = (category: ActionCategory) => {
+    switch (category.code) {
+      case 'court_cases':
+        navigation.navigate('ProfileTab', { screen: 'CourtCases' });
+        break;
+      case 'pending_inspections':
+        navigation.navigate('InspectionsTab');
+        break;
+      case 'samples_pending':
+      case 'lab_reports_awaited':
+      case 'unsafe_samples':
+      case 'substandard_samples':
+        navigation.navigate('SamplesTab');
+        break;
+      default:
+        break;
+    }
+  };
+
   const formatAmount = (amount: number) => {
     if (amount >= 10000000) return `${(amount / 10000000).toFixed(1)} Cr`;
     if (amount >= 100000) return `${(amount / 100000).toFixed(1)} L`;
     if (amount >= 1000) return `${(amount / 1000).toFixed(1)} K`;
     return amount.toString();
   };
+
+  const groupedCategories: Partial<Record<ActionCategoryGroup, ActionCategory[]>> = {};
+  if (actionData?.categories) {
+    actionData.categories.forEach((cat) => {
+      if (!groupedCategories[cat.group]) {
+        groupedCategories[cat.group] = [];
+      }
+      groupedCategories[cat.group]!.push(cat);
+    });
+  }
+
+  const groupOrder: ActionCategoryGroup[] = ['legal', 'inspection', 'sampling', 'administrative', 'protocol'];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -236,17 +351,99 @@ export default function DashboardScreen() {
           />
         }
       >
-        <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.header}>
+          <ThemedText type="h1" style={styles.title}>Action Dashboard</ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            Welcome back,
-          </ThemedText>
-          <ThemedText type="h2">{user?.name || 'Officer'}</ThemedText>
-          <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
-            {user?.designation}{user?.jurisdiction?.unitName ? ` - ${user.jurisdiction.unitName}` : ''}
+            Today's overview
           </ThemedText>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+        {actionData ? (
+          <>
+            <Animated.View entering={FadeInDown.delay(150).duration(400)}>
+              <View style={styles.summaryGrid}>
+                <View style={styles.summaryRow}>
+                  <SummaryCard
+                    title="Overdue"
+                    value={actionData.totals.overdueItems}
+                    color="#DC2626"
+                    bgColor="#FEE2E2"
+                  />
+                  <SummaryCard
+                    title="Due Today"
+                    value={actionData.totals.dueToday}
+                    color="#92400E"
+                    bgColor="#FEF3C7"
+                  />
+                </View>
+                <View style={styles.summaryRow}>
+                  <SummaryCard
+                    title="This Week"
+                    value={actionData.totals.dueThisWeek}
+                    color="#1E40AF"
+                    bgColor="#DBEAFE"
+                  />
+                  <SummaryCard
+                    title="Total Actions"
+                    value={actionData.totals.totalItems}
+                    color="#065F46"
+                    bgColor="#D1FAE5"
+                  />
+                </View>
+              </View>
+            </Animated.View>
+
+            {groupOrder.map((group, groupIndex) => {
+              const categories = groupedCategories[group];
+              if (!categories || categories.length === 0) return null;
+
+              const groupInfo = GROUP_INFO[group];
+              return (
+                <Animated.View 
+                  key={group} 
+                  entering={FadeInDown.delay(200 + groupIndex * 50).duration(400)}
+                  style={styles.actionGroupContainer}
+                >
+                  <View style={styles.actionGroupHeader}>
+                    <Feather name={groupInfo.icon} size={14} color={theme.textSecondary} />
+                    <ThemedText type="small" style={styles.actionGroupTitle}>
+                      {groupInfo.name}
+                    </ThemedText>
+                  </View>
+                  {categories.map((category) => (
+                    <ActionCategoryCard
+                      key={category.id}
+                      category={category}
+                      onPress={() => handleCategoryPress(category)}
+                    />
+                  ))}
+                </Animated.View>
+              );
+            })}
+          </>
+        ) : isLoading ? (
+          <View style={styles.loadingContainer}>
+            <View style={styles.summaryGrid}>
+              <View style={styles.summaryRow}>
+                <View style={[styles.summaryCard, { backgroundColor: '#FEE2E2' }]} />
+                <View style={[styles.summaryCard, { backgroundColor: '#FEF3C7' }]} />
+              </View>
+              <View style={styles.summaryRow}>
+                <View style={[styles.summaryCard, { backgroundColor: '#DBEAFE' }]} />
+                <View style={[styles.summaryCard, { backgroundColor: '#D1FAE5' }]} />
+              </View>
+            </View>
+          </View>
+        ) : null}
+
+        <Animated.View entering={FadeInDown.delay(500).duration(400)} style={styles.divider}>
+          <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+          <ThemedText type="small" style={[styles.dividerText, { color: theme.textSecondary, backgroundColor: theme.backgroundRoot }]}>
+            Statistics Overview
+          </ThemedText>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(550).duration(400)}>
           <SectionHeader title="Licenses & Registrations" icon="file-text" />
           {isLoading ? (
             <View style={styles.metricsRow}>
@@ -270,7 +467,7 @@ export default function DashboardScreen() {
                   color={theme.success}
                 />
               </View>
-              <View style={styles.metricsRow}>
+              <View style={[styles.metricsRow, { marginTop: Spacing.sm }]}>
                 <MetricCard
                   title="Registrations"
                   value={metrics?.registrations.total || 0}
@@ -289,7 +486,7 @@ export default function DashboardScreen() {
           )}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(300).duration(400)}>
+        <Animated.View entering={FadeInDown.delay(600).duration(400)}>
           <SectionHeader title="Inspections" icon="clipboard" />
           {isLoading ? (
             <View style={styles.metricsRow}>
@@ -316,7 +513,7 @@ export default function DashboardScreen() {
           )}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(400).duration(400)}>
+        <Animated.View entering={FadeInDown.delay(650).duration(400)}>
           <SectionHeader title="Grievances" icon="message-square" />
           {isLoading ? (
             <View style={styles.metricsRow}>
@@ -347,7 +544,7 @@ export default function DashboardScreen() {
           )}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(500).duration(400)}>
+        <Animated.View entering={FadeInDown.delay(700).duration(400)}>
           <SectionHeader title="FSW Activities" icon="users" />
           {isLoading ? (
             <View style={styles.metricsRow}>
@@ -378,7 +575,7 @@ export default function DashboardScreen() {
           )}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(600).duration(400)}>
+        <Animated.View entering={FadeInDown.delay(750).duration(400)}>
           <SectionHeader title="Adjudication & Prosecution" icon="briefcase" />
           {isLoading ? (
             <View style={styles.metricsRow}>
@@ -404,26 +601,6 @@ export default function DashboardScreen() {
               />
             </View>
           )}
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(700).duration(400)}>
-          <Card 
-            style={styles.actionDashboardCard}
-            onPress={() => navigation.navigate('ActionDashboard')}
-          >
-            <View style={styles.actionDashboardContent}>
-              <View style={[styles.actionDashboardIcon, { backgroundColor: theme.accent + '15' }]}>
-                <Feather name="grid" size={24} color={theme.accent} />
-              </View>
-              <View style={styles.actionDashboardText}>
-                <ThemedText type="body" style={{ fontWeight: '600' }}>Action Dashboard</ThemedText>
-                <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  View all pending actions, reminders & SLA tracking
-                </ThemedText>
-              </View>
-              <Feather name="chevron-right" size={20} color={theme.textSecondary} />
-            </View>
-          </Card>
         </Animated.View>
 
         {upcomingCases.length > 0 ? (
@@ -460,6 +637,109 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Spacing.lg,
     gap: Spacing.lg,
+  },
+  header: {
+    marginBottom: Spacing.sm,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  summaryGrid: {
+    gap: Spacing.sm,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  summaryCard: {
+    flex: 1,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 80,
+  },
+  summaryValue: {
+    fontSize: 32,
+    fontWeight: '700',
+    lineHeight: 38,
+  },
+  summaryLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  actionGroupContainer: {
+    marginBottom: Spacing.xs,
+  },
+  actionGroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
+    paddingLeft: 4,
+  },
+  actionGroupTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    color: '#6B7280',
+  },
+  actionCategoryCard: {
+    marginBottom: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+  },
+  actionCategoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionCategoryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  actionCategoryContent: {
+    flex: 1,
+  },
+  actionCategoryName: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  actionCategoryCount: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#374151',
+    marginLeft: Spacing.md,
+  },
+  loadingContainer: {
+    marginBottom: Spacing.lg,
+  },
+  divider: {
+    position: 'relative',
+    alignItems: 'center',
+    marginVertical: Spacing.md,
+  },
+  dividerLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '50%',
+    height: 1,
+  },
+  dividerText: {
+    paddingHorizontal: Spacing.md,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -541,23 +821,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: Spacing.md,
     top: '50%',
-  },
-  actionDashboardCard: {
-    marginTop: Spacing.sm,
-  },
-  actionDashboardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  actionDashboardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionDashboardText: {
-    flex: 1,
   },
 });
