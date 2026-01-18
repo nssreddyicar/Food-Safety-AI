@@ -1155,6 +1155,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { sampleId } = req.params;
       const { nodeId, nodeData } = req.body;
       
+      // Check if this node is a decision node (like Lab Report Received)
+      // and sync relevant data to the sample record
+      const [node] = await db.select().from(workflowNodes)
+        .where(sql`${workflowNodes.id} = ${nodeId}`);
+      
+      if (node?.nodeType === 'decision' && nodeData) {
+        // Sync labResult if present in nodeData
+        const sampleUpdates: Record<string, any> = {};
+        if (nodeData.labResult) {
+          sampleUpdates.labResult = nodeData.labResult;
+        }
+        if (nodeData.labReportDate) {
+          sampleUpdates.labReportDate = nodeData.labReportDate;
+        }
+        
+        if (Object.keys(sampleUpdates).length > 0) {
+          await db.update(samples)
+            .set(sampleUpdates)
+            .where(sql`${samples.id} = ${sampleId}`);
+        }
+      }
+      
       // Check if there's already an entry for this node
       const [existing] = await db.select().from(sampleWorkflowState)
         .where(sql`${sampleWorkflowState.sampleId} = ${sampleId} AND ${sampleWorkflowState.currentNodeId} = ${nodeId}`);
