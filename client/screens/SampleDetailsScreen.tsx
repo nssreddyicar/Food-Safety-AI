@@ -891,13 +891,24 @@ export default function SampleDetailsScreen() {
             </ThemedText>
             <View style={styles.imagePreviewContainer}>
               {value ? (
-                <View style={styles.imagePreviewWrapper}>
-                  <Image source={{ uri: value }} style={styles.imagePreview} resizeMode="cover" />
-                  <Pressable 
-                    style={[styles.removeImageButton, { backgroundColor: theme.accent }]}
-                    onPress={removeImage}
+                <View style={styles.uploadedImageContainer}>
+                  <View style={styles.imagePreviewWrapper}>
+                    <Image source={{ uri: value }} style={styles.imagePreview} resizeMode="cover" />
+                    <Pressable 
+                      style={[styles.removeImageButton, { backgroundColor: theme.accent }]}
+                      onPress={removeImage}
+                    >
+                      <Feather name="x" size={12} color="#fff" />
+                    </Pressable>
+                  </View>
+                  <Pressable
+                    style={[styles.previewUploadedImageBtn, { backgroundColor: theme.primary }]}
+                    onPress={() => {
+                      setPreviewImageUri(value);
+                      setImagePreviewModalVisible(true);
+                    }}
                   >
-                    <Feather name="x" size={12} color="#fff" />
+                    <Feather name="eye" size={14} color="#fff" />
                   </Pressable>
                 </View>
               ) : null}
@@ -1794,8 +1805,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
   },
+  uploadedImageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   imagePreviewWrapper: {
     position: 'relative',
+  },
+  previewUploadedImageBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   imagePreview: {
     width: 64,
