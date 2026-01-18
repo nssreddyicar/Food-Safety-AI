@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, ActivityIndicator, Alert, Platform, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useRoute } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Card } from '@/components/Card';
@@ -23,6 +23,7 @@ export default function GenerateReportScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
   const route = useRoute<any>();
   const { user } = useAuthContext();
 
@@ -108,24 +109,31 @@ export default function GenerateReportScreen() {
         }),
       });
 
-      const { uri } = await Print.printToFileAsync({
-        html,
-        base64: false,
-      });
-
-      const fileName = `FSI_Report_${timePeriodLabel.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
-      const newUri = `${FileSystem.cacheDirectory}${fileName}`;
-      
-      await FileSystem.moveAsync({
-        from: uri,
-        to: newUri,
-      });
-
-      setPdfUri(newUri);
-      Alert.alert('Success', 'Report generated successfully!');
+      if (Platform.OS === 'web') {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(html);
+          printWindow.document.close();
+          printWindow.focus();
+          setTimeout(() => {
+            printWindow.print();
+          }, 500);
+          setPdfUri('web-print-success');
+          Alert.alert('Success', 'Report opened in a new tab. Use Ctrl+P (Cmd+P on Mac) to save as PDF.');
+        } else {
+          Alert.alert('Info', 'Please allow popups to generate the report.');
+        }
+      } else {
+        const { uri } = await Print.printToFileAsync({
+          html,
+          base64: false,
+        });
+        setPdfUri(uri);
+        Alert.alert('Success', 'Report generated successfully!');
+      }
     } catch (error) {
       console.error('Failed to generate PDF:', error);
-      Alert.alert('Error', 'Failed to generate PDF report.');
+      Alert.alert('Error', 'Failed to generate PDF report. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -186,7 +194,7 @@ export default function GenerateReportScreen() {
           styles.content,
           {
             paddingTop: headerHeight + Spacing.lg,
-            paddingBottom: insets.bottom + Spacing.xl,
+            paddingBottom: tabBarHeight + Spacing.xl,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -284,15 +292,17 @@ export default function GenerateReportScreen() {
                 onPress={generatePDF}
                 disabled={isGenerating || !metrics || !actionData}
                 style={styles.generateButton}
+                testID="button-generate-pdf"
               >
                 {isGenerating ? "Generating..." : "Generate PDF Report"}
               </Button>
 
-              {pdfUri ? (
+              {pdfUri && Platform.OS !== 'web' ? (
                 <View style={styles.shareActions}>
                   <Pressable 
                     onPress={sharePDF}
                     style={[styles.secondaryButton, { borderColor: theme.primary }]}
+                    testID="button-share-pdf"
                   >
                     <Feather name="share-2" size={18} color={theme.primary} />
                     <ThemedText type="body" style={{ color: theme.primary, fontWeight: '600' }}>Share</ThemedText>
@@ -300,6 +310,7 @@ export default function GenerateReportScreen() {
                   <Pressable 
                     onPress={downloadPDF}
                     style={[styles.secondaryButton, { borderColor: theme.primary }]}
+                    testID="button-download-pdf"
                   >
                     <Feather name="download" size={18} color={theme.primary} />
                     <ThemedText type="body" style={{ color: theme.primary, fontWeight: '600' }}>Download</ThemedText>
