@@ -1168,12 +1168,29 @@ export default function SampleDetailsScreen() {
           </View>
           <View style={styles.previewContent}>
             {previewTemplate ? (
-              <WebView
-                source={{ html: generatePdfHtml(previewTemplate) }}
-                style={styles.webview}
-                originWhitelist={['*']}
-                scalesPageToFit={true}
-              />
+              Platform.OS === 'web' ? (
+                <ScrollView style={styles.webPreviewScroll} contentContainerStyle={styles.webPreviewContent}>
+                  <View style={[styles.webPreviewCard, { backgroundColor: 'white', borderColor: theme.border }]}>
+                    {previewTemplate.contentType === 'html' ? (
+                      <div 
+                        style={{ padding: 20, fontFamily: 'Arial, sans-serif' }}
+                        dangerouslySetInnerHTML={{ __html: replacePlaceholders(previewTemplate.content) }} 
+                      />
+                    ) : (
+                      <ThemedText type="body" style={{ padding: Spacing.lg, whiteSpace: 'pre-wrap' } as any}>
+                        {replacePlaceholders(previewTemplate.content)}
+                      </ThemedText>
+                    )}
+                  </View>
+                </ScrollView>
+              ) : (
+                <WebView
+                  source={{ html: generatePdfHtml(previewTemplate) }}
+                  style={styles.webview}
+                  originWhitelist={['*']}
+                  scalesPageToFit={true}
+                />
+              )
             ) : null}
           </View>
         </View>
@@ -1591,5 +1608,17 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
+  },
+  webPreviewScroll: {
+    flex: 1,
+  },
+  webPreviewContent: {
+    padding: Spacing.lg,
+  },
+  webPreviewCard: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    minHeight: 500,
+    overflow: 'hidden',
   },
 });
