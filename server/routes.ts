@@ -303,7 +303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/officers", async (req: Request, res: Response) => {
     try {
-      const { name, email, phone, role, designation, districtId, status, password, dateOfJoining, employeeId } = req.body;
+      const { name, email, phone, role, designation, districtId, status, password, dateOfJoining, employeeId, showAdminPanel } = req.body;
       const [newOfficer] = await db.insert(officers).values({
         name,
         email,
@@ -315,6 +315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         employeeId: employeeId || null,
         status: status || "active",
         password: password || null,
+        showAdminPanel: showAdminPanel || false,
       }).returning();
       res.json(newOfficer);
     } catch (error: any) {
@@ -329,7 +330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/admin/officers/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { name, email, phone, role, designation, districtId, status, password, dateOfJoining, employeeId } = req.body;
+      const { name, email, phone, role, designation, districtId, status, password, dateOfJoining, employeeId, showAdminPanel } = req.body;
       const updateData: any = { 
         name, 
         email, 
@@ -340,6 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : null,
         employeeId: employeeId || null,
         status, 
+        showAdminPanel: showAdminPanel || false,
         updatedAt: new Date() 
       };
       if (password) {
