@@ -211,3 +211,31 @@ export const officerAssignments = pgTable("officer_assignments", {
 });
 
 export type OfficerAssignment = typeof officerAssignments.$inferSelect;
+
+// Document Templates with dynamic placeholders
+export const documentTemplates = pgTable("document_templates", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull().default("general"),
+  content: text("content").notNull(),
+  placeholders: jsonb("placeholders"),
+  pageSize: text("page_size").notNull().default("A4"),
+  orientation: text("orientation").notNull().default("portrait"),
+  marginTop: integer("margin_top").notNull().default(20),
+  marginBottom: integer("margin_bottom").notNull().default(20),
+  marginLeft: integer("margin_left").notNull().default(20),
+  marginRight: integer("margin_right").notNull().default(20),
+  fontFamily: text("font_family").notNull().default("Times New Roman"),
+  fontSize: integer("font_size").notNull().default(12),
+  showPageNumbers: boolean("show_page_numbers").default(true),
+  headerText: text("header_text"),
+  footerText: text("footer_text"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type DocumentTemplate = typeof documentTemplates.$inferSelect;
