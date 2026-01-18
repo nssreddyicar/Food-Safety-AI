@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, Image, ScrollView } from 'react-native';
+import { View, StyleSheet, Pressable, Image, ScrollView, Modal } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
@@ -19,6 +19,7 @@ interface ActionFormProps {
 export function ActionForm({ action, onUpdate, onRemove, index }: ActionFormProps) {
   const { theme } = useTheme();
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const handleImagePick = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -121,12 +122,18 @@ export function ActionForm({ action, onUpdate, onRemove, index }: ActionFormProp
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagesList}>
             {action.images?.map((image, imageIndex) => (
               <View key={imageIndex} style={styles.imageWrapper}>
-                <Image source={{ uri: image }} style={styles.previewImage} />
+                <Image source={{ uri: image }} style={styles.thumbnailImage} />
                 <Pressable
                   onPress={() => handleRemoveImage(imageIndex)}
                   style={[styles.removeImageButton, { backgroundColor: theme.accent }]}
                 >
-                  <Feather name="x" size={14} color="#FFFFFF" />
+                  <Feather name="x" size={10} color="#FFFFFF" />
+                </Pressable>
+                <Pressable
+                  onPress={() => setPreviewImage(image)}
+                  style={[styles.eyeButton, { backgroundColor: theme.primary }]}
+                >
+                  <Feather name="eye" size={10} color="#FFFFFF" />
                 </Pressable>
               </View>
             ))}
@@ -138,6 +145,25 @@ export function ActionForm({ action, onUpdate, onRemove, index }: ActionFormProp
           </View>
         )}
       </View>
+
+      <Modal
+        visible={!!previewImage}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setPreviewImage(null)}
+      >
+        <View style={styles.previewModal}>
+          <Pressable style={styles.previewBackdrop} onPress={() => setPreviewImage(null)} />
+          <View style={styles.previewContent}>
+            {previewImage ? (
+              <Image source={{ uri: previewImage }} style={styles.previewFullImage} resizeMode="contain" />
+            ) : null}
+            <Pressable style={styles.previewCloseBtn} onPress={() => setPreviewImage(null)}>
+              <Feather name="x" size={24} color="#fff" />
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -211,28 +237,73 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
     position: 'relative',
   },
-  previewImage: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.md,
+  thumbnailImage: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.sm,
   },
   removeImageButton: {
     position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    top: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eyeButton: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
   },
   noImages: {
-    height: 80,
+    height: 48,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.xs,
+  },
+  previewModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  previewContent: {
+    width: '90%',
+    height: '80%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewFullImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: BorderRadius.lg,
+  },
+  previewCloseBtn: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

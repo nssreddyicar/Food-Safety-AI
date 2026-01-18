@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, Image } from 'react-native';
+import { View, StyleSheet, Pressable, Image, Modal } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
@@ -18,6 +18,7 @@ interface WitnessFormProps {
 
 export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormProps) {
   const { theme } = useTheme();
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const handleAadhaarImagePick = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -108,38 +109,85 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
       <View style={styles.imageRow}>
         <View style={styles.imageContainer}>
           <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}>Aadhaar Image (Optional)</ThemedText>
-          <Pressable
-            onPress={handleAadhaarImagePick}
-            style={[styles.imageButton, { borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
-          >
+          <View style={styles.imageUploadRow}>
             {witness.aadhaarImage ? (
-              <Image source={{ uri: witness.aadhaarImage }} style={styles.previewImage} />
-            ) : (
               <>
-                <Feather name="image" size={24} color={theme.textSecondary} />
-                <ThemedText type="small" style={{ color: theme.textSecondary }}>Upload</ThemedText>
+                <View style={styles.thumbnailWrapper}>
+                  <Image source={{ uri: witness.aadhaarImage }} style={styles.thumbnailImage} />
+                  <Pressable
+                    onPress={() => onUpdate({ ...witness, aadhaarImage: undefined })}
+                    style={[styles.removeThumbBtn, { backgroundColor: theme.accent }]}
+                  >
+                    <Feather name="x" size={10} color="#fff" />
+                  </Pressable>
+                </View>
+                <Pressable
+                  onPress={() => setPreviewImage(witness.aadhaarImage || null)}
+                  style={[styles.eyeBtn, { backgroundColor: theme.primary }]}
+                >
+                  <Feather name="eye" size={14} color="#fff" />
+                </Pressable>
               </>
-            )}
-          </Pressable>
+            ) : null}
+            <Pressable
+              onPress={handleAadhaarImagePick}
+              style={[styles.uploadBtn, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]}
+            >
+              <Feather name="image" size={16} color={theme.primary} />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.imageContainer}>
           <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}>Signature (Optional)</ThemedText>
-          <Pressable
-            onPress={handleSignaturePick}
-            style={[styles.imageButton, { borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
-          >
+          <View style={styles.imageUploadRow}>
             {witness.signature ? (
-              <Image source={{ uri: witness.signature }} style={styles.previewImage} />
-            ) : (
               <>
-                <Feather name="edit-3" size={24} color={theme.textSecondary} />
-                <ThemedText type="small" style={{ color: theme.textSecondary }}>Upload</ThemedText>
+                <View style={styles.thumbnailWrapper}>
+                  <Image source={{ uri: witness.signature }} style={styles.thumbnailImage} />
+                  <Pressable
+                    onPress={() => onUpdate({ ...witness, signature: undefined })}
+                    style={[styles.removeThumbBtn, { backgroundColor: theme.accent }]}
+                  >
+                    <Feather name="x" size={10} color="#fff" />
+                  </Pressable>
+                </View>
+                <Pressable
+                  onPress={() => setPreviewImage(witness.signature || null)}
+                  style={[styles.eyeBtn, { backgroundColor: theme.primary }]}
+                >
+                  <Feather name="eye" size={14} color="#fff" />
+                </Pressable>
               </>
-            )}
-          </Pressable>
+            ) : null}
+            <Pressable
+              onPress={handleSignaturePick}
+              style={[styles.uploadBtn, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]}
+            >
+              <Feather name="edit-3" size={16} color={theme.primary} />
+            </Pressable>
+          </View>
         </View>
       </View>
+
+      <Modal
+        visible={!!previewImage}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setPreviewImage(null)}
+      >
+        <View style={styles.previewModal}>
+          <Pressable style={styles.previewBackdrop} onPress={() => setPreviewImage(null)} />
+          <View style={styles.previewContent}>
+            {previewImage ? (
+              <Image source={{ uri: previewImage }} style={styles.previewFullImage} resizeMode="contain" />
+            ) : null}
+            <Pressable style={styles.previewCloseBtn} onPress={() => setPreviewImage(null)}>
+              <Feather name="x" size={24} color="#fff" />
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -176,19 +224,78 @@ const styles = StyleSheet.create({
   imageContainer: {
     flex: 1,
   },
-  imageButton: {
-    height: 100,
-    borderRadius: BorderRadius.md,
+  imageUploadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  thumbnailWrapper: {
+    position: 'relative',
+  },
+  thumbnailImage: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.sm,
+  },
+  removeThumbBtn: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eyeBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.sm,
     borderWidth: 1,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xs,
-    overflow: 'hidden',
   },
-  previewImage: {
+  previewModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  previewContent: {
+    width: '90%',
+    height: '80%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewFullImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    borderRadius: BorderRadius.lg,
+  },
+  previewCloseBtn: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
