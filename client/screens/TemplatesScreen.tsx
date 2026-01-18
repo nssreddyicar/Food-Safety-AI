@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, Pressable, Platform, ActivityIndicator, Alert, Modal, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, StyleSheet, FlatList, Pressable, Platform, ActivityIndicator, Alert, Modal, ScrollView, Dimensions, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { Feather } from '@expo/vector-icons';
@@ -13,6 +13,8 @@ import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthContext } from '@/context/AuthContext';
 import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { storage } from '@/lib/storage';
+import { Sample, Inspection } from '@/types';
 
 let WebView: any = null;
 if (Platform.OS !== 'web') {
@@ -159,36 +161,166 @@ function TemplateCard({
   );
 }
 
+interface SampleWithInspection extends Sample {
+  establishmentName?: string;
+  fboName?: string;
+  fboAddress?: string;
+  fboLicense?: string;
+  inspectionDate?: string;
+  inspectionType?: string;
+}
+
 export default function TemplatesScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const { user } = useAuthContext();
+  const { user, activeJurisdiction } = useAuthContext();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<DocumentTemplate | null>(null);
   const [zoomLevel, setZoomLevel] = useState(0.5);
   const screenWidth = Dimensions.get('window').width;
+  
+  // Sample selection state
+  const [samples, setSamples] = useState<SampleWithInspection[]>([]);
+  const [selectedSample, setSelectedSample] = useState<SampleWithInspection | null>(null);
+  const [showSampleSelector, setShowSampleSelector] = useState(false);
+  
+  // Filter state
+  const [sampleTypeFilter, setSampleTypeFilter] = useState<'all' | 'enforcement' | 'surveillance'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState<'all' | '7days' | '30days' | '90days'>('all');
 
   const { data: templates = [], isLoading } = useQuery<DocumentTemplate[]>({
     queryKey: ['/api/templates'],
   });
 
+  // Load samples from storage
+  useEffect(() => {
+    const loadSamples = async () => {
+      try {
+        const inspections = await storage.getInspections(activeJurisdiction?.unitId);
+        const allSamples: SampleWithInspection[] = [];
+        
+        inspections.forEach((inspection: Inspection) => {
+          if (inspection.samples && inspection.samples.length > 0) {
+            inspection.samples.forEach((sample: Sample) => {
+              allSamples.push({
+                ...sample,
+                establishmentName: inspection.fboDetails?.establishmentName,
+                fboName: inspection.fboDetails?.name,
+                fboAddress: inspection.fboDetails?.address,
+                fboLicense: inspection.fboDetails?.licenseNumber || inspection.fboDetails?.registrationNumber,
+                inspectionDate: inspection.createdAt,
+                inspectionType: inspection.type,
+              });
+            });
+          }
+        });
+        
+        // Sort by lifted date (most recent first)
+        allSamples.sort((a, b) => new Date(b.liftedDate).getTime() - new Date(a.liftedDate).getTime());
+        setSamples(allSamples);
+      } catch (error) {
+        console.error('Failed to load samples:', error);
+      }
+    };
+    
+    loadSamples();
+  }, [activeJurisdiction?.unitId]);
+
+  // Filter samples based on current filters
+  const filteredSamples = useMemo(() => {
+    let result = [...samples];
+    
+    // Type filter
+    if (sampleTypeFilter !== 'all') {
+      result = result.filter(s => s.sampleType === sampleTypeFilter);
+    }
+    
+    // Date filter
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      const daysAgo = dateFilter === '7days' ? 7 : dateFilter === '30days' ? 30 : 90;
+      const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+      result = result.filter(s => new Date(s.liftedDate) >= cutoffDate);
+    }
+    
+    // Search filter (establishment name, sample code, sample name)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(s => 
+        s.name?.toLowerCase().includes(query) ||
+        s.code?.toLowerCase().includes(query) ||
+        s.establishmentName?.toLowerCase().includes(query) ||
+        s.fboName?.toLowerCase().includes(query)
+      );
+    }
+    
+    return result;
+  }, [samples, sampleTypeFilter, dateFilter, searchQuery]);
+
   const replacePlaceholders = (content: string): string => {
     const now = new Date();
+    const sample = selectedSample;
+    
+    // Format date helper
+    const formatDate = (dateStr?: string) => {
+      if (!dateStr) return '[Date]';
+      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+    };
+    
     const placeholderValues: Record<string, string> = {
+      // Officer details
       officer_name: user?.name || '',
       officer_designation: user?.designation || 'Food Safety Officer',
       officer_email: user?.email || '',
-      jurisdiction_name: user?.jurisdiction?.unitName || '',
-      jurisdiction_type: user?.jurisdiction?.roleName || '',
+      officer_phone: user?.phone || '',
+      officer_employee_id: user?.employeeId || '',
+      
+      // Jurisdiction details
+      jurisdiction_name: user?.jurisdiction?.unitName || activeJurisdiction?.unitName || '',
+      jurisdiction_type: user?.jurisdiction?.roleName || activeJurisdiction?.roleName || '',
+      
+      // Current date/time
       current_date: now.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
       current_time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-      fbo_name: '[FBO Name]',
-      fbo_address: '[FBO Address]',
-      fbo_license: '[FBO License Number]',
-      inspection_date: '[Inspection Date]',
-      sample_code: '[Sample Code]',
-      sample_name: '[Sample Name]',
+      
+      // FBO/Establishment details (from selected sample's inspection)
+      fbo_name: sample?.fboName || '[FBO Name]',
+      fbo_address: sample?.fboAddress || '[FBO Address]',
+      fbo_license: sample?.fboLicense || '[FBO License Number]',
+      establishment_name: sample?.establishmentName || '[Establishment Name]',
+      
+      // Inspection details
+      inspection_date: sample?.inspectionDate ? formatDate(sample.inspectionDate) : '[Inspection Date]',
+      inspection_type: sample?.inspectionType || '[Inspection Type]',
+      
+      // Sample details
+      sample_code: sample?.code || '[Sample Code]',
+      sample_name: sample?.name || '[Sample Name]',
+      sample_type: sample?.sampleType === 'enforcement' ? 'Enforcement' : sample?.sampleType === 'surveillance' ? 'Surveillance' : '[Sample Type]',
+      sample_lifted_date: sample?.liftedDate ? formatDate(sample.liftedDate) : '[Lifted Date]',
+      sample_lifted_place: sample?.liftedPlace || '[Lifted Place]',
+      sample_cost: sample?.cost ? `Rs. ${sample.cost}` : '[Sample Cost]',
+      sample_quantity: sample?.quantityInGrams ? `${sample.quantityInGrams} grams` : '[Quantity]',
+      sample_packing_type: sample?.packingType === 'packed' ? 'Packed' : sample?.packingType === 'loose' ? 'Loose' : '[Packing Type]',
+      sample_preservative: sample?.preservativeAdded ? (sample.preservativeType || 'Yes') : 'No',
+      sample_dispatch_date: sample?.dispatchDate ? formatDate(sample.dispatchDate) : '[Dispatch Date]',
+      sample_dispatch_mode: sample?.dispatchMode || '[Dispatch Mode]',
+      
+      // Manufacturer details (for packed samples)
+      manufacturer_name: sample?.manufacturerDetails?.name || '[Manufacturer Name]',
+      manufacturer_address: sample?.manufacturerDetails?.address || '[Manufacturer Address]',
+      manufacturer_license: sample?.manufacturerDetails?.licenseNumber || '[Manufacturer License]',
+      
+      // Additional packed sample details
+      mfg_date: sample?.mfgDate || '[Manufacturing Date]',
+      expiry_date: sample?.useByDate || '[Expiry Date]',
+      lot_batch_number: sample?.lotBatchNumber || '[Lot/Batch Number]',
+      
+      // Lab result (if available)
+      lab_report_date: sample?.labReportDate ? formatDate(sample.labReportDate) : '[Lab Report Date]',
+      lab_result: sample?.labResult ? sample.labResult.replace('_', ' ').toUpperCase() : '[Lab Result]',
     };
 
     let result = content;
@@ -623,9 +755,46 @@ export default function TemplatesScreen() {
         ListHeaderComponent={
           templates.length > 0 ? (
             <View style={styles.header}>
-              <ThemedText type="body" style={{ color: theme.textSecondary }}>
-                Download document templates with your jurisdiction data pre-filled
+              <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+                Select a sample to fill template placeholders with actual data
               </ThemedText>
+              
+              {/* Sample Selection Button */}
+              <Pressable
+                style={[styles.sampleSelectorBtn, { backgroundColor: theme.backgroundRoot, borderColor: selectedSample ? theme.success : theme.border }]}
+                onPress={() => setShowSampleSelector(true)}
+              >
+                <Feather name="database" size={18} color={selectedSample ? theme.success : theme.primary} />
+                <View style={styles.sampleSelectorText}>
+                  {selectedSample ? (
+                    <>
+                      <ThemedText type="body" style={{ fontWeight: '600' }}>
+                        {selectedSample.code}
+                      </ThemedText>
+                      <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                        {selectedSample.name} - {selectedSample.establishmentName}
+                      </ThemedText>
+                    </>
+                  ) : (
+                    <ThemedText type="body" style={{ color: theme.textSecondary }}>
+                      Select a sample to fill placeholders...
+                    </ThemedText>
+                  )}
+                </View>
+                <Feather name="chevron-down" size={20} color={theme.textSecondary} />
+              </Pressable>
+              
+              {selectedSample ? (
+                <Pressable
+                  style={[styles.clearSampleBtn]}
+                  onPress={() => setSelectedSample(null)}
+                >
+                  <Feather name="x" size={14} color={theme.accent} />
+                  <ThemedText type="small" style={{ color: theme.accent }}>
+                    Clear selection
+                  </ThemedText>
+                </Pressable>
+              ) : null}
             </View>
           ) : null
         }
@@ -699,6 +868,173 @@ export default function TemplatesScreen() {
               </ThemedText>
             </View>
           ) : null}
+        </View>
+      </Modal>
+
+      {/* Sample Selector Modal */}
+      <Modal
+        visible={showSampleSelector}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowSampleSelector(false)}
+      >
+        <View style={[styles.sampleModal, { backgroundColor: theme.backgroundDefault }]}>
+          <View style={[styles.sampleModalHeader, { paddingTop: insets.top + Spacing.sm, borderBottomColor: theme.border }]}>
+            <ThemedText type="h3">Select Sample</ThemedText>
+            <Pressable onPress={() => setShowSampleSelector(false)}>
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+          </View>
+
+          {/* Search Bar */}
+          <View style={[styles.searchBar, { backgroundColor: theme.backgroundRoot, borderColor: theme.border }]}>
+            <Feather name="search" size={18} color={theme.textSecondary} />
+            <TextInput
+              style={[styles.searchInput, { color: theme.text }]}
+              placeholder="Search by sample code, name, establishment..."
+              placeholderTextColor={theme.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery ? (
+              <Pressable onPress={() => setSearchQuery('')}>
+                <Feather name="x-circle" size={18} color={theme.textSecondary} />
+              </Pressable>
+            ) : null}
+          </View>
+
+          {/* Filter Chips */}
+          <View style={styles.filterRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
+              {/* Type Filter */}
+              <Pressable
+                style={[styles.filterChip, sampleTypeFilter === 'all' && { backgroundColor: theme.primary }]}
+                onPress={() => setSampleTypeFilter('all')}
+              >
+                <ThemedText type="small" style={{ color: sampleTypeFilter === 'all' ? 'white' : theme.text }}>
+                  All Types
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.filterChip, sampleTypeFilter === 'enforcement' && { backgroundColor: '#dc2626' }]}
+                onPress={() => setSampleTypeFilter('enforcement')}
+              >
+                <ThemedText type="small" style={{ color: sampleTypeFilter === 'enforcement' ? 'white' : theme.text }}>
+                  Enforcement
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.filterChip, sampleTypeFilter === 'surveillance' && { backgroundColor: '#059669' }]}
+                onPress={() => setSampleTypeFilter('surveillance')}
+              >
+                <ThemedText type="small" style={{ color: sampleTypeFilter === 'surveillance' ? 'white' : theme.text }}>
+                  Surveillance
+                </ThemedText>
+              </Pressable>
+
+              <View style={styles.filterDivider} />
+
+              {/* Date Filter */}
+              <Pressable
+                style={[styles.filterChip, dateFilter === 'all' && { backgroundColor: theme.primary }]}
+                onPress={() => setDateFilter('all')}
+              >
+                <ThemedText type="small" style={{ color: dateFilter === 'all' ? 'white' : theme.text }}>
+                  All Time
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.filterChip, dateFilter === '7days' && { backgroundColor: theme.primary }]}
+                onPress={() => setDateFilter('7days')}
+              >
+                <ThemedText type="small" style={{ color: dateFilter === '7days' ? 'white' : theme.text }}>
+                  Last 7 Days
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.filterChip, dateFilter === '30days' && { backgroundColor: theme.primary }]}
+                onPress={() => setDateFilter('30days')}
+              >
+                <ThemedText type="small" style={{ color: dateFilter === '30days' ? 'white' : theme.text }}>
+                  Last 30 Days
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.filterChip, dateFilter === '90days' && { backgroundColor: theme.primary }]}
+                onPress={() => setDateFilter('90days')}
+              >
+                <ThemedText type="small" style={{ color: dateFilter === '90days' ? 'white' : theme.text }}>
+                  Last 90 Days
+                </ThemedText>
+              </Pressable>
+            </ScrollView>
+          </View>
+
+          {/* Sample List */}
+          <FlatList
+            data={filteredSamples}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.sampleList}
+            ListEmptyComponent={
+              <View style={styles.emptySampleList}>
+                <Feather name="inbox" size={48} color={theme.textSecondary} style={{ opacity: 0.5 }} />
+                <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center', marginTop: Spacing.md }}>
+                  {samples.length === 0 ? 'No samples found. Lift samples during inspections to see them here.' : 'No samples match your filters.'}
+                </ThemedText>
+              </View>
+            }
+            renderItem={({ item }) => (
+              <Pressable
+                style={[
+                  styles.sampleItem,
+                  { backgroundColor: theme.backgroundRoot, borderColor: selectedSample?.id === item.id ? theme.primary : theme.border }
+                ]}
+                onPress={() => {
+                  setSelectedSample(item);
+                  setShowSampleSelector(false);
+                }}
+              >
+                <View style={styles.sampleItemHeader}>
+                  <View style={[
+                    styles.sampleTypeBadge,
+                    { backgroundColor: item.sampleType === 'enforcement' ? '#fee2e2' : '#dcfce7' }
+                  ]}>
+                    <ThemedText type="small" style={{ 
+                      color: item.sampleType === 'enforcement' ? '#dc2626' : '#059669',
+                      fontWeight: '600'
+                    }}>
+                      {item.sampleType === 'enforcement' ? 'ENF' : 'SRV'}
+                    </ThemedText>
+                  </View>
+                  <ThemedText type="body" style={{ fontWeight: '700', flex: 1 }}>
+                    {item.code}
+                  </ThemedText>
+                  {selectedSample?.id === item.id ? (
+                    <Feather name="check-circle" size={20} color={theme.primary} />
+                  ) : null}
+                </View>
+                
+                <ThemedText type="body" style={{ marginTop: Spacing.xs }}>
+                  {item.name}
+                </ThemedText>
+                
+                <View style={styles.sampleItemDetails}>
+                  <View style={styles.sampleDetail}>
+                    <Feather name="home" size={12} color={theme.textSecondary} />
+                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                      {item.establishmentName || 'Unknown Establishment'}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.sampleDetail}>
+                    <Feather name="calendar" size={12} color={theme.textSecondary} />
+                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                      {new Date(item.liftedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </ThemedText>
+                  </View>
+                </View>
+              </Pressable>
+            )}
+          />
         </View>
       </Modal>
     </ThemedView>
@@ -846,5 +1182,102 @@ const styles = StyleSheet.create({
     backgroundColor: '#1f2937',
     paddingVertical: Spacing.sm,
     alignItems: 'center',
+  },
+  // Sample selector styles
+  sampleSelectorBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    gap: Spacing.md,
+  },
+  sampleSelectorText: {
+    flex: 1,
+  },
+  clearSampleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing.sm,
+    alignSelf: 'flex-start',
+  },
+  sampleModal: {
+    flex: 1,
+  },
+  sampleModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    margin: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    gap: Spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: Spacing.xs,
+  },
+  filterRow: {
+    marginBottom: Spacing.md,
+  },
+  filterChips: {
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  filterChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: '#e5e7eb',
+  },
+  filterDivider: {
+    width: 1,
+    backgroundColor: '#d1d5db',
+    marginHorizontal: Spacing.sm,
+  },
+  sampleList: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  emptySampleList: {
+    alignItems: 'center',
+    padding: Spacing['2xl'],
+  },
+  sampleItem: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  sampleItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  sampleTypeBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  sampleItemDetails: {
+    flexDirection: 'row',
+    gap: Spacing.lg,
+    marginTop: Spacing.sm,
+  },
+  sampleDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
   },
 });
