@@ -76,6 +76,7 @@ export const inspections = pgTable("inspections", {
   status: text("status").notNull().default("draft"),
   officerId: varchar("officer_id"),
   districtId: varchar("district_id"),
+  jurisdictionId: varchar("jurisdiction_id"),
   fboDetails: jsonb("fbo_details"),
   proprietorDetails: jsonb("proprietor_details"),
   deviations: jsonb("deviations"),
@@ -104,6 +105,7 @@ export const samples = pgTable("samples", {
   labResult: text("lab_result"),
   officerId: varchar("officer_id"),
   districtId: varchar("district_id"),
+  jurisdictionId: varchar("jurisdiction_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
