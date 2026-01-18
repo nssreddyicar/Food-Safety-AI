@@ -491,15 +491,27 @@
         
         if (isRawHtml) {
           // For raw HTML, use srcdoc iframe to completely isolate the template's CSS
-          const escapedContent = content
+          // Inject scrollbar-hiding CSS into the content
+          const scrollbarHideCSS = '<style>html,body{scrollbar-width:none;-ms-overflow-style:none;}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none;}</style>';
+          let modifiedContent = content;
+          if (content.includes('</head>')) {
+            modifiedContent = content.replace('</head>', scrollbarHideCSS + '</head>');
+          } else if (content.includes('<body')) {
+            modifiedContent = content.replace('<body', scrollbarHideCSS + '<body');
+          } else {
+            modifiedContent = scrollbarHideCSS + content;
+          }
+          
+          const escapedContent = modifiedContent
             .replace(/&/g, '&amp;')
             .replace(/"/g, '&quot;');
           
           return `
             <iframe 
               srcdoc="${escapedContent}"
-              style="width: 100%; height: 100%; border: none; background: white;"
+              style="width: 100%; height: 100%; border: none; background: white; overflow: hidden;"
               sandbox="allow-same-origin"
+              scrolling="no"
             ></iframe>
           `;
         }
