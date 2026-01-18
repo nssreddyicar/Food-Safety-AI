@@ -1,5 +1,6 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { registerRoutes } from "./routes";
 import * as fs from "fs";
 import * as path from "path";
@@ -147,13 +148,19 @@ function serveLandingPage({
   const host = forwardedHost || req.get("host");
   const baseUrl = `${protocol}://${host}`;
   const expsUrl = `${host}`;
+  
+  // Create admin URL - strip port if present and add :5000
+  const hostWithoutPort = (host || "").split(":")[0];
+  const adminUrl = `${protocol}://${hostWithoutPort}:5000`;
 
   log(`baseUrl`, baseUrl);
   log(`expsUrl`, expsUrl);
+  log(`adminUrl`, adminUrl);
 
   const html = landingPageTemplate
     .replace(/BASE_URL_PLACEHOLDER/g, baseUrl)
     .replace(/EXPS_URL_PLACEHOLDER/g, expsUrl)
+    .replace(/ADMIN_URL_PLACEHOLDER/g, adminUrl)
     .replace(/APP_NAME_PLACEHOLDER/g, appName);
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -173,6 +180,11 @@ function configureExpoAndLanding(app: express.Application) {
   log("Serving static Expo files with dynamic manifest routing");
 
   app.use((req: Request, res: Response, next: NextFunction) => {
+    // Skip admin routes - they're handled by registerRoutes
+    if (req.path.startsWith("/admin")) {
+      return next();
+    }
+
     if (req.path.startsWith("/api")) {
       return next();
     }
@@ -230,9 +242,10 @@ function setupErrorHandler(app: express.Application) {
   setupBodyParsing(app);
   setupRequestLogging(app);
 
-  configureExpoAndLanding(app);
-
+  // Register admin routes BEFORE Expo/static file serving
   const server = await registerRoutes(app);
+
+  configureExpoAndLanding(app);
 
   setupErrorHandler(app);
 
