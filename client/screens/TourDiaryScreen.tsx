@@ -46,6 +46,50 @@ const MODE_OPTIONS = ['Car', 'Bike', 'Bus', 'Train', 'Auto', 'Walking', 'Other']
 
 const TOUR_DIARY_KEY = '@tour_diary';
 
+// Telangana Government Holidays 2026 (month is 0-indexed)
+const TELANGANA_HOLIDAYS_2026: { [key: string]: string } = {
+  // January
+  '2026-0-14': 'Bhogi',
+  '2026-0-15': 'Sankranti / Pongal',
+  '2026-0-26': 'Republic Day',
+  // February
+  '2026-1-16': 'Maha Shivaratri',
+  // March
+  '2026-2-19': 'Holi',
+  '2026-2-28': 'Ugadi (Telugu New Year)',
+  // April
+  '2026-3-3': 'Good Friday',
+  '2026-3-14': 'Dr. B.R. Ambedkar Jayanti',
+  '2026-3-20': 'Id-ul-Fitr (Ramzan)',
+  // May
+  '2026-4-1': 'May Day',
+  '2026-4-29': 'Telangana Formation Day',
+  // June
+  '2026-5-27': 'Bakrid / Eid al-Adha',
+  // July
+  '2026-6-17': 'Bonalu (Hyderabad)',
+  '2026-6-27': 'Muharram',
+  // August
+  '2026-7-15': 'Independence Day',
+  '2026-7-28': 'Varalakshmi Vratham',
+  '2026-7-30': 'Vinayaka Chaturthi',
+  // September
+  '2026-8-6': 'Sri Krishna Janmashtami',
+  '2026-8-26': 'Eid Milad-un-Nabi',
+  // October
+  '2026-9-2': 'Gandhi Jayanti',
+  '2026-9-18': 'Dussehra (Maha Navami)',
+  '2026-9-19': 'Vijaya Dashami',
+  // November
+  '2026-10-8': 'Deepavali',
+  '2026-10-25': 'Guru Nanak Jayanti',
+};
+
+function getHolidayName(year: number, month: number, day: number): string | null {
+  const key = `${year}-${month}-${day}`;
+  return TELANGANA_HOLIDAYS_2026[key] || null;
+}
+
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
@@ -191,7 +235,8 @@ export default function TourDiaryScreen() {
                     today.getFullYear() === selectedYear;
     const isSunday = new Date(selectedYear, selectedMonth, day).getDay() === 0;
     const is2ndSaturday = isSecondSaturday(selectedYear, selectedMonth, day);
-    const isHoliday = isSunday || is2ndSaturday;
+    const holidayName = getHolidayName(selectedYear, selectedMonth, day);
+    const isHoliday = isSunday || is2ndSaturday || holidayName !== null;
     
     return (
       <View
@@ -202,9 +247,14 @@ export default function TourDiaryScreen() {
         ]}
       >
         <Text style={[styles.cell, styles.slNoCell, { color: theme.text }]}>{day}</Text>
-        <Text style={[styles.cell, styles.dateCell, { color: isHoliday ? Colors.light.accent : theme.text }]}>
-          {day} ({dayName})
-        </Text>
+        <View style={styles.dateCell}>
+          <Text style={[styles.cell, { color: isHoliday ? Colors.light.accent : theme.text }]}>
+            {day} ({dayName})
+          </Text>
+          {holidayName ? (
+            <Text style={styles.holidayLabel} numberOfLines={1}>{holidayName}</Text>
+          ) : null}
+        </View>
         <Text style={[styles.cell, styles.fromCell, { color: theme.text }]} numberOfLines={1}>
           {entry?.from || '-'}
         </Text>
@@ -462,7 +512,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   table: {
-    minWidth: 800,
+    minWidth: 820,
   },
   tableRow: {
     flexDirection: 'row',
@@ -490,7 +540,14 @@ const styles = StyleSheet.create({
     width: 35,
   },
   dateCell: {
-    width: 80,
+    width: 100,
+    justifyContent: 'center',
+  },
+  holidayLabel: {
+    fontSize: 9,
+    color: Colors.light.accent,
+    fontWeight: '500',
+    paddingHorizontal: Spacing.xs,
   },
   fromCell: {
     width: 90,
