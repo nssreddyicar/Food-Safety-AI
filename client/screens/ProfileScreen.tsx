@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Image, Pressable, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -10,6 +10,7 @@ import * as Linking from 'expo-linking';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { ThemedText } from '@/components/ThemedText';
 import { Button } from '@/components/Button';
+import { JurisdictionSwitcher } from '@/components/JurisdictionSwitcher';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthContext } from '@/context/AuthContext';
 import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
@@ -62,6 +63,9 @@ export default function ProfileScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { user, logout } = useAuthContext();
+  const [showJurisdictionSwitcher, setShowJurisdictionSwitcher] = useState(false);
+
+  const hasMultipleJurisdictions = (user?.allJurisdictions?.length || 0) > 1;
 
   const handleLogout = () => {
     if (Platform.OS === 'web') {
@@ -137,6 +141,7 @@ export default function ProfileScreen() {
             icon="map-pin" 
             label="Jurisdiction" 
             value={user?.jurisdiction?.unitName || 'Not assigned'} 
+            onPress={hasMultipleJurisdictions ? () => setShowJurisdictionSwitcher(true) : undefined}
           />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <MenuItem 
@@ -164,6 +169,22 @@ export default function ProfileScreen() {
           <MenuItem icon="user" label="User ID" value={user?.id?.substring(0, 8) || 'N/A'} />
         </View>
       </View>
+
+      {hasMultipleJurisdictions ? (
+        <View style={styles.section}>
+          <ThemedText type="h4" style={styles.sectionTitle}>
+            Jurisdiction
+          </ThemedText>
+          <View style={[styles.menuGroup, Shadows.sm]}>
+            <MenuItem 
+              icon="repeat" 
+              label="Switch Jurisdiction" 
+              value={`${user?.allJurisdictions?.length || 0} assigned jurisdictions`}
+              onPress={() => setShowJurisdictionSwitcher(true)} 
+            />
+          </View>
+        </View>
+      ) : null}
 
       <View style={styles.section}>
         <ThemedText type="h4" style={styles.sectionTitle}>
@@ -196,6 +217,11 @@ export default function ProfileScreen() {
       <ThemedText type="small" style={[styles.footer, { color: theme.textSecondary }]}>
         Food Safety and Standards Authority of India
       </ThemedText>
+
+      <JurisdictionSwitcher 
+        visible={showJurisdictionSwitcher} 
+        onClose={() => setShowJurisdictionSwitcher(false)} 
+      />
     </KeyboardAwareScrollViewCompat>
   );
 }
