@@ -1042,9 +1042,6 @@ export default function TemplatesScreen() {
               <Pressable style={styles.zoomBtn} onPress={handleZoomActual}>
                 <Feather name="square" size={18} color="white" />
               </Pressable>
-              <Pressable style={[styles.zoomBtn, { marginLeft: Spacing.md }]} onPress={() => setPreviewTemplate(null)}>
-                <Feather name="x" size={20} color="white" />
-              </Pressable>
             </View>
           </View>
 
@@ -1500,14 +1497,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
-  },
-  closeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#dc2626',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.sm,
   },
   // Sample selector styles
   sampleSelectorBtn: {
