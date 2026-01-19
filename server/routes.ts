@@ -902,6 +902,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dynamic Placeholders API - returns all available placeholders including workflow node fields
+  app.get("/api/placeholders", async (_req: Request, res: Response) => {
+    try {
+      // Static placeholders organized by category
+      const staticPlaceholders = {
+        officer: [
+          { key: 'officer_name', description: 'Officer full name', example: 'John Smith' },
+          { key: 'officer_designation', description: 'Officer designation/title', example: 'Food Safety Officer' },
+          { key: 'officer_email', description: 'Officer email address', example: 'john@example.com' },
+          { key: 'officer_phone', description: 'Officer phone number', example: '+91 9876543210' },
+          { key: 'officer_employee_id', description: 'Officer employee ID', example: 'FSO-2024-001' },
+        ],
+        jurisdiction: [
+          { key: 'jurisdiction_name', description: 'Unit/jurisdiction name', example: 'Hyderabad District' },
+          { key: 'jurisdiction_type', description: 'Jurisdiction type/role', example: 'District' },
+        ],
+        datetime: [
+          { key: 'current_date', description: 'Current date (full format)', example: '18 January 2026' },
+          { key: 'current_time', description: 'Current time', example: '10:30 AM' },
+        ],
+        fbo: [
+          { key: 'fbo_name', description: 'Food Business Operator name', example: 'ABC Foods Pvt Ltd' },
+          { key: 'fbo_address', description: 'FBO registered address', example: '123 Main Street, City' },
+          { key: 'fbo_license', description: 'FSSAI license number', example: '10012345678901' },
+          { key: 'establishment_name', description: 'Establishment/shop name', example: 'Fresh Bakery' },
+        ],
+        inspection: [
+          { key: 'inspection_date', description: 'Date of inspection', example: '15 January 2026' },
+          { key: 'inspection_type', description: 'Type of inspection', example: 'Routine' },
+        ],
+        sample: [
+          { key: 'sample_code', description: 'Unique sample code', example: 'SMP-2026-001' },
+          { key: 'sample_name', description: 'Name of sample collected', example: 'Milk Powder' },
+          { key: 'sample_type', description: 'Enforcement/Surveillance', example: 'Enforcement' },
+          { key: 'sample_lifted_date', description: 'Date sample was collected (full)', example: '15 January 2026' },
+          { key: 'sample_lifted_date_short', description: 'Date sample was collected (DD-MM-YYYY)', example: '15-01-2026' },
+          { key: 'sample_lifted_place', description: 'Place of sample collection', example: 'ABC Store, Main Road' },
+          { key: 'sample_cost', description: 'Sample cost with currency', example: 'Rs. 500' },
+          { key: 'sample_quantity', description: 'Sample quantity in grams', example: '500 grams' },
+          { key: 'sample_packing_type', description: 'PACKED or LOOSE', example: 'PACKED' },
+          { key: 'sample_preservative', description: 'Preservative type or NIL', example: 'Formalin' },
+          { key: 'sample_dispatch_date', description: 'Date dispatched to lab', example: '16 January 2026' },
+          { key: 'sample_dispatch_mode', description: 'Mode of dispatch', example: 'Courier' },
+        ],
+        manufacturer: [
+          { key: 'manufacturer_name', description: 'Manufacturer name', example: 'XYZ Foods Industries' },
+          { key: 'manufacturer_address', description: 'Manufacturer address', example: '456 Industrial Area' },
+          { key: 'manufacturer_license', description: 'Manufacturer FSSAI license', example: '20012345678901' },
+          { key: 'mfg_date', description: 'Manufacturing date', example: '01-12-2025' },
+          { key: 'expiry_date', description: 'Expiry/use-by date', example: '01-12-2026' },
+          { key: 'lot_batch_number', description: 'Lot or batch number', example: 'BATCH-2025-001' },
+        ],
+        lab: [
+          { key: 'lab_report_date', description: 'Date lab report received', example: '25 January 2026' },
+          { key: 'lab_result', description: 'Lab result (SAFE/UNSAFE/SUBSTANDARD)', example: 'SAFE' },
+        ],
+      };
+
+      // Fetch workflow nodes to get dynamic input fields
+      const nodes = await db.select().from(workflowNodes).where(sql`${workflowNodes.status} = 'active'`);
+      
+      const workflowPlaceholders: Array<{ key: string; description: string; example: string; nodeName: string }> = [];
+      
+      for (const node of nodes) {
+        if (node.inputFields && Array.isArray(node.inputFields)) {
+          for (const field of node.inputFields as any[]) {
+            if (field.name && field.label) {
+              // Convert field name to placeholder key format
+              const placeholderKey = `workflow_${node.name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${field.name}`;
+              workflowPlaceholders.push({
+                key: placeholderKey,
+                description: `${field.label} (from ${node.name})`,
+                example: field.type === 'date' ? '15-01-2026' : field.type === 'select' ? (field.options?.[0] || 'Option') : `[${field.label}]`,
+                nodeName: node.name,
+              });
+            }
+          }
+        }
+      }
+
+      res.json({
+        static: staticPlaceholders,
+        workflow: workflowPlaceholders,
+        usage: 'Use {{placeholder_key}} syntax in template content',
+      });
+    } catch (error) {
+      console.error('Error fetching placeholders:', error);
+      res.status(500).json({ error: "Failed to fetch placeholders" });
+    }
+  });
+
   app.get("/api/templates/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
