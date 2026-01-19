@@ -949,38 +949,46 @@ export default function TemplatesScreen() {
       >
         <View style={[styles.modalContainer, { backgroundColor: '#374151' }]}>
           <View style={[styles.modalHeader, { paddingTop: insets.top + Spacing.sm }]}>
-            <View style={styles.modalTitleRow}>
-              <Feather name="eye" size={20} color="white" />
-              <ThemedText type="h4" style={{ color: 'white', marginLeft: Spacing.sm }}>
-                Preview
-              </ThemedText>
-              <View style={styles.pageIndicator}>
-                <ThemedText type="small" style={{ color: '#9ca3af' }}>
-                  Page {currentPage} of {totalPages}
+            <View style={styles.modalHeaderTop}>
+              <View style={styles.modalTitleRow}>
+                <Feather name="eye" size={20} color="white" />
+                <ThemedText type="h4" style={{ color: 'white', marginLeft: Spacing.sm }}>
+                  Preview
                 </ThemedText>
+              </View>
+              <View style={styles.zoomControls}>
+                <Pressable style={styles.zoomBtn} onPress={handleZoomOut}>
+                  <Feather name="minus" size={18} color="white" />
+                </Pressable>
+                <View style={styles.zoomLevel}>
+                  <ThemedText type="small" style={{ color: 'white' }}>
+                    {Math.round(zoomLevel * 100)}%
+                  </ThemedText>
+                </View>
+                <Pressable style={styles.zoomBtn} onPress={handleZoomIn}>
+                  <Feather name="plus" size={18} color="white" />
+                </Pressable>
+                <Pressable style={styles.zoomBtn} onPress={handleZoomFit}>
+                  <Feather name="maximize" size={18} color="white" />
+                </Pressable>
+                <Pressable style={styles.zoomBtn} onPress={handleZoomActual}>
+                  <Feather name="square" size={18} color="white" />
+                </Pressable>
+                <Pressable style={[styles.zoomBtn, { marginLeft: Spacing.md }]} onPress={() => setPreviewTemplate(null)}>
+                  <Feather name="x" size={20} color="white" />
+                </Pressable>
               </View>
             </View>
-            <View style={styles.zoomControls}>
-              <Pressable style={styles.zoomBtn} onPress={handleZoomOut}>
-                <Feather name="minus" size={18} color="white" />
-              </Pressable>
-              <View style={styles.zoomLevel}>
-                <ThemedText type="small" style={{ color: 'white' }}>
-                  {Math.round(zoomLevel * 100)}%
+            <View style={styles.pageIndicatorRow}>
+              <Feather name="file-text" size={14} color="#9ca3af" />
+              <ThemedText type="small" style={{ color: 'white', marginLeft: Spacing.xs, fontWeight: '600' }}>
+                Page {currentPage} of {totalPages}
+              </ThemedText>
+              {totalPages > 1 ? (
+                <ThemedText type="small" style={{ color: '#9ca3af', marginLeft: Spacing.sm }}>
+                  Scroll to navigate pages
                 </ThemedText>
-              </View>
-              <Pressable style={styles.zoomBtn} onPress={handleZoomIn}>
-                <Feather name="plus" size={18} color="white" />
-              </Pressable>
-              <Pressable style={styles.zoomBtn} onPress={handleZoomFit}>
-                <Feather name="maximize" size={18} color="white" />
-              </Pressable>
-              <Pressable style={styles.zoomBtn} onPress={handleZoomActual}>
-                <Feather name="square" size={18} color="white" />
-              </Pressable>
-              <Pressable style={[styles.zoomBtn, { marginLeft: Spacing.md }]} onPress={() => setPreviewTemplate(null)}>
-                <Feather name="x" size={20} color="white" />
-              </Pressable>
+              ) : null}
             </View>
           </View>
 
@@ -1294,23 +1302,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.sm,
     backgroundColor: '#1f2937',
+  },
+  modalHeaderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   modalTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  pageIndicator: {
-    marginLeft: Spacing.md,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 4,
+  pageIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
   },
   zoomControls: {
     flexDirection: 'row',
