@@ -607,20 +607,29 @@ export default function SampleDetailsScreen() {
         scrollbar-width: none;
         -ms-overflow-style: none;
         overflow-y: auto !important;
-        overflow-x: hidden !important;
+        overflow-x: auto !important;
         background: #4b5563 !important;
         margin: 0 !important;
         padding: 0 !important;
+        min-height: 100vh !important;
       }
       html::-webkit-scrollbar, body::-webkit-scrollbar {
         display: none;
+      }
+      body {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        padding: 20px !important;
       }
       .page {
         background: white !important;
         margin: 10px auto !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
         transform: scale(${zoom}) !important;
-        transform-origin: center center !important;
+        transform-origin: top center !important;
+        flex-shrink: 0 !important;
       }
     `;
     
