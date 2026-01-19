@@ -729,6 +729,24 @@ export default function SampleDetailsScreen() {
       .page:last-child {
         margin-bottom: 20px !important;
       }
+      @media print {
+        html, body {
+          background: white !important;
+          background-color: white !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .page {
+          box-shadow: none !important;
+          background: white !important;
+          transform: none !important;
+          margin: 0 !important;
+          page-break-after: always;
+        }
+        .page:last-child {
+          page-break-after: auto;
+        }
+      }
     `;
     
     // Auto-detect if content is HTML by checking for HTML tags

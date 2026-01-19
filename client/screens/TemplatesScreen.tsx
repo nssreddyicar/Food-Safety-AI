@@ -752,7 +752,16 @@ export default function TemplatesScreen() {
           margin: 0;
         }
         @media print {
-          html, body { background: white; }
+          html, body { 
+            background: white !important; 
+            background-color: white !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .page {
+            box-shadow: none !important;
+            background: white !important;
+          }
         }
       `;
       
@@ -866,7 +875,16 @@ export default function TemplatesScreen() {
             
             /* Print-specific styles */
             @media print {
-              html, body { background: white; }
+              html, body { 
+                background: white !important; 
+                background-color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              .page {
+                box-shadow: none !important;
+                background: white !important;
+              }
               .no-print { display: none; }
             }
           </style>

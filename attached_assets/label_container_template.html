@@ -16,6 +16,23 @@
     margin: 0;
 }
 
+@media print {
+    html, body {
+        background: white !important;
+        background-color: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .page {
+        box-shadow: none !important;
+        background: white !important;
+        page-break-after: always;
+    }
+    .page:last-child {
+        page-break-after: auto;
+    }
+}
+
 html, body {
     width: 210mm;
     height: 297mm;
