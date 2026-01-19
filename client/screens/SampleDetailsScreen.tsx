@@ -1334,6 +1334,12 @@ export default function SampleDetailsScreen() {
                 <ThemedText type="small" style={{ color: 'rgba(255,255,255,0.8)', marginLeft: 4 }}>Pan</ThemedText>
               </View>
             </View>
+            <Pressable 
+              style={styles.closeIconBtn}
+              onPress={() => setPreviewModalVisible(false)}
+            >
+              <Feather name="x" size={24} color="white" />
+            </Pressable>
           </View>
           <View style={styles.pageNavBar}>
             <Pressable 
@@ -2015,6 +2021,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
+  },
+  closeIconBtn: {
+    padding: Spacing.xs,
   },
   pageNavBar: {
     flexDirection: 'row',
