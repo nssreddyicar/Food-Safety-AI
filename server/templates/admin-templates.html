@@ -804,10 +804,6 @@
           default: formattedPageNumber = 'Page 1 of 1';
         }
         
-        const pageNumberHtml = data.showPageNumbers ? `
-          <div style="${pageNumberStyle} margin-top: 12px; font-size: 10pt; color: #6b7280;">${formattedPageNumber}</div>
-        ` : '';
-        
         // Continuation text for multi-page documents
         const continuationFormat = data.continuationFormat || 'contd_on_page';
         let continuationText = '';
@@ -820,17 +816,70 @@
           }
         }
         
-        const continuationHtml = data.showContinuationText ? `
-          <div style="text-align: center; margin-top: 8px; font-size: 9pt; color: #9ca3af; font-style: italic;">${continuationText}</div>
-        ` : '';
+        // Build footer row with page number and continuation text on same line
+        let footerRowHtml = '';
+        if (data.showPageNumbers || data.showContinuationText) {
+          // Determine page number alignment style
+          let pageNumAlign = 'center';
+          let pageNumMargin = '';
+          if (pageNumberPosition === 'left') {
+            pageNumAlign = 'flex-start';
+            pageNumMargin = `margin-left: ${pageNumberOffset}mm;`;
+          } else if (pageNumberPosition === 'right') {
+            pageNumAlign = 'flex-end';
+            pageNumMargin = `margin-right: ${-pageNumberOffset}mm;`;
+          } else {
+            pageNumAlign = 'center';
+            pageNumMargin = `margin-left: ${pageNumberOffset}mm;`;
+          }
+          
+          const pageNumHtml = data.showPageNumbers ? `<span style="font-size: 10pt; color: #6b7280; ${pageNumMargin}">${formattedPageNumber}</span>` : '';
+          const contHtml = data.showContinuationText ? `<span style="font-size: 9pt; color: #9ca3af; font-style: italic;">${continuationText}</span>` : '';
+          
+          // Use flexbox to position elements
+          let justifyContent = 'center';
+          if (data.showPageNumbers && data.showContinuationText) {
+            // Both present: page number on its position, continuation on right
+            if (pageNumberPosition === 'left') {
+              justifyContent = 'space-between';
+            } else if (pageNumberPosition === 'right') {
+              justifyContent = 'space-between';
+            } else {
+              // Center page number with continuation on right
+              justifyContent = 'center';
+            }
+          } else if (data.showPageNumbers) {
+            justifyContent = pageNumAlign;
+          } else {
+            justifyContent = 'flex-end';
+          }
+          
+          if (data.showPageNumbers && data.showContinuationText && pageNumberPosition === 'center') {
+            // Special case: center page number with continuation on right
+            footerRowHtml = `
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; width: 100%;">
+                <span style="flex: 1;"></span>
+                ${pageNumHtml}
+                <span style="flex: 1; text-align: right;">${contHtml}</span>
+              </div>
+            `;
+          } else {
+            footerRowHtml = `
+              <div style="display: flex; justify-content: ${justifyContent}; align-items: center; margin-top: 12px; width: 100%;">
+                ${pageNumHtml}
+                ${data.showPageNumbers && data.showContinuationText ? '<span style="flex: 1;"></span>' : ''}
+                ${contHtml}
+              </div>
+            `;
+          }
+        }
 
         return `
           <div style="font-family: '${data.fontFamily}', serif; font-size: ${data.fontSize}pt; line-height: 1.6; color: #1f2937; height: 100%; display: flex; flex-direction: column;">
             ${headerHtml}
             <div style="flex: 1; white-space: pre-wrap;">${contentWithBreaks}</div>
             ${footerHtml}
-            ${continuationHtml}
-            ${pageNumberHtml}
+            ${footerRowHtml}
           </div>
         `;
       }

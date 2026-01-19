@@ -428,38 +428,40 @@ export default function TemplatesScreen() {
             
             // Update page indicators on each page
             pages.forEach((page, index) => {
-              // Add page numbers if enabled
-              if (showPageNumbers) {
-                let indicator = page.querySelector('.page-num-indicator');
-                if (!indicator) {
-                  indicator = document.createElement('div');
-                  indicator.className = 'page-num-indicator';
-                  let positionStyle = 'left:50%;transform:translateX(-50%);';
-                  if (pageNumberPosition === 'left') {
-                    positionStyle = 'left:' + pageNumberOffset + 'mm;';
-                  } else if (pageNumberPosition === 'right') {
-                    positionStyle = 'right:' + (-pageNumberOffset) + 'mm;';
-                  } else {
-                    positionStyle = 'left:50%;transform:translateX(-50%);margin-left:' + pageNumberOffset + 'mm;';
-                  }
-                  indicator.style.cssText = 'position:absolute;bottom:8mm;font-size:10pt;color:#374151;font-family:serif;' + positionStyle;
-                  page.style.position = 'relative';
-                  page.appendChild(indicator);
-                }
-                indicator.textContent = formatPageNumber(index + 1, totalPagesCount);
+              page.style.position = 'relative';
+              
+              // Create or get footer row container for page number and continuation text
+              let footerRow = page.querySelector('.footer-row');
+              if (!footerRow) {
+                footerRow = document.createElement('div');
+                footerRow.className = 'footer-row';
+                footerRow.style.cssText = 'position:absolute;bottom:8mm;left:0;right:0;display:flex;align-items:center;padding:0 ' + (pageNumberOffset || 15) + 'mm;font-family:serif;';
+                page.appendChild(footerRow);
               }
               
-              // Add continuation text if enabled and not last page
-              if (showContinuationText && index < pages.length - 1) {
-                let contText = page.querySelector('.continuation-text');
-                if (!contText) {
-                  contText = document.createElement('div');
-                  contText.className = 'continuation-text';
-                  contText.style.cssText = 'position:absolute;bottom:' + (showPageNumbers ? '18mm' : '8mm') + ';left:50%;transform:translateX(-50%);font-size:9pt;color:#9ca3af;font-style:italic;font-family:serif;';
-                  page.style.position = 'relative';
-                  page.appendChild(contText);
+              // Clear footer row content
+              footerRow.innerHTML = '';
+              
+              const showCont = showContinuationText && index < pages.length - 1;
+              
+              if (showPageNumbers && showCont) {
+                // Both: page number based on position, continuation on right
+                if (pageNumberPosition === 'center') {
+                  footerRow.innerHTML = '<span style="flex:1;"></span><span style="font-size:10pt;color:#374151;">' + formatPageNumber(index + 1, totalPagesCount) + '</span><span style="flex:1;text-align:right;font-size:9pt;color:#9ca3af;font-style:italic;">' + getContinuationText(index + 2) + '</span>';
+                } else if (pageNumberPosition === 'left') {
+                  footerRow.innerHTML = '<span style="font-size:10pt;color:#374151;">' + formatPageNumber(index + 1, totalPagesCount) + '</span><span style="flex:1;"></span><span style="font-size:9pt;color:#9ca3af;font-style:italic;">' + getContinuationText(index + 2) + '</span>';
+                } else {
+                  footerRow.innerHTML = '<span style="flex:1;"></span><span style="font-size:9pt;color:#9ca3af;font-style:italic;">' + getContinuationText(index + 2) + '</span><span style="margin-left:20px;font-size:10pt;color:#374151;">' + formatPageNumber(index + 1, totalPagesCount) + '</span>';
                 }
-                contText.textContent = getContinuationText(index + 2);
+              } else if (showPageNumbers) {
+                // Only page number
+                let justify = pageNumberPosition === 'left' ? 'flex-start' : (pageNumberPosition === 'right' ? 'flex-end' : 'center');
+                footerRow.style.justifyContent = justify;
+                footerRow.innerHTML = '<span style="font-size:10pt;color:#374151;">' + formatPageNumber(index + 1, totalPagesCount) + '</span>';
+              } else if (showCont) {
+                // Only continuation text on right
+                footerRow.style.justifyContent = 'flex-end';
+                footerRow.innerHTML = '<span style="font-size:9pt;color:#9ca3af;font-style:italic;">' + getContinuationText(index + 2) + '</span>';
               }
             });
           }
