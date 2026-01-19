@@ -364,12 +364,19 @@ export default function TemplatesScreen() {
     const contentHeightPx = pageHeightPx - marginPx;
     
     // JavaScript for page calculation and scroll tracking
+    const showPageNumbers = template.showPageNumbers !== false;
+    const pageNumberPosition = template.pageNumberPosition || 'center';
+    const pageNumberOffset = template.pageNumberOffset || 0;
+    
     const pageTrackingScript = `
       <script>
         (function() {
           const pageHeight = ${pageHeightPx};
           const scale = ${scale};
           const pageGap = 20;
+          const showPageNumbers = ${showPageNumbers};
+          const pageNumberPosition = '${pageNumberPosition}';
+          const pageNumberOffset = ${pageNumberOffset};
           let totalPagesCount = 1;
           
           function calculatePages() {
@@ -384,19 +391,33 @@ export default function TemplatesScreen() {
             if (window.ReactNativeWebView) {
               window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'totalPages', value: totalPagesCount }));
             }
+            // Also send to parent for web iframe
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage(JSON.stringify({ type: 'totalPages', value: totalPagesCount }), '*');
+            }
             
-            // Update page indicators on each page
-            pages.forEach((page, index) => {
-              let indicator = page.querySelector('.page-num-indicator');
-              if (!indicator) {
-                indicator = document.createElement('div');
-                indicator.className = 'page-num-indicator';
-                indicator.style.cssText = 'position:absolute;bottom:5mm;left:50%;transform:translateX(-50%);font-size:10pt;color:#6b7280;';
-                page.style.position = 'relative';
-                page.appendChild(indicator);
-              }
-              indicator.textContent = (index + 1) + ' :';
-            });
+            // Update page indicators on each page if enabled
+            if (showPageNumbers) {
+              pages.forEach((page, index) => {
+                let indicator = page.querySelector('.page-num-indicator');
+                if (!indicator) {
+                  indicator = document.createElement('div');
+                  indicator.className = 'page-num-indicator';
+                  let positionStyle = 'left:50%;transform:translateX(-50%);';
+                  if (pageNumberPosition === 'left') {
+                    positionStyle = 'left:' + pageNumberOffset + 'mm;';
+                  } else if (pageNumberPosition === 'right') {
+                    positionStyle = 'right:' + (-pageNumberOffset) + 'mm;';
+                  } else {
+                    positionStyle = 'left:50%;transform:translateX(-50%);margin-left:' + pageNumberOffset + 'mm;';
+                  }
+                  indicator.style.cssText = 'position:absolute;bottom:8mm;font-size:10pt;color:#374151;font-family:serif;' + positionStyle;
+                  page.style.position = 'relative';
+                  page.appendChild(indicator);
+                }
+                indicator.textContent = 'Page ' + (index + 1) + ' of ' + totalPagesCount;
+              });
+            }
           }
           
           function handleScroll() {
@@ -547,8 +568,6 @@ export default function TemplatesScreen() {
     // Plain text content - use standard formatting
     const contentWithLineBreaks = processedContent.replace(/\n/g, '<br>');
     
-    const pageNumberPosition = template.pageNumberPosition || 'center';
-    const pageNumberOffset = template.pageNumberOffset || 0;
     const headerAlignment = template.headerAlignment || 'center';
     const footerAlignment = template.footerAlignment || 'center';
 

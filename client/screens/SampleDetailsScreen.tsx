@@ -29,6 +29,9 @@ interface DocumentTemplate {
   orientation: string;
   fontFamily?: string;
   fontSize?: number;
+  showPageNumbers?: boolean;
+  pageNumberPosition?: string;
+  pageNumberOffset?: number;
   createdAt: string;
 }
 
@@ -543,11 +546,19 @@ export default function SampleDetailsScreen() {
   const generatePdfHtml = (template: DocumentTemplate, zoom: number = 1): string => {
     const content = replacePlaceholders(template.content);
     
+    // Page number settings from template
+    const showPageNumbers = template.showPageNumbers !== false;
+    const pageNumberPosition = template.pageNumberPosition || 'center';
+    const pageNumberOffset = template.pageNumberOffset || 0;
+    
     // Page tracking script for multi-page support
     const pageTrackingScript = `
       <script>
         (function() {
           let totalPagesCount = 1;
+          const showPageNumbers = ${showPageNumbers};
+          const pageNumberPosition = '${pageNumberPosition}';
+          const pageNumberOffset = ${pageNumberOffset};
           
           function sendMessage(data) {
             // React Native WebView
@@ -567,6 +578,29 @@ export default function SampleDetailsScreen() {
             }
             totalPagesCount = pages.length || 1;
             sendMessage({ type: 'totalPages', value: totalPagesCount });
+            
+            // Add page numbers if enabled
+            if (showPageNumbers) {
+              pages.forEach((page, index) => {
+                let indicator = page.querySelector('.page-num-indicator');
+                if (!indicator) {
+                  indicator = document.createElement('div');
+                  indicator.className = 'page-num-indicator';
+                  let positionStyle = 'left:50%;transform:translateX(-50%);';
+                  if (pageNumberPosition === 'left') {
+                    positionStyle = 'left:' + pageNumberOffset + 'mm;';
+                  } else if (pageNumberPosition === 'right') {
+                    positionStyle = 'right:' + (-pageNumberOffset) + 'mm;';
+                  } else {
+                    positionStyle = 'left:50%;transform:translateX(-50%);margin-left:' + pageNumberOffset + 'mm;';
+                  }
+                  indicator.style.cssText = 'position:absolute;bottom:8mm;font-size:10pt;color:#374151;font-family:serif;' + positionStyle;
+                  page.style.position = 'relative';
+                  page.appendChild(indicator);
+                }
+                indicator.textContent = 'Page ' + (index + 1) + ' of ' + totalPagesCount;
+              });
+            }
           }
           
           function handleScroll() {
