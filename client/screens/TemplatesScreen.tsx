@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, StyleSheet, FlatList, Pressable, Platform, ActivityIndicator, Alert, Modal, ScrollView, Dimensions, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -178,7 +178,10 @@ export default function TemplatesScreen() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<DocumentTemplate | null>(null);
   const [zoomLevel, setZoomLevel] = useState(0.5);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const screenWidth = Dimensions.get('window').width;
+  const webViewRef = useRef<any>(null);
   
   // Sample selection state
   const [samples, setSamples] = useState<SampleWithInspection[]>([]);
@@ -357,6 +360,51 @@ export default function TemplatesScreen() {
     const mmToPx = 3.7795275591;
     const pageWidthPx = dims.width * mmToPx;
     const pageHeightPx = dims.height * mmToPx;
+    const marginPx = template.marginTop * mmToPx + template.marginBottom * mmToPx;
+    const contentHeightPx = pageHeightPx - marginPx;
+    
+    // JavaScript for page calculation and scroll tracking
+    const pageTrackingScript = `
+      <script>
+        (function() {
+          const pageHeight = ${pageHeightPx};
+          const scale = ${scale};
+          const pageGap = 20;
+          
+          function calculatePages() {
+            const pagesContainer = document.getElementById('pages-container');
+            if (!pagesContainer) return;
+            const pages = pagesContainer.querySelectorAll('.preview-page');
+            const totalPages = pages.length || 1;
+            
+            // Send total pages to React Native
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'totalPages', value: totalPages }));
+            }
+          }
+          
+          function handleScroll() {
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+            const scaledPageHeight = (pageHeight * scale) + pageGap;
+            const currentPage = Math.floor(scrollTop / scaledPageHeight) + 1;
+            
+            // Send current page to React Native
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'currentPage', value: currentPage }));
+            }
+          }
+          
+          window.addEventListener('scroll', handleScroll);
+          window.addEventListener('load', function() {
+            calculatePages();
+            handleScroll();
+          });
+          
+          // Initial calculation
+          setTimeout(calculatePages, 100);
+        })();
+      </script>
+    `;
     
     // Check if content is raw HTML - render it directly
     if (isRawHtmlContent(processedContent)) {
@@ -374,7 +422,7 @@ export default function TemplatesScreen() {
         bodyContent = bodyMatch[1];
       }
       
-      // For raw HTML, render exact A4 page like admin panel
+      // For raw HTML with multi-page support
       return `
         <!DOCTYPE html>
         <html>
@@ -388,33 +436,49 @@ export default function TemplatesScreen() {
                 padding: 0;
                 background: #4b5563;
                 min-height: 100vh;
-                display: flex;
-                justify-content: center;
-                padding: 20px;
                 scrollbar-width: none;
                 -ms-overflow-style: none;
               }
               html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+              #pages-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 20px;
+                gap: 20px;
+              }
               .preview-page {
                 background: white;
                 width: ${pageWidthPx}px;
-                height: ${pageHeightPx}px;
+                min-height: ${pageHeightPx}px;
                 box-shadow: 0 4px 20px rgba(0,0,0,0.3);
                 transform: scale(${scale});
                 transform-origin: top center;
-                overflow: hidden;
+                margin-bottom: ${(1 - scale) * pageHeightPx * -1}px;
+                overflow: visible;
+                position: relative;
               }
-              .preview-page iframe {
-                width: 100%;
-                height: 100%;
-                border: none;
+              .page-content {
+                padding: ${template.marginTop}mm ${template.marginRight}mm ${template.marginBottom}mm ${template.marginLeft}mm;
               }
+              .page-number-indicator {
+                position: absolute;
+                bottom: 10px;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 10pt;
+                color: #6b7280;
+              }
+              ${extractedStyles}
             </style>
           </head>
           <body>
-            <div class="preview-page">
-              <iframe srcdoc="${processedContent.replace(/"/g, '&quot;').replace(/\n/g, ' ')}"></iframe>
+            <div id="pages-container">
+              <div class="preview-page">
+                <div class="page-content">${bodyContent}</div>
+              </div>
             </div>
+            ${pageTrackingScript}
           </body>
         </html>
       `;
@@ -708,6 +772,8 @@ export default function TemplatesScreen() {
 
   const handlePreview = (template: DocumentTemplate) => {
     setZoomLevel(0.5);
+    setCurrentPage(1);
+    setTotalPages(1);
     setPreviewTemplate(template);
   };
 
@@ -842,6 +908,11 @@ export default function TemplatesScreen() {
               <ThemedText type="h4" style={{ color: 'white', marginLeft: Spacing.sm }}>
                 Preview
               </ThemedText>
+              <View style={styles.pageIndicator}>
+                <ThemedText type="small" style={{ color: '#9ca3af' }}>
+                  Page {currentPage} of {totalPages}
+                </ThemedText>
+              </View>
             </View>
             <View style={styles.zoomControls}>
               <Pressable style={styles.zoomBtn} onPress={handleZoomOut}>
@@ -869,11 +940,24 @@ export default function TemplatesScreen() {
 
           {previewTemplate && Platform.OS !== 'web' && WebView ? (
             <WebView
+              ref={webViewRef}
               source={{ html: generatePreviewHtml(previewTemplate, zoomLevel) }}
               style={styles.webview}
               scrollEnabled={true}
               showsVerticalScrollIndicator={false}
               showsHorizontalScrollIndicator={false}
+              onMessage={(event) => {
+                try {
+                  const data = JSON.parse(event.nativeEvent.data);
+                  if (data.type === 'totalPages') {
+                    setTotalPages(Math.max(1, data.value));
+                  } else if (data.type === 'currentPage') {
+                    setCurrentPage(Math.min(data.value, totalPages));
+                  }
+                } catch (e) {
+                  // Ignore parse errors
+                }
+              }}
             />
           ) : previewTemplate && Platform.OS === 'web' ? (
             <View style={styles.webPreview}>
@@ -1174,6 +1258,13 @@ const styles = StyleSheet.create({
   modalTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  pageIndicator: {
+    marginLeft: Spacing.md,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 4,
   },
   zoomControls: {
     flexDirection: 'row',
