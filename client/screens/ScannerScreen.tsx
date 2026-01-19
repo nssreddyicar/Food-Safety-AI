@@ -74,7 +74,11 @@ export default function ScannerScreen() {
   const handleBarCodeScanned = async (result: BarcodeScanningResult) => {
     if (scanned) return;
     setScanned(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e) {
+      // Haptics not available on all platforms
+    }
     
     // Auto-save the scanned data
     try {
@@ -115,8 +119,19 @@ export default function ScannerScreen() {
   };
 
   const toggleCamera = () => {
+    if (Platform.OS === 'web') {
+      Alert.alert(
+        'Feature Unavailable',
+        'Camera switching works best in the Expo Go app on your mobile device.'
+      );
+      return;
+    }
     setCameraFacing(current => current === 'back' ? 'front' : 'back');
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {
+      // Haptics not available on all platforms
+    }
   };
 
   const pickImageFromGallery = async () => {
@@ -155,23 +170,27 @@ export default function ScannerScreen() {
           // Use the correct barcode type format for scanFromURLAsync
           const scanResults = await scanFromURLAsync(imageUri, [
             'qr',
-            'ean-13',
-            'ean-8',
-            'code-39',
-            'code-93',
-            'code-128',
+            'ean13',
+            'ean8',
+            'code39',
+            'code93',
+            'code128',
             'codabar',
-            'itf-14',
-            'upc-e',
-            'upc-a',
-            'pdf-417',
+            'itf14',
+            'upc_e',
+            'upc_a',
+            'pdf417',
             'aztec',
-            'data-matrix',
+            'datamatrix',
           ]);
           
           if (scanResults && scanResults.length > 0) {
             const scannedResult = scanResults[0];
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            try {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (e) {
+              // Haptics not available on all platforms
+            }
             
             // Save the scanned data
             const existingNotes = await AsyncStorage.getItem(NOTES_STORAGE_KEY);
@@ -287,6 +306,38 @@ export default function ScannerScreen() {
               style={styles.permissionLinkButton}
               onPress={() => navigation.navigate('ScannedNotes')}
               testID="view-scanned-notes"
+            >
+              <View style={[styles.permissionLinkIcon, { backgroundColor: Colors.light.primary + '15' }]}>
+                <Feather name="file-text" size={20} color={Colors.light.primary} />
+              </View>
+              <Text style={[styles.permissionLinkText, { color: Colors.light.primary }]}>
+                View Saved Notes
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // Web platform notice for limited camera support
+  if (Platform.OS === 'web') {
+    return (
+      <View style={[styles.container, styles.centered, { backgroundColor: theme.backgroundRoot, paddingTop: insets.top }]}>
+        <View style={styles.permissionCard}>
+          <Feather name="smartphone" size={64} color={Colors.light.primary} />
+          <Text style={[styles.permissionTitle, { color: theme.text }]}>Use Expo Go App</Text>
+          <Text style={[styles.permissionText, { color: theme.textSecondary }]}>
+            For the best scanning experience with camera, flash, and gallery features, please use the Expo Go app on your mobile device.
+          </Text>
+          <Text style={[styles.webHint, { color: theme.textSecondary }]}>
+            Scan the QR code from the development server to open in Expo Go.
+          </Text>
+          <View style={styles.permissionLinks}>
+            <Pressable
+              style={styles.permissionLinkButton}
+              onPress={() => navigation.navigate('ScannedNotes')}
+              testID="view-scanned-notes-web"
             >
               <View style={[styles.permissionLinkIcon, { backgroundColor: Colors.light.primary + '15' }]}>
                 <Feather name="file-text" size={20} color={Colors.light.primary} />
@@ -441,6 +492,12 @@ const styles = StyleSheet.create({
   webMessage: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  webHint: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: Spacing.md,
+    fontStyle: 'italic',
   },
   permissionLinks: {
     flexDirection: 'row',
