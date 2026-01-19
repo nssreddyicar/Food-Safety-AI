@@ -285,6 +285,8 @@ export default function SampleDetailsScreen() {
   const [previewZoom, setPreviewZoom] = useState(0.5);
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
   const [imagePreviewModalVisible, setImagePreviewModalVisible] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const sampleId = route.params.sampleId;
 
@@ -1333,6 +1335,43 @@ export default function SampleDetailsScreen() {
               </View>
             </View>
           </View>
+          <View style={styles.pageNavBar}>
+            <Pressable 
+              style={[styles.pageNavBtn, currentPage <= 1 && styles.pageNavBtnDisabled]} 
+              onPress={() => setCurrentPage(1)}
+              disabled={currentPage <= 1}
+            >
+              <Feather name="chevrons-left" size={18} color={currentPage <= 1 ? '#6b7280' : 'white'} />
+            </Pressable>
+            <Pressable 
+              style={[styles.pageNavBtn, currentPage <= 1 && styles.pageNavBtnDisabled]} 
+              onPress={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage <= 1}
+            >
+              <Feather name="chevron-left" size={18} color={currentPage <= 1 ? '#6b7280' : 'white'} />
+            </Pressable>
+            
+            <View style={styles.pageIndicator}>
+              <ThemedText style={styles.pageIndicatorText}>
+                {currentPage} OF {totalPages}
+              </ThemedText>
+            </View>
+            
+            <Pressable 
+              style={[styles.pageNavBtn, currentPage >= totalPages && styles.pageNavBtnDisabled]} 
+              onPress={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage >= totalPages}
+            >
+              <Feather name="chevron-right" size={18} color={currentPage >= totalPages ? '#6b7280' : 'white'} />
+            </Pressable>
+            <Pressable 
+              style={[styles.pageNavBtn, currentPage >= totalPages && styles.pageNavBtnDisabled]} 
+              onPress={() => setCurrentPage(totalPages)}
+              disabled={currentPage >= totalPages}
+            >
+              <Feather name="chevrons-right" size={18} color={currentPage >= totalPages ? '#6b7280' : 'white'} />
+            </Pressable>
+          </View>
           <View style={styles.previewViewport}>
             {previewTemplate ? (
               Platform.OS === 'web' ? (
@@ -1976,6 +2015,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
+  },
+  pageNavBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    backgroundColor: '#374151',
+    borderBottomWidth: 1,
+    borderBottomColor: '#4b5563',
+    gap: Spacing.xs,
+  },
+  pageNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pageNavBtnDisabled: {
+    opacity: 0.5,
+  },
+  pageIndicator: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    backgroundColor: '#1E40AF',
+    borderRadius: BorderRadius.sm,
+    marginHorizontal: Spacing.xs,
+  },
+  pageIndicatorText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
   zoomBtn: {
     width: 32,
