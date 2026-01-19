@@ -285,6 +285,7 @@ export default function SampleDetailsScreen() {
   const [previewZoom, setPreviewZoom] = useState(0.5);
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
   const [imagePreviewModalVisible, setImagePreviewModalVisible] = useState(false);
+  const [isGeneratingLabels, setIsGeneratingLabels] = useState(false);
 
   const sampleId = route.params.sampleId;
 
@@ -459,6 +460,15 @@ export default function SampleDetailsScreen() {
       return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
     };
     
+    const formatDateShort = (dateStr?: string) => {
+      if (!dateStr) return '[Date]';
+      const date = new Date(dateStr);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
+    };
+    
     const placeholderValues: Record<string, string> = {
       officer_name: user?.name || '',
       officer_designation: user?.designation || 'Food Safety Officer',
@@ -479,11 +489,12 @@ export default function SampleDetailsScreen() {
       sample_name: sample?.name || '[Sample Name]',
       sample_type: sample?.sampleType === 'enforcement' ? 'Enforcement' : sample?.sampleType === 'surveillance' ? 'Surveillance' : '[Sample Type]',
       sample_lifted_date: sample?.liftedDate ? formatDateFn(sample.liftedDate) : '[Lifted Date]',
+      sample_lifted_date_short: sample?.liftedDate ? formatDateShort(sample.liftedDate) : '[Lifted Date]',
       sample_lifted_place: sample?.liftedPlace || '[Lifted Place]',
       sample_cost: sample?.cost ? `Rs. ${sample.cost}` : '[Sample Cost]',
       sample_quantity: sample?.quantityInGrams ? `${sample.quantityInGrams} grams` : '[Quantity]',
-      sample_packing_type: sample?.packingType === 'packed' ? 'Packed' : sample?.packingType === 'loose' ? 'Loose' : '[Packing Type]',
-      sample_preservative: sample?.preservativeAdded ? (sample.preservativeType || 'Yes') : 'No',
+      sample_packing_type: sample?.packingType === 'packed' ? 'PACKED' : sample?.packingType === 'loose' ? 'LOOSE' : '[Packing Type]',
+      sample_preservative: sample?.preservativeAdded ? (sample.preservativeType?.toUpperCase() || 'YES') : 'NIL',
       sample_dispatch_date: sample?.dispatchDate ? formatDateFn(sample.dispatchDate) : '[Dispatch Date]',
       sample_dispatch_mode: sample?.dispatchMode || '[Dispatch Mode]',
       manufacturer_name: sample?.manufacturerDetails?.name || '[Manufacturer Name]',
@@ -766,6 +777,106 @@ export default function SampleDetailsScreen() {
     const optimalZoom = Math.min(zoomX, zoomY, 1); // Max zoom 100%
     setPreviewZoom(Math.max(optimalZoom, 0.2)); // Min zoom 20%
     setPreviewModalVisible(true);
+  };
+
+  const handleGenerateLabels = async () => {
+    if (!sample) return;
+    
+    setIsGeneratingLabels(true);
+    try {
+      const labelTemplate = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Label on the Container</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+@page { size: A4; margin: 0; }
+html, body { width: 210mm; height: 297mm; margin: 0; padding: 0; font-family: "Times New Roman", Times, serif; background-color: #ffffff; }
+.page { width: 210mm; height: 297mm; padding: 10mm 15mm; display: flex; flex-direction: column; }
+.label { width: 100%; height: 88mm; margin-bottom: 5mm; display: flex; flex-direction: column; }
+.label-box { border: 1.5pt solid #000; width: 100%; }
+table { width: 100%; border-collapse: collapse; font-size: 10pt; table-layout: fixed; }
+.header-area { text-align: center; padding: 8pt 0; border-bottom: 1.5pt solid #000; }
+td { border-bottom: 1.5pt solid #000; padding: 5pt 8pt; vertical-align: middle; line-height: 1.2; word-wrap: break-word; }
+tr:last-child td { border-bottom: none; }
+.col-num { width: 35pt; text-align: center; font-weight: bold; border-right: 1.5pt solid #000; }
+.col-label { width: 180pt; border-right: 1.5pt solid #000; }
+.col-value { width: auto; font-weight: bold; text-transform: uppercase; }
+.label-title { font-weight: bold; font-size: 14pt; text-transform: uppercase; }
+.label-subtitle { font-size: 9pt; margin-top: 2pt; }
+.signatures { display: flex; justify-content: space-between; padding-top: 35pt; font-size: 10pt; }
+.sign { width: 30%; }
+.sign.center { text-align: center; }
+.sign.right { text-align: right; line-height: 1.3; }
+</style>
+</head>
+<body>
+<div class="page">
+${'123'.split('').map(() => `
+<div class="label">
+    <div class="label-box">
+        <div class="header-area">
+            <div class="label-title">LABEL ON THE CONTAINER</div>
+            <div class="label-subtitle">[Refer FSS Rules, 2011, 2.4.1(8)]</div>
+        </div>
+        <table>
+            <tr>
+                <td class="col-num">I</td>
+                <td class="col-label">Code No. of the Sample:</td>
+                <td class="col-value">{{sample_code}}</td>
+            </tr>
+            <tr>
+                <td class="col-num">II</td>
+                <td class="col-label">Name of the sender with his Official Designation:</td>
+                <td class="col-value">{{officer_designation}}, {{jurisdiction_name}} {{jurisdiction_type}}</td>
+            </tr>
+            <tr>
+                <td class="col-num">III</td>
+                <td class="col-label">Date &amp; Place of Collection:</td>
+                <td class="col-value">{{sample_lifted_date_short}}, {{sample_lifted_place}}</td>
+            </tr>
+            <tr>
+                <td class="col-num">IV</td>
+                <td class="col-label">Nature of article being sent for analysis:</td>
+                <td class="col-value">{{sample_name}} ({{sample_packing_type}})</td>
+            </tr>
+            <tr>
+                <td class="col-num">V</td>
+                <td class="col-label">Nature and quantity of preservative, if any, added to the sample:</td>
+                <td class="col-value">{{sample_preservative}}</td>
+            </tr>
+        </table>
+    </div>
+    <div class="signatures">
+        <div class="sign">F.B.O. Signature</div>
+        <div class="sign center">Witness Signature</div>
+        <div class="sign right"><b>{{officer_designation}},</b><br>{{jurisdiction_name}} {{jurisdiction_type}}.</div>
+    </div>
+</div>
+`).join('')}
+</div>
+</body>
+</html>`;
+
+      const html = replacePlaceholders(labelTemplate);
+      const { uri } = await Print.printToFileAsync({ html });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Share Label Container',
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('PDF Generated', `Labels saved to: ${uri}`);
+      }
+    } catch (error) {
+      console.error('Error generating labels:', error);
+      Alert.alert('Error', 'Failed to generate labels. Please try again.');
+    } finally {
+      setIsGeneratingLabels(false);
+    }
   };
 
   const renderInputField = (field: InputField) => {
@@ -1134,6 +1245,36 @@ export default function SampleDetailsScreen() {
               </View>
             </View>
           ) : null}
+        </View>
+
+        <View style={[styles.card, { backgroundColor: theme.backgroundDefault }, Shadows.md]}>
+          <View style={styles.labelActionHeader}>
+            <View style={[styles.labelIconContainer, { backgroundColor: theme.primary + '15' }]}>
+              <Feather name="tag" size={20} color={theme.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <ThemedText type="h3">Container Labels</ThemedText>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                Print 3 labels per A4 page for sample containers
+              </ThemedText>
+            </View>
+          </View>
+          <Pressable
+            style={[styles.printLabelsBtn, { backgroundColor: theme.primary }]}
+            onPress={handleGenerateLabels}
+            disabled={isGeneratingLabels}
+          >
+            {isGeneratingLabels ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <>
+                <Feather name="printer" size={18} color="white" />
+                <ThemedText type="body" style={{ color: 'white', fontWeight: '600' }}>
+                  Print Labels
+                </ThemedText>
+              </>
+            )}
+          </Pressable>
         </View>
 
         <View style={[styles.card, { backgroundColor: theme.backgroundDefault }, Shadows.md]}>
@@ -1705,6 +1846,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
     marginBottom: Spacing.sm,
+  },
+  labelActionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  labelIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  printLabelsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
   },
   templateIconContainer: {
     width: 40,
