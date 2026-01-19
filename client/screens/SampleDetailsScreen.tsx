@@ -1282,12 +1282,6 @@ export default function SampleDetailsScreen() {
       >
         <View style={[styles.previewModalContainer, { backgroundColor: '#1f2937' }]}>
           <View style={[styles.previewModalHeader, { paddingTop: insets.top > 0 ? insets.top + Spacing.sm : Spacing.md }]}>
-            <View style={styles.previewTitleRow}>
-              <Feather name="eye" size={18} color="white" />
-              <ThemedText type="body" style={{ color: 'white', fontWeight: '600', marginLeft: Spacing.sm }}>
-                Template Preview
-              </ThemedText>
-            </View>
             <View style={styles.previewControlsRow}>
               <Pressable 
                 style={styles.zoomBtn} 
@@ -1977,10 +1971,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.md,
     borderBottomWidth: 0,
-  },
-  previewTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   previewControlsRow: {
     flexDirection: 'row',
