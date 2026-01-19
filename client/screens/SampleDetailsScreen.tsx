@@ -628,18 +628,20 @@ export default function SampleDetailsScreen() {
         padding: 10px !important;
         width: 100% !important;
         box-sizing: border-box !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        gap: 20px !important;
+        display: block !important;
+        text-align: center !important;
       }
       .page {
         background: white !important;
-        margin: 0 !important;
+        margin: 0 auto 20px auto !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
         transform: scale(${zoom}) !important;
         transform-origin: top center !important;
-        flex-shrink: 0 !important;
+        margin-bottom: calc(20px - 297mm * (1 - ${zoom})) !important;
+        display: inline-block !important;
+      }
+      .page:last-child {
+        margin-bottom: 20px !important;
       }
     `;
     
