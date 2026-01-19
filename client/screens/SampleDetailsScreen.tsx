@@ -603,45 +603,39 @@ export default function SampleDetailsScreen() {
     `;
     
     const previewCSS = `
-      html, html[lang], html:root, body, body * {
+      * {
         scrollbar-width: none !important;
         -ms-overflow-style: none !important;
+        -webkit-overflow-scrolling: touch !important;
       }
-      html, html[lang], html:root {
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        background: #4b5563 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        min-height: 100vh !important;
-        max-height: none !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        height: auto !important;
-      }
-      ::-webkit-scrollbar {
+      *::-webkit-scrollbar {
         display: none !important;
         width: 0 !important;
         height: 0 !important;
         background: transparent !important;
       }
+      html, html[lang], html:root {
+        overflow: auto !important;
+        background: #4b5563 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+      }
       body, body.preview-body {
         background: #4b5563 !important;
         margin: 0 !important;
-        padding: 20px !important;
-        min-height: 100vh !important;
-        max-height: none !important;
+        padding: 10px !important;
         width: 100% !important;
-        max-width: 100% !important;
-        height: auto !important;
+        box-sizing: border-box !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
-        justify-content: flex-start !important;
+        gap: 20px !important;
       }
       .page {
         background: white !important;
-        margin: 10px 0 !important;
+        margin: 0 !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
         transform: scale(${zoom}) !important;
         transform-origin: top center !important;
