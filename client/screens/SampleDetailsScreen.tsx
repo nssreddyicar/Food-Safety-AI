@@ -1337,12 +1337,6 @@ export default function SampleDetailsScreen() {
                 <Feather name="move" size={14} color="rgba(255,255,255,0.8)" />
                 <ThemedText type="small" style={{ color: 'rgba(255,255,255,0.8)', marginLeft: 4 }}>Pan</ThemedText>
               </View>
-              <Pressable 
-                style={[styles.zoomBtn, { marginLeft: Spacing.sm, backgroundColor: '#dc2626' }]} 
-                onPress={() => setPreviewModalVisible(false)}
-              >
-                <Feather name="x" size={18} color="white" />
-              </Pressable>
             </View>
           </View>
           <View style={styles.previewViewport}>
@@ -1414,13 +1408,6 @@ export default function SampleDetailsScreen() {
             <ThemedText type="small" style={{ color: 'rgba(255,255,255,0.7)' }}>
               {previewTemplate?.pageSize || 'A4'} {previewTemplate?.orientation || 'Portrait'} - {previewTemplate?.pageSize === 'A4' ? '210 x 297' : '216 x 279'} mm
             </ThemedText>
-            <Pressable 
-              style={styles.closePreviewBtn}
-              onPress={() => setPreviewModalVisible(false)}
-            >
-              <Feather name="x" size={16} color="white" />
-              <ThemedText type="body" style={{ color: 'white', fontWeight: '600' }}>Close</ThemedText>
-            </Pressable>
           </View>
         </View>
       </Modal>
@@ -2062,14 +2049,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#1f2937',
     borderTopWidth: 1,
     borderTopColor: '#374151',
-  },
-  closePreviewBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    backgroundColor: '#dc2626',
-    borderRadius: BorderRadius.md,
   },
 });
