@@ -1123,17 +1123,11 @@ export default function TemplatesScreen() {
               </Pressable>
             </View>
             
-            <View style={styles.bottomBarRight}>
-              {previewDims ? (
-                <ThemedText type="small" style={{ color: '#9ca3af', marginRight: Spacing.md }}>
-                  {previewDims.label}
-                </ThemedText>
-              ) : null}
-              <Pressable style={styles.closeBtn} onPress={() => setPreviewTemplate(null)}>
-                <Feather name="x" size={16} color="white" />
-                <ThemedText type="small" style={{ color: 'white', marginLeft: 4 }}>Close</ThemedText>
-              </Pressable>
-            </View>
+            {previewDims ? (
+              <ThemedText type="small" style={{ color: '#9ca3af' }}>
+                {previewDims.label}
+              </ThemedText>
+            ) : null}
           </View>
         </View>
       </Modal>
