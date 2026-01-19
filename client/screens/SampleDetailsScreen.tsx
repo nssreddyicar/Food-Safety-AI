@@ -742,16 +742,31 @@ export default function SampleDetailsScreen() {
     setDownloadingId(template.id);
     try {
       const html = generatePdfHtml(template);
-      const { uri } = await Print.printToFileAsync({ html });
       
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Share ${template.name}`,
-          UTI: 'com.adobe.pdf',
-        });
+      if (Platform.OS === 'web') {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(html);
+          printWindow.document.close();
+          printWindow.focus();
+          setTimeout(() => {
+            printWindow.print();
+          }, 500);
+        } else {
+          Alert.alert('Popup Blocked', 'Please allow popups to download the PDF.');
+        }
       } else {
-        Alert.alert('PDF Generated', `Document saved to: ${uri}`);
+        const { uri } = await Print.printToFileAsync({ html });
+        
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Share ${template.name}`,
+            UTI: 'com.adobe.pdf',
+          });
+        } else {
+          Alert.alert('PDF Generated', `Document saved to: ${uri}`);
+        }
       }
     } catch (error) {
       console.error('Download error:', error);
