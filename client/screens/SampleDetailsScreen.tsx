@@ -508,7 +508,9 @@ export default function SampleDetailsScreen() {
 
     let result = content;
     Object.entries(placeholderValues).forEach(([key, value]) => {
-      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+      // Wrap replaced values in bold tags for emphasis
+      const boldValue = value && !value.startsWith('[') ? `<strong>${value}</strong>` : value;
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), boldValue);
     });
     return result;
   };
