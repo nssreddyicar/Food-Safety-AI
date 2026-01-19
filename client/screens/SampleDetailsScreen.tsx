@@ -1184,64 +1184,6 @@ export default function SampleDetailsScreen() {
           </View>
         ) : null}
 
-        {templates.length > 0 ? (
-          <View style={[styles.card, { backgroundColor: theme.backgroundDefault }, Shadows.md]}>
-            <View style={styles.templatesHeader}>
-              <View style={[styles.templateIconContainer, { backgroundColor: theme.primary + '15' }]}>
-                <Feather name="file-text" size={20} color={theme.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <ThemedText type="h3">Document Templates</ThemedText>
-                <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  Download documents with this sample's data pre-filled
-                </ThemedText>
-              </View>
-            </View>
-            
-            <View style={styles.templatesList}>
-              {templates.map((template) => (
-                <View 
-                  key={template.id} 
-                  style={[styles.templateItem, { backgroundColor: theme.backgroundRoot, borderColor: theme.border }]}
-                >
-                  <View style={styles.templateInfo}>
-                    <View style={[styles.categoryBadge, { backgroundColor: theme.primary + '15' }]}>
-                      <ThemedText type="small" style={{ color: theme.primary, fontWeight: '600' }}>
-                        {template.category.replace('_', ' ').toUpperCase()}
-                      </ThemedText>
-                    </View>
-                    <ThemedText type="body" style={{ fontWeight: '600', marginTop: Spacing.xs }}>
-                      {template.name}
-                    </ThemedText>
-                    <View style={styles.templateMeta}>
-                      <Feather name="file" size={12} color={theme.textSecondary} />
-                      <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                        {template.pageSize?.toUpperCase() || 'A4'} {template.orientation || 'Portrait'}
-                      </ThemedText>
-                    </View>
-                  </View>
-                  
-                  <Pressable
-                    style={[styles.downloadBtn, { backgroundColor: theme.primary }]}
-                    onPress={() => handleDownload(template)}
-                    disabled={downloadingId === template.id}
-                  >
-                    {downloadingId === template.id ? (
-                      <ActivityIndicator size="small" color="white" />
-                    ) : (
-                      <>
-                        <Feather name="download" size={16} color="white" />
-                        <ThemedText type="small" style={{ color: 'white', fontWeight: '600' }}>
-                          PDF
-                        </ThemedText>
-                      </>
-                    )}
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          </View>
-        ) : null}
       </ScrollView>
 
       <Modal
