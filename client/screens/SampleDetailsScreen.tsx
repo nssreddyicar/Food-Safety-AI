@@ -641,9 +641,13 @@ export default function SampleDetailsScreen() {
         background: white !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
         transform: scale(${zoom}) !important;
-        transform-origin: top center !important;
-        margin: 0 auto !important;
+        transform-origin: center top !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
         margin-bottom: -${gapMM}mm !important;
+        position: relative !important;
+        left: 0 !important;
+        right: 0 !important;
       }
       .page:last-child {
         margin-bottom: 0 !important;
