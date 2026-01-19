@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View, Text, ActivityIndicator } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -38,9 +38,9 @@ export default function App() {
     prepare();
   }, []);
 
-  const onLayoutRootView = useCallback(async () => {
+  useEffect(() => {
     if (appIsReady) {
-      await SplashScreen.hideAsync();
+      SplashScreen.hideAsync();
     }
   }, [appIsReady]);
 
@@ -58,7 +58,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <SafeAreaProvider>
-            <GestureHandlerRootView style={styles.root} onLayout={onLayoutRootView}>
+            <GestureHandlerRootView style={styles.root}>
               <KeyboardProvider>
                 <NavigationContainer>
                   <RootStackNavigator />
