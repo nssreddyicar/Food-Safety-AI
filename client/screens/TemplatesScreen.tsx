@@ -479,25 +479,31 @@ export default function TemplatesScreen() {
               }
               html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
               
-              /* Container for pages */
+              /* Container for pages - vertical stack with gaps */
               #pages-container {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 padding: 20px;
-                gap: 20px;
+                padding-bottom: 40px;
               }
               
               /* Style for .page elements in multi-page documents */
               .page {
                 background: white;
                 width: ${pageWidthPx}px;
-                min-height: ${pageHeightPx}px;
+                height: ${pageHeightPx}px;
                 box-shadow: 0 4px 20px rgba(0,0,0,0.3);
                 transform: scale(${scale});
                 transform-origin: top center;
-                margin-bottom: ${(1 - scale) * pageHeightPx * -0.5}px;
                 position: relative;
+                margin-bottom: 30px;
+                flex-shrink: 0;
+              }
+              
+              /* Remove page-break CSS for preview */
+              .page-break {
+                page-break-before: unset !important;
               }
               
               /* Style for single-page preview wrapper */
@@ -508,9 +514,8 @@ export default function TemplatesScreen() {
                 box-shadow: 0 4px 20px rgba(0,0,0,0.3);
                 transform: scale(${scale});
                 transform-origin: top center;
-                margin-bottom: ${(1 - scale) * pageHeightPx * -1}px;
-                overflow: visible;
                 position: relative;
+                flex-shrink: 0;
               }
               
               .page-content {
