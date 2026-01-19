@@ -62,6 +62,20 @@
       .empty-state { padding: 60px 20px; text-align: center; color: #6b7280; }
       .empty-state svg { width: 64px; height: 64px; fill: #d1d5db; margin-bottom: 16px; }
       .empty-state h3 { font-size: 18px; color: #374151; margin-bottom: 8px; }
+      .export-btn { background: #f0fdf4; color: #059669; }
+      .export-btn:hover { background: #dcfce7; }
+      .header-actions { display: flex; gap: 12px; align-items: center; }
+      .secondary-btn { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+      .secondary-btn:hover { background: #e5e7eb; }
+      .secondary-btn svg { width: 18px; height: 18px; fill: currentColor; }
+      .import-input { display: none; }
+      .dropdown { position: relative; display: inline-block; }
+      .dropdown-content { display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: white; min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; z-index: 100; overflow: hidden; }
+      .dropdown.show .dropdown-content { display: block; }
+      .dropdown-item { padding: 12px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px; color: #374151; }
+      .dropdown-item:hover { background: #f3f4f6; }
+      .dropdown-item svg { width: 18px; height: 18px; fill: #6b7280; }
+      .dropdown-divider { height: 1px; background: #e5e7eb; margin: 4px 0; }
       .template-info { margin-bottom: 4px; font-weight: 600; }
       .template-desc { color: #6b7280; font-size: 13px; }
       .template-meta { font-size: 12px; color: #9ca3af; margin-top: 4px; }
@@ -126,10 +140,35 @@
     <main class="main">
       <div class="page-header">
         <h1 class="page-title">Document Templates</h1>
-        <button class="add-btn" onclick="openModal()">
-          <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-          Add Template
-        </button>
+        <div class="header-actions">
+          <div class="dropdown" id="import-export-dropdown">
+            <button class="secondary-btn" onclick="toggleDropdown('import-export-dropdown')">
+              <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              Import / Export
+              <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; margin-left: 4px;"><path d="M7 10l5 5 5-5z"/></svg>
+            </button>
+            <div class="dropdown-content">
+              <div class="dropdown-item" onclick="exportAllTemplatesJSON()">
+                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                Export All (JSON)
+              </div>
+              <div class="dropdown-item" onclick="exportAllTemplatesHTML()">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                Export All (HTML Bundle)
+              </div>
+              <div class="dropdown-divider"></div>
+              <label class="dropdown-item" for="import-file">
+                <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                Import Templates (JSON)
+              </label>
+            </div>
+          </div>
+          <input type="file" id="import-file" class="import-input" accept=".json" onchange="importTemplates(event)" />
+          <button class="add-btn" onclick="openModal()">
+            <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Add Template
+          </button>
+        </div>
       </div>
 
       <div class="card">
@@ -640,6 +679,7 @@
               <td>
                 <div class="action-btns">
                   <button class="action-btn preview-btn" onclick="previewTemplate('${template.id}')">Preview</button>
+                  <button class="action-btn export-btn" onclick="exportTemplateHTML('${template.id}')" title="Export as HTML">HTML</button>
                   <button class="action-btn edit-btn" onclick="editTemplate('${template.id}')">Edit</button>
                   <button class="action-btn delete-btn" onclick="deleteTemplate('${template.id}')">Delete</button>
                 </div>
@@ -1017,6 +1057,290 @@
           alert('Failed to save template');
         }
       });
+
+      // Toggle dropdown
+      function toggleDropdown(id) {
+        const dropdown = document.getElementById(id);
+        dropdown.classList.toggle('show');
+      }
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.dropdown')) {
+          document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
+        }
+      });
+
+      // Export single template as HTML
+      function exportTemplateHTML(id) {
+        const template = templates.find(t => t.id === id);
+        if (!template) return;
+        
+        const htmlContent = generateExportableHTML(template);
+        downloadFile(htmlContent, `${sanitizeFilename(template.name)}.html`, 'text/html');
+        showToast(`Exported "${template.name}" as HTML`);
+      }
+
+      // Export all templates as JSON
+      function exportAllTemplatesJSON() {
+        if (templates.length === 0) {
+          alert('No templates to export');
+          return;
+        }
+        
+        const exportData = {
+          exportedAt: new Date().toISOString(),
+          version: '1.0',
+          count: templates.length,
+          templates: templates.map(t => ({
+            name: t.name,
+            description: t.description,
+            category: t.category,
+            pageSize: t.pageSize,
+            orientation: t.orientation,
+            marginTop: t.marginTop,
+            marginBottom: t.marginBottom,
+            marginLeft: t.marginLeft,
+            marginRight: t.marginRight,
+            fontFamily: t.fontFamily,
+            fontSize: t.fontSize,
+            showPageNumbers: t.showPageNumbers,
+            pageNumberPosition: t.pageNumberPosition,
+            pageNumberOffset: t.pageNumberOffset,
+            showHeader: t.showHeader,
+            showFooter: t.showFooter,
+            headerText: t.headerText,
+            footerText: t.footerText,
+            headerAlignment: t.headerAlignment,
+            footerAlignment: t.footerAlignment,
+            content: t.content,
+            status: t.status
+          }))
+        };
+        
+        const jsonStr = JSON.stringify(exportData, null, 2);
+        const date = new Date().toISOString().split('T')[0];
+        downloadFile(jsonStr, `templates_export_${date}.json`, 'application/json');
+        showToast(`Exported ${templates.length} templates as JSON`);
+        document.getElementById('import-export-dropdown').classList.remove('show');
+      }
+
+      // Export all templates as HTML bundle
+      function exportAllTemplatesHTML() {
+        if (templates.length === 0) {
+          alert('No templates to export');
+          return;
+        }
+        
+        let bundleHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Template Bundle Export - ${new Date().toLocaleDateString()}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; background: #f3f4f6; }
+    .header { background: #1E40AF; color: white; padding: 20px; margin: -20px -20px 20px -20px; }
+    .header h1 { margin: 0 0 8px 0; }
+    .header p { margin: 0; opacity: 0.8; }
+    .template { background: white; border-radius: 8px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .template-header { background: #f9fafb; padding: 16px; border-bottom: 1px solid #e5e7eb; }
+    .template-name { font-size: 18px; font-weight: 600; color: #1f2937; margin: 0 0 4px 0; }
+    .template-meta { font-size: 12px; color: #6b7280; }
+    .template-content { padding: 20px; }
+    .page-preview { border: 1px solid #e5e7eb; background: white; margin: 0 auto; padding: 20px; }
+    @media print { .header { display: none; } .template { break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Document Templates Export</h1>
+    <p>Exported on ${new Date().toLocaleString()} - ${templates.length} template(s)</p>
+  </div>
+`;
+        
+        templates.forEach((template, index) => {
+          bundleHtml += `
+  <div class="template">
+    <div class="template-header">
+      <h2 class="template-name">${index + 1}. ${template.name}</h2>
+      <div class="template-meta">
+        Category: ${template.category} | Page: ${template.pageSize} ${template.orientation} | Font: ${template.fontFamily} ${template.fontSize}pt | Status: ${template.status}
+      </div>
+    </div>
+    <div class="template-content">
+      <div class="page-preview">
+        ${template.content || '<em>No content</em>'}
+      </div>
+    </div>
+  </div>
+`;
+        });
+        
+        bundleHtml += `
+</body>
+</html>`;
+        
+        const date = new Date().toISOString().split('T')[0];
+        downloadFile(bundleHtml, `templates_bundle_${date}.html`, 'text/html');
+        showToast(`Exported ${templates.length} templates as HTML bundle`);
+        document.getElementById('import-export-dropdown').classList.remove('show');
+      }
+
+      // Import templates from JSON
+      async function importTemplates(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        try {
+          const text = await file.text();
+          const data = JSON.parse(text);
+          
+          if (!data.templates || !Array.isArray(data.templates)) {
+            throw new Error('Invalid format: missing templates array');
+          }
+          
+          const count = data.templates.length;
+          if (count === 0) {
+            alert('No templates found in file');
+            return;
+          }
+          
+          if (!confirm(`Import ${count} template(s)? This will create new templates (duplicates will have unique names).`)) {
+            event.target.value = '';
+            return;
+          }
+          
+          let imported = 0;
+          let errors = 0;
+          
+          for (const template of data.templates) {
+            try {
+              const response = await fetch('/api/admin/templates', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  name: template.name + ' (Imported)',
+                  description: template.description || '',
+                  category: template.category || 'general',
+                  pageSize: template.pageSize || 'A4',
+                  orientation: template.orientation || 'portrait',
+                  marginTop: template.marginTop || 20,
+                  marginBottom: template.marginBottom || 20,
+                  marginLeft: template.marginLeft || 20,
+                  marginRight: template.marginRight || 20,
+                  fontFamily: template.fontFamily || 'Times New Roman',
+                  fontSize: template.fontSize || 12,
+                  showPageNumbers: template.showPageNumbers !== false,
+                  pageNumberPosition: template.pageNumberPosition || 'center',
+                  pageNumberOffset: template.pageNumberOffset || 0,
+                  showHeader: template.showHeader !== false,
+                  showFooter: template.showFooter !== false,
+                  headerText: template.headerText || '',
+                  footerText: template.footerText || '',
+                  headerAlignment: template.headerAlignment || 'center',
+                  footerAlignment: template.footerAlignment || 'center',
+                  content: template.content || '',
+                  status: template.status || 'active'
+                })
+              });
+              
+              if (response.ok) {
+                imported++;
+              } else {
+                errors++;
+              }
+            } catch (e) {
+              errors++;
+            }
+          }
+          
+          loadData();
+          showToast(`Imported ${imported} template(s)${errors > 0 ? `, ${errors} failed` : ''}`);
+          
+        } catch (error) {
+          alert('Failed to import templates: ' + error.message);
+        }
+        
+        event.target.value = '';
+        document.getElementById('import-export-dropdown').classList.remove('show');
+      }
+
+      // Generate exportable HTML for a template
+      function generateExportableHTML(template) {
+        const dims = getPageDimensions(template.pageSize, template.orientation);
+        const content = template.content || '';
+        const trimmedContent = content.trim();
+        const isRawHtml = trimmedContent.startsWith('<!DOCTYPE') || 
+                          trimmedContent.startsWith('<html') ||
+                          (trimmedContent.startsWith('<') && (
+                            trimmedContent.includes('<style>') ||
+                            trimmedContent.includes('<div class=') ||
+                            trimmedContent.includes('<table')
+                          ));
+        
+        if (isRawHtml) {
+          // Return raw HTML content as-is
+          return content;
+        }
+        
+        // Generate wrapper HTML for plain text content
+        return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${template.name}</title>
+  <style>
+    @page {
+      size: ${dims.width}mm ${dims.height}mm;
+      margin: ${template.marginTop}mm ${template.marginRight}mm ${template.marginBottom}mm ${template.marginLeft}mm;
+    }
+    body {
+      font-family: '${template.fontFamily}', serif;
+      font-size: ${template.fontSize}pt;
+      line-height: 1.6;
+      color: #1f2937;
+      margin: 0;
+      padding: ${template.marginTop}mm ${template.marginRight}mm ${template.marginBottom}mm ${template.marginLeft}mm;
+    }
+    .header { text-align: ${template.headerAlignment || 'center'}; padding-bottom: 12pt; border-bottom: 1px solid #e5e7eb; margin-bottom: 16pt; font-weight: 600; }
+    .footer { text-align: ${template.footerAlignment || 'center'}; padding-top: 12pt; border-top: 1px solid #e5e7eb; margin-top: auto; font-size: 10pt; color: #6b7280; }
+    .content { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  ${template.showHeader && template.headerText ? `<div class="header">${template.headerText}</div>` : ''}
+  <div class="content">${content.replace(/\n/g, '<br>')}</div>
+  ${template.showFooter && template.footerText ? `<div class="footer">${template.footerText}</div>` : ''}
+</body>
+</html>`;
+      }
+
+      // Helper: Download file
+      function downloadFile(content, filename, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      // Helper: Sanitize filename
+      function sanitizeFilename(name) {
+        return name.replace(/[^a-z0-9_-]/gi, '_').substring(0, 50);
+      }
+
+      // Helper: Show toast
+      function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'copy-toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      }
 
       loadData();
       loadPlaceholders();
