@@ -520,14 +520,77 @@ export default function SampleDetailsScreen() {
   const generatePdfHtml = (template: DocumentTemplate): string => {
     const content = replacePlaceholders(template.content);
     
-    const scrollbarHideCSS = `
+    // Page tracking script for multi-page support
+    const pageTrackingScript = `
+      <script>
+        (function() {
+          let totalPagesCount = 1;
+          
+          function calculatePages() {
+            let pages = document.querySelectorAll('.page');
+            if (pages.length === 0) {
+              pages = document.querySelectorAll('.preview-page');
+            }
+            totalPagesCount = pages.length || 1;
+            
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'totalPages', value: totalPagesCount }));
+            }
+          }
+          
+          function handleScroll() {
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+            let pages = document.querySelectorAll('.page');
+            if (pages.length === 0) {
+              pages = document.querySelectorAll('.preview-page');
+            }
+            
+            let currentPage = 1;
+            for (let i = 0; i < pages.length; i++) {
+              const pageTop = pages[i].offsetTop;
+              if (scrollTop >= pageTop - 50) {
+                currentPage = i + 1;
+              }
+            }
+            
+            currentPage = Math.min(currentPage, totalPagesCount);
+            
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'currentPage', value: currentPage }));
+            }
+          }
+          
+          window.addEventListener('scroll', handleScroll);
+          window.addEventListener('load', function() {
+            setTimeout(function() {
+              calculatePages();
+              handleScroll();
+            }, 200);
+          });
+          
+          setTimeout(calculatePages, 300);
+          setTimeout(handleScroll, 350);
+        })();
+      </script>
+    `;
+    
+    const previewCSS = `
       html, body {
         scrollbar-width: none;
         -ms-overflow-style: none;
-        overflow: hidden;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        background: #4b5563 !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
       html::-webkit-scrollbar, body::-webkit-scrollbar {
         display: none;
+      }
+      .page {
+        background: white !important;
+        margin: 10px auto !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
       }
     `;
     
@@ -544,13 +607,13 @@ export default function SampleDetailsScreen() {
                    ));
     
     if (isHtml) {
-      // Inject scrollbar-hiding CSS into the HTML content
+      // Inject preview CSS and page tracking script into the HTML content
       if (content.includes('</head>')) {
-        return content.replace('</head>', `<style>${scrollbarHideCSS}</style></head>`);
+        return content.replace('</head>', `<style>${previewCSS}</style></head>`).replace('</body>', `${pageTrackingScript}</body>`);
       } else if (content.includes('<body')) {
-        return content.replace('<body', `<style>${scrollbarHideCSS}</style><body`);
+        return content.replace('<body', `<style>${previewCSS}</style><body`).replace('</body>', `${pageTrackingScript}</body>`);
       } else {
-        return `<style>${scrollbarHideCSS}</style>${content}`;
+        return `<style>${previewCSS}</style>${content}${pageTrackingScript}`;
       }
     }
     
@@ -559,13 +622,14 @@ export default function SampleDetailsScreen() {
 <head>
   <meta charset="UTF-8">
   <style>
-    ${scrollbarHideCSS}
-    body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; margin: 0; }
+    ${previewCSS}
+    body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }
     pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; }
   </style>
 </head>
 <body>
   <pre>${content}</pre>
+  ${pageTrackingScript}
 </body>
 </html>`;
   };
@@ -1387,59 +1451,42 @@ export default function SampleDetailsScreen() {
                     flex: 1, 
                     width: '100%', 
                     height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 16,
-                    overflow: 'hidden',
+                    overflow: 'auto',
                     backgroundColor: '#4b5563'
                   }}
                 >
-                  <div style={{
-                    width: 794 * previewZoom,
-                    height: 1123 * previewZoom,
-                    backgroundColor: 'white',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-                    flexShrink: 0,
-                    overflow: 'hidden',
-                  }}>
-                    <iframe
-                      srcDoc={generatePdfHtml(previewTemplate)}
-                      style={{ 
-                        width: 794,
-                        height: 1123,
-                        border: 'none',
-                        backgroundColor: 'white',
-                        transform: `scale(${previewZoom})`,
-                        transformOrigin: 'top left',
-                      }}
-                      title="Document Preview"
-                    />
-                  </div>
+                  <iframe
+                    srcDoc={generatePdfHtml(previewTemplate)}
+                    style={{ 
+                      width: '100%',
+                      height: '100%',
+                      border: 'none',
+                      backgroundColor: '#4b5563',
+                    }}
+                    title="Document Preview"
+                  />
                 </div>
               ) : (
-                <ScrollView 
-                  style={styles.previewScrollView}
-                  contentContainerStyle={styles.previewScrollContent}
-                  showsVerticalScrollIndicator={true}
-                  showsHorizontalScrollIndicator={true}
-                >
-                  <View style={[styles.previewPageWrapper, { 
-                    width: 794 * previewZoom,
-                    height: 1123 * previewZoom,
-                  }]}>
-                    <WebView
-                      source={{ html: generatePdfHtml(previewTemplate) }}
-                      style={{ 
-                        width: 794,
-                        height: 1123,
-                        transform: [{ scale: previewZoom }],
-                      }}
-                      originWhitelist={['*']}
-                      scalesPageToFit={false}
-                    />
-                  </View>
-                </ScrollView>
+                <WebView
+                  source={{ html: generatePdfHtml(previewTemplate) }}
+                  style={{ flex: 1 }}
+                  originWhitelist={['*']}
+                  scalesPageToFit={false}
+                  scrollEnabled={true}
+                  showsVerticalScrollIndicator={false}
+                  onMessage={(event: { nativeEvent: { data: string } }) => {
+                    try {
+                      const data = JSON.parse(event.nativeEvent.data);
+                      if (data.type === 'totalPages') {
+                        setTotalPages(Math.max(1, data.value));
+                      } else if (data.type === 'currentPage') {
+                        setCurrentPage(Math.min(data.value, totalPages));
+                      }
+                    } catch (e) {
+                      // Ignore parse errors
+                    }
+                  }}
+                />
               )
             ) : null}
           </View>
@@ -2088,15 +2135,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#374151',
     overflow: 'hidden',
-  },
-  previewScrollView: {
-    flex: 1,
-  },
-  previewScrollContent: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    padding: Spacing.lg,
   },
   previewPageWrapper: {
     backgroundColor: 'white',
