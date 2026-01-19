@@ -789,16 +789,80 @@ export default function TemplatesScreen() {
       const html = generatePdfHtml(template);
       
       if (Platform.OS === 'web') {
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-          printWindow.document.write(html);
-          printWindow.document.close();
-          printWindow.print();
-        }
+        // For web: Use html2pdf.js library loaded from CDN
+        const generateWebPdf = async () => {
+          return new Promise<void>((resolve, reject) => {
+            // Check if html2pdf is already loaded
+            if ((window as any).html2pdf) {
+              createPdf((window as any).html2pdf, template, html, resolve, reject);
+              return;
+            }
+
+            // Load html2pdf.js from CDN
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            script.onload = () => {
+              createPdf((window as any).html2pdf, template, html, resolve, reject);
+            };
+            script.onerror = () => reject(new Error('Failed to load PDF library'));
+            document.head.appendChild(script);
+          });
+        };
+
+        const createPdf = (
+          html2pdf: any,
+          template: DocumentTemplate,
+          html: string,
+          resolve: () => void,
+          reject: (error: Error) => void
+        ) => {
+          try {
+            // Create a hidden container for rendering
+            const container = document.createElement('div');
+            container.innerHTML = html;
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            container.style.top = '0';
+            document.body.appendChild(container);
+
+            const dims = getPageDimensions(template.pageSize, template.orientation);
+            
+            const opt = {
+              margin: 0,
+              filename: `${template.name.replace(/\s+/g, '_')}.pdf`,
+              image: { type: 'jpeg', quality: 0.98 },
+              html2canvas: { scale: 2, useCORS: true },
+              jsPDF: { 
+                unit: 'mm', 
+                format: [dims.width, dims.height], 
+                orientation: template.orientation || 'portrait' 
+              },
+              pagebreak: { mode: ['css', 'legacy'] }
+            };
+
+            html2pdf()
+              .set(opt)
+              .from(container)
+              .save()
+              .then(() => {
+                document.body.removeChild(container);
+                resolve();
+              })
+              .catch((err: Error) => {
+                document.body.removeChild(container);
+                reject(err);
+              });
+          } catch (err) {
+            reject(err as Error);
+          }
+        };
+
+        await generateWebPdf();
         setDownloadingId(null);
         return;
       }
 
+      // Mobile: Use expo-print
       const { uri } = await Print.printToFileAsync({
         html,
         base64: false,
