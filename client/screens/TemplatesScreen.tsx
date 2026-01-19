@@ -1016,16 +1016,19 @@ export default function TemplatesScreen() {
           ) : null}
 
           <View style={styles.bottomBar}>
-            <View style={styles.pageNavigation}>
-              <ThemedText type="small" style={{ color: 'white', fontWeight: '600' }}>
-                Page {currentPage} of {totalPages}
-              </ThemedText>
+            <View style={styles.bottomBarLeft}>
+              <View style={styles.pageNavigation}>
+                <Feather name="file-text" size={14} color="white" />
+                <ThemedText style={styles.pageNavText}>
+                  Page {currentPage} of {totalPages}
+                </ThemedText>
+              </View>
+              {previewDims ? (
+                <ThemedText type="small" style={{ color: '#9ca3af', marginLeft: Spacing.md }}>
+                  {previewDims.label} {previewTemplate?.orientation ? previewTemplate.orientation.charAt(0).toUpperCase() + previewTemplate.orientation.slice(1) : ''}
+                </ThemedText>
+              ) : null}
             </View>
-            {previewDims ? (
-              <ThemedText type="small" style={{ color: '#9ca3af' }}>
-                {previewDims.label} {previewTemplate?.orientation ? previewTemplate.orientation.charAt(0).toUpperCase() + previewTemplate.orientation.slice(1) : ''} - {previewDims.width} x {previewDims.height} mm
-              </ThemedText>
-            ) : null}
             <Pressable style={styles.closeBtn} onPress={() => setPreviewTemplate(null)}>
               <Feather name="x" size={16} color="white" />
               <ThemedText type="small" style={{ color: 'white', marginLeft: 4 }}>Close</ThemedText>
@@ -1349,13 +1352,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  bottomBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   pageNavigation: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: Spacing.md,
+    backgroundColor: '#1E40AF',
+    paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.sm,
+    gap: 6,
+  },
+  pageNavText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
   closeBtn: {
     flexDirection: 'row',
