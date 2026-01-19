@@ -337,6 +337,29 @@ export default function SampleDetailsScreen() {
     loadSample();
   }, []);
 
+  // Listen for postMessage from iframe on web for page tracking
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = event.data;
+        if (data && typeof data === 'object') {
+          if (data.type === 'totalPages') {
+            setTotalPages(Math.max(1, data.value));
+          } else if (data.type === 'currentPage') {
+            setCurrentPage(Math.min(data.value, totalPages));
+          }
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [totalPages]);
+
   const loadSample = async () => {
     try {
       const inspections = await storage.getInspections(activeJurisdiction?.unitId);
@@ -517,7 +540,7 @@ export default function SampleDetailsScreen() {
     return result;
   };
 
-  const generatePdfHtml = (template: DocumentTemplate): string => {
+  const generatePdfHtml = (template: DocumentTemplate, zoom: number = 1): string => {
     const content = replacePlaceholders(template.content);
     
     // Page tracking script for multi-page support
@@ -526,16 +549,24 @@ export default function SampleDetailsScreen() {
         (function() {
           let totalPagesCount = 1;
           
+          function sendMessage(data) {
+            // React Native WebView
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify(data));
+            }
+            // Web iframe - post to parent
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage(data, '*');
+            }
+          }
+          
           function calculatePages() {
             let pages = document.querySelectorAll('.page');
             if (pages.length === 0) {
               pages = document.querySelectorAll('.preview-page');
             }
             totalPagesCount = pages.length || 1;
-            
-            if (window.ReactNativeWebView) {
-              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'totalPages', value: totalPagesCount }));
-            }
+            sendMessage({ type: 'totalPages', value: totalPagesCount });
           }
           
           function handleScroll() {
@@ -554,10 +585,7 @@ export default function SampleDetailsScreen() {
             }
             
             currentPage = Math.min(currentPage, totalPagesCount);
-            
-            if (window.ReactNativeWebView) {
-              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'currentPage', value: currentPage }));
-            }
+            sendMessage({ type: 'currentPage', value: currentPage });
           }
           
           window.addEventListener('scroll', handleScroll);
@@ -591,6 +619,8 @@ export default function SampleDetailsScreen() {
         background: white !important;
         margin: 10px auto !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+        transform: scale(${zoom}) !important;
+        transform-origin: top center !important;
       }
     `;
     
@@ -1456,7 +1486,7 @@ export default function SampleDetailsScreen() {
                   }}
                 >
                   <iframe
-                    srcDoc={generatePdfHtml(previewTemplate)}
+                    srcDoc={generatePdfHtml(previewTemplate, previewZoom)}
                     style={{ 
                       width: '100%',
                       height: '100%',
@@ -1468,7 +1498,7 @@ export default function SampleDetailsScreen() {
                 </div>
               ) : (
                 <WebView
-                  source={{ html: generatePdfHtml(previewTemplate) }}
+                  source={{ html: generatePdfHtml(previewTemplate, previewZoom) }}
                   style={{ flex: 1 }}
                   originWhitelist={['*']}
                   scalesPageToFit={false}
