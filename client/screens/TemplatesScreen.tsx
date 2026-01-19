@@ -460,7 +460,7 @@ export default function TemplatesScreen() {
       // Check if content has multiple .page divs (multi-page document)
       const hasMultiplePages = bodyContent.includes('class="page"') || bodyContent.includes("class='page'");
       
-      // For raw HTML with multi-page support
+      // For raw HTML with multi-page support - render with scale wrapper
       return `
         <!DOCTYPE html>
         <html>
@@ -473,52 +473,38 @@ export default function TemplatesScreen() {
                 margin: 0;
                 padding: 0;
                 background: #4b5563;
-                min-height: 100vh;
                 scrollbar-width: none;
                 -ms-overflow-style: none;
               }
               html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
               
-              /* Container for pages - vertical stack with gaps */
-              #pages-container {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                padding: 20px;
-                padding-bottom: 40px;
-              }
-              
-              /* Style for .page elements in multi-page documents */
-              .page {
-                background: white;
-                width: ${pageWidthPx}px;
-                height: ${pageHeightPx}px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+              /* Scale wrapper for entire preview */
+              #preview-wrapper {
                 transform: scale(${scale});
                 transform-origin: top center;
-                position: relative;
-                margin-bottom: 30px;
-                flex-shrink: 0;
+                width: ${100 / scale}%;
+                margin: 0 auto;
+                padding: 20px 0;
               }
               
-              /* Remove page-break CSS for preview */
+              /* Override .page styles for preview display */
+              .page {
+                margin: 0 auto 20px auto !important;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+              }
+              
+              /* Remove page-break CSS for screen preview */
               .page-break {
                 page-break-before: unset !important;
               }
               
-              /* Style for single-page preview wrapper */
-              .preview-page {
+              /* Single page wrapper */
+              .preview-single-page {
                 background: white;
-                width: ${pageWidthPx}px;
-                min-height: ${pageHeightPx}px;
+                width: 210mm;
+                min-height: 297mm;
+                margin: 0 auto;
                 box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-                transform: scale(${scale});
-                transform-origin: top center;
-                position: relative;
-                flex-shrink: 0;
-              }
-              
-              .page-content {
                 padding: ${template.marginTop}mm ${template.marginRight}mm ${template.marginBottom}mm ${template.marginLeft}mm;
               }
               
@@ -526,8 +512,8 @@ export default function TemplatesScreen() {
             </style>
           </head>
           <body>
-            <div id="pages-container">
-              ${hasMultiplePages ? bodyContent : `<div class="preview-page"><div class="page-content">${bodyContent}</div></div>`}
+            <div id="preview-wrapper">
+              ${hasMultiplePages ? bodyContent : `<div class="preview-single-page">${bodyContent}</div>`}
             </div>
             ${pageTrackingScript}
           </body>
