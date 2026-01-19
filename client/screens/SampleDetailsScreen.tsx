@@ -641,7 +641,7 @@ export default function SampleDetailsScreen() {
       }
       .page {
         background: white !important;
-        margin: 15px 0 !important;
+        margin: 10px 0 !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
         transform: scale(${zoom}) !important;
         transform-origin: top center !important;
