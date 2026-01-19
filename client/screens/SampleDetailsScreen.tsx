@@ -1333,6 +1333,10 @@ export default function SampleDetailsScreen() {
                   <Feather name="download" size={16} color="white" />
                 )}
               </Pressable>
+              <View style={styles.panHintBadge}>
+                <Feather name="move" size={14} color="rgba(255,255,255,0.8)" />
+                <ThemedText type="small" style={{ color: 'rgba(255,255,255,0.8)', marginLeft: 4 }}>Pan</ThemedText>
+              </View>
               <Pressable 
                 style={[styles.zoomBtn, { marginLeft: Spacing.sm, backgroundColor: '#dc2626' }]} 
                 onPress={() => setPreviewModalVisible(false)}
@@ -2011,6 +2015,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: BorderRadius.xs,
     alignItems: 'center',
+  },
+  panHintBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: BorderRadius.xs,
+    marginLeft: Spacing.sm,
   },
   previewViewport: {
     flex: 1,
