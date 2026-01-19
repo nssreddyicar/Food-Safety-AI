@@ -603,10 +603,12 @@ export default function SampleDetailsScreen() {
     `;
     
     const previewCSS = `
-      html, html[lang], html:root {
+      html, html[lang], html:root, body, body * {
         scrollbar-width: none !important;
         -ms-overflow-style: none !important;
-        overflow-y: scroll !important;
+      }
+      html, html[lang], html:root {
+        overflow-y: auto !important;
         overflow-x: hidden !important;
         background: #4b5563 !important;
         margin: 0 !important;
@@ -617,10 +619,11 @@ export default function SampleDetailsScreen() {
         max-width: 100% !important;
         height: auto !important;
       }
-      html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar {
+      ::-webkit-scrollbar {
         display: none !important;
         width: 0 !important;
         height: 0 !important;
+        background: transparent !important;
       }
       body, body.preview-body {
         background: #4b5563 !important;
