@@ -620,7 +620,7 @@ export default function SampleDetailsScreen() {
         margin: 10px auto !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
         transform: scale(${zoom}) !important;
-        transform-origin: top center !important;
+        transform-origin: center center !important;
       }
     `;
     
