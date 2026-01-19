@@ -468,13 +468,27 @@ export default function TemplatesScreen() {
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
+              /* Template's original styles first */
+              ${extractedStyles}
+              
+              /* Override styles for preview - must come after template styles */
               * { box-sizing: border-box; }
-              html, body { 
-                margin: 0;
-                padding: 0;
-                background: #4b5563;
-                scrollbar-width: none;
-                -ms-overflow-style: none;
+              html { 
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #4b5563 !important;
+                overflow-x: hidden !important;
+                overflow-y: auto !important;
+                height: auto !important;
+                min-height: 100vh !important;
+              }
+              body { 
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #4b5563 !important;
+                overflow: visible !important;
+                height: auto !important;
+                min-height: auto !important;
               }
               html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
               
@@ -484,13 +498,15 @@ export default function TemplatesScreen() {
                 transform-origin: top center;
                 width: ${100 / scale}%;
                 margin: 0 auto;
-                padding: 20px 0;
+                padding: 20px 0 100px 0;
               }
               
               /* Override .page styles for preview display */
               .page {
-                margin: 0 auto 20px auto !important;
+                margin: 0 auto 30px auto !important;
                 box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+                overflow: visible !important;
+                position: relative !important;
               }
               
               /* Remove page-break CSS for screen preview */
@@ -507,8 +523,6 @@ export default function TemplatesScreen() {
                 box-shadow: 0 4px 20px rgba(0,0,0,0.3);
                 padding: ${template.marginTop}mm ${template.marginRight}mm ${template.marginBottom}mm ${template.marginLeft}mm;
               }
-              
-              ${extractedStyles}
             </style>
           </head>
           <body>
