@@ -606,8 +606,8 @@ export default function SampleDetailsScreen() {
       html, html[lang], html:root {
         scrollbar-width: none !important;
         -ms-overflow-style: none !important;
-        overflow-y: auto !important;
-        overflow-x: auto !important;
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
         background: #4b5563 !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -617,8 +617,10 @@ export default function SampleDetailsScreen() {
         max-width: 100% !important;
         height: auto !important;
       }
-      html::-webkit-scrollbar, body::-webkit-scrollbar {
+      html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar {
         display: none !important;
+        width: 0 !important;
+        height: 0 !important;
       }
       body, body.preview-body {
         background: #4b5563 !important;
