@@ -602,17 +602,19 @@ export default function SampleDetailsScreen() {
       </script>
     `;
     
+    const pageHeightMM = 297;
+    const scaledHeightMM = pageHeightMM * zoom;
+    const gapMM = (pageHeightMM - scaledHeightMM);
+    
     const previewCSS = `
       * {
         scrollbar-width: none !important;
         -ms-overflow-style: none !important;
-        -webkit-overflow-scrolling: touch !important;
       }
       *::-webkit-scrollbar {
         display: none !important;
         width: 0 !important;
         height: 0 !important;
-        background: transparent !important;
       }
       html, html[lang], html:root {
         overflow: auto !important;
@@ -620,28 +622,34 @@ export default function SampleDetailsScreen() {
         margin: 0 !important;
         padding: 0 !important;
         width: 100% !important;
+        min-width: 100% !important;
         height: auto !important;
       }
       body, body.preview-body {
         background: #4b5563 !important;
         margin: 0 !important;
-        padding: 10px !important;
+        padding: 20px !important;
         width: 100% !important;
+        min-width: 100% !important;
         box-sizing: border-box !important;
-        display: block !important;
-        text-align: center !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
       }
       .page {
         background: white !important;
-        margin: 0 auto 20px auto !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
         transform: scale(${zoom}) !important;
         transform-origin: top center !important;
-        margin-bottom: calc(20px - 297mm * (1 - ${zoom})) !important;
-        display: inline-block !important;
+        margin: 0 auto !important;
+        margin-bottom: -${gapMM}mm !important;
       }
       .page:last-child {
-        margin-bottom: 20px !important;
+        margin-bottom: 0 !important;
+      }
+      .page + .page {
+        margin-top: 20px !important;
       }
     `;
     
