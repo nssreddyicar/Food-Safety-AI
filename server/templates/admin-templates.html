@@ -352,6 +352,17 @@
                   </label>
                 </div>
                 <div class="form-group">
+                  <label class="form-label">Format</label>
+                  <select class="form-select" id="pageNumberFormat" onchange="updatePreview()">
+                    <option value="page_x_of_y" selected>Page 1 of 2</option>
+                    <option value="x_of_y">1 of 2</option>
+                    <option value="x_colon">1 :</option>
+                    <option value="page_x">Page 1</option>
+                    <option value="x_only">1</option>
+                    <option value="dash_x_dash">— 1 —</option>
+                  </select>
+                </div>
+                <div class="form-group">
                   <label class="form-label">Position</label>
                   <select class="form-select" id="pageNumberPosition" onchange="updatePreview()">
                     <option value="left">Left</option>
@@ -359,9 +370,26 @@
                     <option value="right">Right</option>
                   </select>
                 </div>
+              </div>
+              <div class="form-row-3">
                 <div class="form-group">
                   <label class="form-label">Offset (mm)</label>
                   <input type="number" class="form-input" id="pageNumberOffset" value="0" min="-50" max="50" oninput="updatePreview()" />
+                </div>
+                <div class="form-group">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="showContinuationText" onchange="updatePreview()" />
+                    Show Continuation Text
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Continuation Format</label>
+                  <select class="form-select" id="continuationFormat" onchange="updatePreview()">
+                    <option value="contd_on_page" selected>—Contd. on Page X—</option>
+                    <option value="continued_on">Continued on Page X</option>
+                    <option value="see_next">See next page...</option>
+                    <option value="to_be_continued">To be continued...</option>
+                  </select>
                 </div>
               </div>
               
@@ -764,8 +792,36 @@
           </div>
         ` : '';
         
+        // Format page number based on selected format
+        const pageNumberFormat = data.pageNumberFormat || 'page_x_of_y';
+        let formattedPageNumber = 'Page 1 of 1';
+        switch(pageNumberFormat) {
+          case 'x_of_y': formattedPageNumber = '1 of 1'; break;
+          case 'x_colon': formattedPageNumber = '1 :'; break;
+          case 'page_x': formattedPageNumber = 'Page 1'; break;
+          case 'x_only': formattedPageNumber = '1'; break;
+          case 'dash_x_dash': formattedPageNumber = '— 1 —'; break;
+          default: formattedPageNumber = 'Page 1 of 1';
+        }
+        
         const pageNumberHtml = data.showPageNumbers ? `
-          <div style="${pageNumberStyle} margin-top: 12px; font-size: 10pt; color: #6b7280;">Page 1 of 1</div>
+          <div style="${pageNumberStyle} margin-top: 12px; font-size: 10pt; color: #6b7280;">${formattedPageNumber}</div>
+        ` : '';
+        
+        // Continuation text for multi-page documents
+        const continuationFormat = data.continuationFormat || 'contd_on_page';
+        let continuationText = '';
+        if (data.showContinuationText) {
+          switch(continuationFormat) {
+            case 'contd_on_page': continuationText = '—Contd. on Page 2—'; break;
+            case 'continued_on': continuationText = 'Continued on Page 2'; break;
+            case 'see_next': continuationText = 'See next page...'; break;
+            case 'to_be_continued': continuationText = 'To be continued...'; break;
+          }
+        }
+        
+        const continuationHtml = data.showContinuationText ? `
+          <div style="text-align: center; margin-top: 8px; font-size: 9pt; color: #9ca3af; font-style: italic;">${continuationText}</div>
         ` : '';
 
         return `
@@ -773,6 +829,7 @@
             ${headerHtml}
             <div style="flex: 1; white-space: pre-wrap;">${contentWithBreaks}</div>
             ${footerHtml}
+            ${continuationHtml}
             ${pageNumberHtml}
           </div>
         `;
@@ -925,8 +982,11 @@
           fontFamily: document.getElementById('fontFamily').value,
           fontSize: parseInt(document.getElementById('fontSize').value) || 12,
           showPageNumbers: document.getElementById('showPageNumbers').checked,
+          pageNumberFormat: document.getElementById('pageNumberFormat').value,
           pageNumberPosition: document.getElementById('pageNumberPosition').value,
           pageNumberOffset: parseInt(document.getElementById('pageNumberOffset').value) || 0,
+          showContinuationText: document.getElementById('showContinuationText').checked,
+          continuationFormat: document.getElementById('continuationFormat').value,
           showHeader: document.getElementById('showHeader').checked,
           showFooter: document.getElementById('showFooter').checked,
           headerText: document.getElementById('headerText').value,
@@ -961,8 +1021,11 @@
           document.getElementById('fontFamily').value = template.fontFamily;
           document.getElementById('fontSize').value = template.fontSize;
           document.getElementById('showPageNumbers').checked = template.showPageNumbers !== false;
+          document.getElementById('pageNumberFormat').value = template.pageNumberFormat || 'page_x_of_y';
           document.getElementById('pageNumberPosition').value = template.pageNumberPosition || 'center';
           document.getElementById('pageNumberOffset').value = template.pageNumberOffset || 0;
+          document.getElementById('showContinuationText').checked = template.showContinuationText || false;
+          document.getElementById('continuationFormat').value = template.continuationFormat || 'contd_on_page';
           document.getElementById('showHeader').checked = template.showHeader !== false;
           document.getElementById('showFooter').checked = template.showFooter !== false;
           document.getElementById('headerText').value = template.headerText || '';
@@ -983,6 +1046,9 @@
           document.getElementById('fontSize').value = 12;
           document.getElementById('pageNumberOffset').value = 0;
           document.getElementById('showPageNumbers').checked = true;
+          document.getElementById('pageNumberFormat').value = 'page_x_of_y';
+          document.getElementById('showContinuationText').checked = false;
+          document.getElementById('continuationFormat').value = 'contd_on_page';
           document.getElementById('showHeader').checked = true;
           document.getElementById('showFooter').checked = true;
           editingId = null;

@@ -37,8 +37,11 @@ interface DocumentTemplate {
   fontFamily: string;
   fontSize: number;
   showPageNumbers: boolean;
+  pageNumberFormat?: string;
   pageNumberPosition: string;
   pageNumberOffset: number;
+  showContinuationText?: boolean;
+  continuationFormat?: string;
   showHeader: boolean;
   showFooter: boolean;
   headerText?: string;
@@ -365,8 +368,11 @@ export default function TemplatesScreen() {
     
     // JavaScript for page calculation and scroll tracking
     const showPageNumbers = template.showPageNumbers !== false;
+    const pageNumberFormat = template.pageNumberFormat || 'page_x_of_y';
     const pageNumberPosition = template.pageNumberPosition || 'center';
     const pageNumberOffset = template.pageNumberOffset || 0;
+    const showContinuationText = template.showContinuationText || false;
+    const continuationFormat = template.continuationFormat || 'contd_on_page';
     
     const pageTrackingScript = `
       <script>
@@ -375,9 +381,33 @@ export default function TemplatesScreen() {
           const scale = ${scale};
           const pageGap = 20;
           const showPageNumbers = ${showPageNumbers};
+          const pageNumberFormat = '${pageNumberFormat}';
           const pageNumberPosition = '${pageNumberPosition}';
           const pageNumberOffset = ${pageNumberOffset};
+          const showContinuationText = ${showContinuationText};
+          const continuationFormat = '${continuationFormat}';
           let totalPagesCount = 1;
+          
+          function formatPageNumber(current, total) {
+            switch(pageNumberFormat) {
+              case 'x_of_y': return current + ' of ' + total;
+              case 'x_colon': return current + ' :';
+              case 'page_x': return 'Page ' + current;
+              case 'x_only': return '' + current;
+              case 'dash_x_dash': return '— ' + current + ' —';
+              default: return 'Page ' + current + ' of ' + total;
+            }
+          }
+          
+          function getContinuationText(nextPage) {
+            switch(continuationFormat) {
+              case 'contd_on_page': return '—Contd. on Page ' + nextPage + '—';
+              case 'continued_on': return 'Continued on Page ' + nextPage;
+              case 'see_next': return 'See next page...';
+              case 'to_be_continued': return 'To be continued...';
+              default: return '—Contd. on Page ' + nextPage + '—';
+            }
+          }
           
           function calculatePages() {
             // Look for .page elements (multi-page HTML) or .preview-page elements
@@ -396,9 +426,10 @@ export default function TemplatesScreen() {
               window.parent.postMessage(JSON.stringify({ type: 'totalPages', value: totalPagesCount }), '*');
             }
             
-            // Update page indicators on each page if enabled
-            if (showPageNumbers) {
-              pages.forEach((page, index) => {
+            // Update page indicators on each page
+            pages.forEach((page, index) => {
+              // Add page numbers if enabled
+              if (showPageNumbers) {
                 let indicator = page.querySelector('.page-num-indicator');
                 if (!indicator) {
                   indicator = document.createElement('div');
@@ -415,9 +446,22 @@ export default function TemplatesScreen() {
                   page.style.position = 'relative';
                   page.appendChild(indicator);
                 }
-                indicator.textContent = 'Page ' + (index + 1) + ' of ' + totalPagesCount;
-              });
-            }
+                indicator.textContent = formatPageNumber(index + 1, totalPagesCount);
+              }
+              
+              // Add continuation text if enabled and not last page
+              if (showContinuationText && index < pages.length - 1) {
+                let contText = page.querySelector('.continuation-text');
+                if (!contText) {
+                  contText = document.createElement('div');
+                  contText.className = 'continuation-text';
+                  contText.style.cssText = 'position:absolute;bottom:' + (showPageNumbers ? '18mm' : '8mm') + ';left:50%;transform:translateX(-50%);font-size:9pt;color:#9ca3af;font-style:italic;font-family:serif;';
+                  page.style.position = 'relative';
+                  page.appendChild(contText);
+                }
+                contText.textContent = getContinuationText(index + 2);
+              }
+            });
           }
           
           function handleScroll() {
