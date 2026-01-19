@@ -598,38 +598,16 @@ export default function SampleDetailsScreen() {
           
           setTimeout(calculatePages, 300);
           setTimeout(handleScroll, 350);
-          
-          // Wrap pages in containers for centering
-          setTimeout(function() {
-            var pages = document.querySelectorAll('.page');
-            var body = document.body;
-            
-            // Create wrapper
-            var wrapper = document.createElement('div');
-            wrapper.id = 'preview-wrapper';
-            
-            // Move all body children to wrapper
-            while (body.firstChild) {
-              var child = body.firstChild;
-              if (child.classList && child.classList.contains('page')) {
-                var container = document.createElement('div');
-                container.className = 'page-container';
-                container.appendChild(child);
-                wrapper.appendChild(container);
-              } else {
-                wrapper.appendChild(child);
-              }
-            }
-            
-            body.appendChild(wrapper);
-          }, 100);
         })();
       </script>
     `;
     
     const pageHeightMM = 297;
+    const pageWidthMM = 210;
     const scaledHeightMM = pageHeightMM * zoom;
-    const gapMM = (pageHeightMM - scaledHeightMM);
+    const scaledWidthMM = pageWidthMM * zoom;
+    const verticalGapMM = pageHeightMM - scaledHeightMM;
+    const horizontalGapMM = (pageWidthMM - scaledWidthMM) / 2;
     
     const previewCSS = `
       * {
@@ -647,34 +625,30 @@ export default function SampleDetailsScreen() {
         background: #4b5563 !important;
         margin: 0 !important;
         padding: 0 !important;
+        width: 100% !important;
       }
       body {
         background: #4b5563 !important;
         margin: 0 !important;
-        padding: 20px !important;
+        padding: 20px 0 !important;
         min-height: 100vh !important;
         overflow-x: hidden !important;
-      }
-      #preview-wrapper {
+        width: 100% !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
-        width: 100% !important;
-      }
-      .page-container {
-        width: 100% !important;
-        display: flex !important;
-        justify-content: center !important;
-        margin-bottom: calc(-${gapMM}mm + 20px) !important;
-      }
-      .page-container:last-child {
-        margin-bottom: 20px !important;
       }
       .page {
         background: white !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
         transform: scale(${zoom}) !important;
         transform-origin: top center !important;
+        margin-left: -${horizontalGapMM}mm !important;
+        margin-right: -${horizontalGapMM}mm !important;
+        margin-bottom: calc(-${verticalGapMM}mm + 20px) !important;
+      }
+      .page:last-child {
+        margin-bottom: 20px !important;
       }
     `;
     
