@@ -472,7 +472,16 @@ export default function TemplatesScreen() {
               ${extractedStyles}
               
               /* Override styles for preview - must come after template styles */
-              * { box-sizing: border-box; }
+              * { 
+                box-sizing: border-box;
+                scrollbar-width: none !important;
+                -ms-overflow-style: none !important;
+              }
+              *::-webkit-scrollbar {
+                display: none !important;
+                width: 0 !important;
+                height: 0 !important;
+              }
               html { 
                 margin: 0 !important;
                 padding: 0 !important;
@@ -481,32 +490,34 @@ export default function TemplatesScreen() {
                 overflow-y: auto !important;
                 height: auto !important;
                 min-height: 100vh !important;
+                width: 100% !important;
               }
               body { 
                 margin: 0 !important;
-                padding: 0 !important;
+                padding: 20px 0 !important;
                 background: #4b5563 !important;
-                overflow: visible !important;
+                overflow-x: hidden !important;
                 height: auto !important;
-                min-height: auto !important;
-              }
-              html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
-              
-              /* Scale wrapper for entire preview */
-              #preview-wrapper {
-                transform: scale(${scale});
-                transform-origin: top center;
-                width: ${100 / scale}%;
-                margin: 0 auto;
-                padding: 20px 0 100px 0;
+                min-height: 100vh !important;
+                width: 100% !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
               }
               
-              /* Override .page styles for preview display */
+              /* Override .page styles for preview display with scale */
               .page {
-                margin: 0 auto 30px auto !important;
                 box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
                 overflow: visible !important;
                 position: relative !important;
+                transform: scale(${scale}) !important;
+                transform-origin: top center !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                margin-bottom: calc(-297mm * (1 - ${scale}) + 20px) !important;
+              }
+              .page:last-child {
+                margin-bottom: 20px !important;
               }
               
               /* Remove page-break CSS for screen preview */
@@ -526,9 +537,7 @@ export default function TemplatesScreen() {
             </style>
           </head>
           <body>
-            <div id="preview-wrapper">
-              ${hasMultiplePages ? bodyContent : `<div class="preview-single-page">${bodyContent}</div>`}
-            </div>
+            ${hasMultiplePages ? bodyContent : `<div class="page preview-single-page">${bodyContent}</div>`}
             ${pageTrackingScript}
           </body>
         </html>
@@ -564,6 +573,8 @@ export default function TemplatesScreen() {
       ? `<div class="page-number" style="${pageNumberStyle}">Page 1 of 1</div>` 
       : '';
 
+    const verticalGapMM = 297 * (1 - scale);
+    
     return `
       <!DOCTYPE html>
       <html>
@@ -571,21 +582,39 @@ export default function TemplatesScreen() {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <style>
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            html, body { 
-              background: #4b5563; 
-              display: flex; 
-              justify-content: center; 
-              padding: 20px;
-              min-height: 100vh;
+            * { 
+              box-sizing: border-box; 
+              margin: 0; 
+              padding: 0;
               scrollbar-width: none;
               -ms-overflow-style: none;
             }
-            html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+            *::-webkit-scrollbar {
+              display: none;
+              width: 0;
+              height: 0;
+            }
+            html { 
+              background: #4b5563; 
+              overflow-x: hidden;
+              overflow-y: auto;
+              min-height: 100vh;
+              width: 100%;
+            }
+            body { 
+              background: #4b5563; 
+              display: flex; 
+              flex-direction: column;
+              align-items: center;
+              padding: 20px 0;
+              min-height: 100vh;
+              width: 100%;
+              overflow-x: hidden;
+            }
             .page {
               background: white;
-              width: ${pageWidthPx}px;
-              height: ${pageHeightPx}px;
+              width: 210mm;
+              height: 297mm;
               padding: ${template.marginTop}mm ${template.marginRight}mm ${template.marginBottom}mm ${template.marginLeft}mm;
               box-shadow: 0 4px 20px rgba(0,0,0,0.3);
               font-family: "${template.fontFamily}", serif;
@@ -596,6 +625,10 @@ export default function TemplatesScreen() {
               flex-direction: column;
               transform: scale(${scale});
               transform-origin: top center;
+              margin-bottom: calc(-${verticalGapMM}mm + 20px);
+            }
+            .page:last-child {
+              margin-bottom: 20px;
             }
             .header {
               padding-bottom: 12px;
@@ -1047,6 +1080,7 @@ export default function TemplatesScreen() {
 
           {previewTemplate && Platform.OS !== 'web' && WebView ? (
             <WebView
+              key={`preview-${zoomLevel}`}
               ref={webViewRef}
               source={{ html: generatePreviewHtml(previewTemplate, zoomLevel) }}
               style={styles.webview}
@@ -1069,6 +1103,7 @@ export default function TemplatesScreen() {
           ) : previewTemplate && Platform.OS === 'web' ? (
             <View style={styles.webPreview}>
               <iframe
+                key={`preview-${zoomLevel}`}
                 srcDoc={generatePreviewHtml(previewTemplate, zoomLevel)}
                 style={{
                   width: '100%',
