@@ -1084,7 +1084,7 @@ export default function TemplatesScreen() {
             </View>
           ) : null}
 
-          <View style={styles.bottomBar}>
+          <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, Spacing.sm) }]}>
             <View style={styles.pdfNavBar}>
               <Pressable 
                 style={[styles.pdfNavBtn, currentPage <= 1 && styles.pdfNavBtnDisabled]} 
