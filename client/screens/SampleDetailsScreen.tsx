@@ -603,29 +603,40 @@ export default function SampleDetailsScreen() {
     `;
     
     const previewCSS = `
-      html, body {
-        scrollbar-width: none;
-        -ms-overflow-style: none;
+      html, html[lang], html:root {
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
         overflow-y: auto !important;
         overflow-x: auto !important;
         background: #4b5563 !important;
         margin: 0 !important;
         padding: 0 !important;
         min-height: 100vh !important;
+        max-height: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
       }
       html::-webkit-scrollbar, body::-webkit-scrollbar {
-        display: none;
+        display: none !important;
       }
-      body {
+      body, body.preview-body {
+        background: #4b5563 !important;
+        margin: 0 !important;
+        padding: 20px !important;
+        min-height: 100vh !important;
+        max-height: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
         justify-content: flex-start !important;
-        padding: 20px !important;
       }
       .page {
         background: white !important;
-        margin: 10px auto !important;
+        margin: 15px 0 !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
         transform: scale(${zoom}) !important;
         transform-origin: top center !important;
@@ -646,13 +657,14 @@ export default function SampleDetailsScreen() {
                    ));
     
     if (isHtml) {
-      // Inject preview CSS and page tracking script into the HTML content
-      if (content.includes('</head>')) {
-        return content.replace('</head>', `<style>${previewCSS}</style></head>`).replace('</body>', `${pageTrackingScript}</body>`);
-      } else if (content.includes('<body')) {
-        return content.replace('<body', `<style>${previewCSS}</style><body`).replace('</body>', `${pageTrackingScript}</body>`);
+      // Inject preview CSS at the END of body for maximum override priority
+      const overrideStyles = `<style id="preview-override">${previewCSS}</style>`;
+      if (content.includes('</body>')) {
+        return content.replace('</body>', `${overrideStyles}${pageTrackingScript}</body>`);
+      } else if (content.includes('</html>')) {
+        return content.replace('</html>', `${overrideStyles}${pageTrackingScript}</html>`);
       } else {
-        return `<style>${previewCSS}</style>${content}${pageTrackingScript}`;
+        return `${content}${overrideStyles}${pageTrackingScript}`;
       }
     }
     
