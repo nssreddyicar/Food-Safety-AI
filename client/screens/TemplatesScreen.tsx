@@ -1085,23 +1085,55 @@ export default function TemplatesScreen() {
           ) : null}
 
           <View style={styles.bottomBar}>
-            <View style={styles.bottomBarLeft}>
-              <View style={styles.pageNavigation}>
-                <Feather name="file-text" size={14} color="white" />
-                <ThemedText style={styles.pageNavText}>
-                  Page {currentPage} of {totalPages}
+            <View style={styles.pdfNavBar}>
+              <Pressable 
+                style={[styles.pdfNavBtn, currentPage <= 1 && styles.pdfNavBtnDisabled]} 
+                onPress={() => setCurrentPage(1)}
+                disabled={currentPage <= 1}
+              >
+                <Feather name="chevrons-left" size={18} color={currentPage <= 1 ? '#6b7280' : 'white'} />
+              </Pressable>
+              <Pressable 
+                style={[styles.pdfNavBtn, currentPage <= 1 && styles.pdfNavBtnDisabled]} 
+                onPress={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage <= 1}
+              >
+                <Feather name="chevron-left" size={18} color={currentPage <= 1 ? '#6b7280' : 'white'} />
+              </Pressable>
+              
+              <View style={styles.pdfPageIndicator}>
+                <ThemedText style={styles.pdfPageText}>
+                  {currentPage} OF {totalPages}
                 </ThemedText>
               </View>
+              
+              <Pressable 
+                style={[styles.pdfNavBtn, currentPage >= totalPages && styles.pdfNavBtnDisabled]} 
+                onPress={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage >= totalPages}
+              >
+                <Feather name="chevron-right" size={18} color={currentPage >= totalPages ? '#6b7280' : 'white'} />
+              </Pressable>
+              <Pressable 
+                style={[styles.pdfNavBtn, currentPage >= totalPages && styles.pdfNavBtnDisabled]} 
+                onPress={() => setCurrentPage(totalPages)}
+                disabled={currentPage >= totalPages}
+              >
+                <Feather name="chevrons-right" size={18} color={currentPage >= totalPages ? '#6b7280' : 'white'} />
+              </Pressable>
+            </View>
+            
+            <View style={styles.bottomBarRight}>
               {previewDims ? (
-                <ThemedText type="small" style={{ color: '#9ca3af', marginLeft: Spacing.md }}>
-                  {previewDims.label} {previewTemplate?.orientation ? previewTemplate.orientation.charAt(0).toUpperCase() + previewTemplate.orientation.slice(1) : ''}
+                <ThemedText type="small" style={{ color: '#9ca3af', marginRight: Spacing.md }}>
+                  {previewDims.label}
                 </ThemedText>
               ) : null}
+              <Pressable style={styles.closeBtn} onPress={() => setPreviewTemplate(null)}>
+                <Feather name="x" size={16} color="white" />
+                <ThemedText type="small" style={{ color: 'white', marginLeft: 4 }}>Close</ThemedText>
+              </Pressable>
             </View>
-            <Pressable style={styles.closeBtn} onPress={() => setPreviewTemplate(null)}>
-              <Feather name="x" size={16} color="white" />
-              <ThemedText type="small" style={{ color: 'white', marginLeft: 4 }}>Close</ThemedText>
-            </Pressable>
           </View>
         </View>
       </Modal>
@@ -1414,11 +1446,47 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   bottomBar: {
-    backgroundColor: '#1f2937',
-    paddingVertical: Spacing.md,
+    backgroundColor: '#374151',
+    paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#4b5563',
+  },
+  pdfNavBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1f2937',
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  pdfNavBtn: {
+    width: 32,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+  },
+  pdfNavBtnDisabled: {
+    opacity: 0.5,
+  },
+  pdfPageIndicator: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 4,
+    backgroundColor: '#374151',
+    borderRadius: 4,
+    marginHorizontal: 4,
+  },
+  pdfPageText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  bottomBarRight: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
   bottomBarLeft: {
