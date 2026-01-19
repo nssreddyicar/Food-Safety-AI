@@ -731,20 +731,34 @@ export default function SampleDetailsScreen() {
       }
       @media print {
         html, body {
+          width: 210mm !important;
+          height: auto !important;
           background: white !important;
           background-color: white !important;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
+          margin: 0 !important;
+          padding: 0 !important;
         }
         .page {
+          width: 210mm !important;
+          height: 297mm !important;
+          min-height: 297mm !important;
+          max-height: 297mm !important;
           box-shadow: none !important;
           background: white !important;
           transform: none !important;
           margin: 0 !important;
           page-break-after: always;
+          page-break-inside: avoid;
+          overflow: hidden !important;
         }
         .page:last-child {
           page-break-after: auto;
+        }
+        .footer-row {
+          position: absolute !important;
+          bottom: 8mm !important;
         }
       }
     `;
