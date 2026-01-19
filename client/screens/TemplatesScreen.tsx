@@ -543,18 +543,27 @@ export default function TemplatesScreen() {
                 box-sizing: border-box;
                 scrollbar-width: none !important;
                 -ms-overflow-style: none !important;
+                -webkit-overflow-scrolling: touch !important;
               }
               *::-webkit-scrollbar {
                 display: none !important;
                 width: 0 !important;
                 height: 0 !important;
+                background: transparent !important;
+              }
+              *::-webkit-scrollbar-track {
+                background: transparent !important;
+              }
+              *::-webkit-scrollbar-thumb {
+                background: transparent !important;
               }
               html { 
                 margin: 0 !important;
                 padding: 0 !important;
                 background: #4b5563 !important;
                 overflow-x: hidden !important;
-                overflow-y: auto !important;
+                overflow-y: scroll !important;
+                scrollbar-width: none !important;
                 height: auto !important;
                 min-height: 100vh !important;
                 width: 100% !important;
@@ -651,18 +660,27 @@ export default function TemplatesScreen() {
               box-sizing: border-box; 
               margin: 0; 
               padding: 0;
-              scrollbar-width: none;
-              -ms-overflow-style: none;
+              scrollbar-width: none !important;
+              -ms-overflow-style: none !important;
+              -webkit-overflow-scrolling: touch !important;
             }
             *::-webkit-scrollbar {
-              display: none;
-              width: 0;
-              height: 0;
+              display: none !important;
+              width: 0 !important;
+              height: 0 !important;
+              background: transparent !important;
+            }
+            *::-webkit-scrollbar-track {
+              background: transparent !important;
+            }
+            *::-webkit-scrollbar-thumb {
+              background: transparent !important;
             }
             html { 
               background: #4b5563; 
               overflow-x: hidden;
-              overflow-y: auto;
+              overflow-y: scroll;
+              scrollbar-width: none !important;
               min-height: 100vh;
               width: 100%;
             }

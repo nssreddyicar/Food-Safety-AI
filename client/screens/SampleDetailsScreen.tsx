@@ -692,15 +692,24 @@ export default function SampleDetailsScreen() {
       * {
         scrollbar-width: none !important;
         -ms-overflow-style: none !important;
+        -webkit-overflow-scrolling: touch !important;
       }
       *::-webkit-scrollbar {
         display: none !important;
         width: 0 !important;
         height: 0 !important;
+        background: transparent !important;
+      }
+      *::-webkit-scrollbar-track {
+        background: transparent !important;
+      }
+      *::-webkit-scrollbar-thumb {
+        background: transparent !important;
       }
       html {
         overflow-x: hidden !important;
-        overflow-y: auto !important;
+        overflow-y: scroll !important;
+        scrollbar-width: none !important;
         background: #4b5563 !important;
         margin: 0 !important;
         padding: 0 !important;
