@@ -370,23 +370,55 @@ export default function TemplatesScreen() {
           const pageHeight = ${pageHeightPx};
           const scale = ${scale};
           const pageGap = 20;
+          let totalPagesCount = 1;
           
           function calculatePages() {
-            const pagesContainer = document.getElementById('pages-container');
-            if (!pagesContainer) return;
-            const pages = pagesContainer.querySelectorAll('.preview-page');
-            const totalPages = pages.length || 1;
+            // Look for .page elements (multi-page HTML) or .preview-page elements
+            let pages = document.querySelectorAll('.page');
+            if (pages.length === 0) {
+              pages = document.querySelectorAll('.preview-page');
+            }
+            totalPagesCount = pages.length || 1;
             
             // Send total pages to React Native
             if (window.ReactNativeWebView) {
-              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'totalPages', value: totalPages }));
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'totalPages', value: totalPagesCount }));
             }
+            
+            // Update page indicators on each page
+            pages.forEach((page, index) => {
+              let indicator = page.querySelector('.page-num-indicator');
+              if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.className = 'page-num-indicator';
+                indicator.style.cssText = 'position:absolute;bottom:5mm;left:50%;transform:translateX(-50%);font-size:10pt;color:#6b7280;';
+                page.style.position = 'relative';
+                page.appendChild(indicator);
+              }
+              indicator.textContent = (index + 1) + ' :';
+            });
           }
           
           function handleScroll() {
             const scrollTop = window.scrollY || document.documentElement.scrollTop;
-            const scaledPageHeight = (pageHeight * scale) + pageGap;
-            const currentPage = Math.floor(scrollTop / scaledPageHeight) + 1;
+            // Get actual page heights from DOM
+            let pages = document.querySelectorAll('.page');
+            if (pages.length === 0) {
+              pages = document.querySelectorAll('.preview-page');
+            }
+            
+            let currentPage = 1;
+            let accumulatedHeight = 0;
+            
+            for (let i = 0; i < pages.length; i++) {
+              const rect = pages[i].getBoundingClientRect();
+              const pageTop = pages[i].offsetTop;
+              if (scrollTop >= pageTop - 50) {
+                currentPage = i + 1;
+              }
+            }
+            
+            currentPage = Math.min(currentPage, totalPagesCount);
             
             // Send current page to React Native
             if (window.ReactNativeWebView) {
@@ -396,12 +428,15 @@ export default function TemplatesScreen() {
           
           window.addEventListener('scroll', handleScroll);
           window.addEventListener('load', function() {
-            calculatePages();
-            handleScroll();
+            setTimeout(function() {
+              calculatePages();
+              handleScroll();
+            }, 200);
           });
           
-          // Initial calculation
-          setTimeout(calculatePages, 100);
+          // Initial calculation with delay for content to render
+          setTimeout(calculatePages, 300);
+          setTimeout(handleScroll, 350);
         })();
       </script>
     `;
@@ -422,6 +457,9 @@ export default function TemplatesScreen() {
         bodyContent = bodyMatch[1];
       }
       
+      // Check if content has multiple .page divs (multi-page document)
+      const hasMultiplePages = bodyContent.includes('class="page"') || bodyContent.includes("class='page'");
+      
       // For raw HTML with multi-page support
       return `
         <!DOCTYPE html>
@@ -440,6 +478,8 @@ export default function TemplatesScreen() {
                 -ms-overflow-style: none;
               }
               html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+              
+              /* Container for pages */
               #pages-container {
                 display: flex;
                 flex-direction: column;
@@ -447,6 +487,20 @@ export default function TemplatesScreen() {
                 padding: 20px;
                 gap: 20px;
               }
+              
+              /* Style for .page elements in multi-page documents */
+              .page {
+                background: white;
+                width: ${pageWidthPx}px;
+                min-height: ${pageHeightPx}px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                transform: scale(${scale});
+                transform-origin: top center;
+                margin-bottom: ${(1 - scale) * pageHeightPx * -0.5}px;
+                position: relative;
+              }
+              
+              /* Style for single-page preview wrapper */
               .preview-page {
                 background: white;
                 width: ${pageWidthPx}px;
@@ -458,25 +512,17 @@ export default function TemplatesScreen() {
                 overflow: visible;
                 position: relative;
               }
+              
               .page-content {
                 padding: ${template.marginTop}mm ${template.marginRight}mm ${template.marginBottom}mm ${template.marginLeft}mm;
               }
-              .page-number-indicator {
-                position: absolute;
-                bottom: 10px;
-                left: 50%;
-                transform: translateX(-50%);
-                font-size: 10pt;
-                color: #6b7280;
-              }
+              
               ${extractedStyles}
             </style>
           </head>
           <body>
             <div id="pages-container">
-              <div class="preview-page">
-                <div class="page-content">${bodyContent}</div>
-              </div>
+              ${hasMultiplePages ? bodyContent : `<div class="preview-page"><div class="page-content">${bodyContent}</div></div>`}
             </div>
             ${pageTrackingScript}
           </body>
@@ -946,7 +992,7 @@ export default function TemplatesScreen() {
               scrollEnabled={true}
               showsVerticalScrollIndicator={false}
               showsHorizontalScrollIndicator={false}
-              onMessage={(event) => {
+              onMessage={(event: { nativeEvent: { data: string } }) => {
                 try {
                   const data = JSON.parse(event.nativeEvent.data);
                   if (data.type === 'totalPages') {
