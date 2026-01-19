@@ -1508,6 +1508,7 @@ export default function SampleDetailsScreen() {
                   }}
                 >
                   <iframe
+                    key={`preview-${previewZoom}`}
                     srcDoc={generatePdfHtml(previewTemplate, previewZoom)}
                     style={{ 
                       width: '100%',
@@ -1520,6 +1521,7 @@ export default function SampleDetailsScreen() {
                 </div>
               ) : (
                 <WebView
+                  key={`preview-${previewZoom}`}
                   source={{ html: generatePdfHtml(previewTemplate, previewZoom) }}
                   style={{ flex: 1 }}
                   originWhitelist={['*']}
