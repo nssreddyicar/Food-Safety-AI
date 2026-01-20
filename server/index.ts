@@ -149,9 +149,8 @@ function serveLandingPage({
   const baseUrl = `${protocol}://${host}`;
   const expsUrl = `${host}`;
 
-  // Create admin URL - strip port if present and add :5000
-  const hostWithoutPort = (host || "").split(":")[0];
-  const adminUrl = `${protocol}://${hostWithoutPort}:5000`;
+  // Admin URL uses the same base URL - Replit proxy handles port routing
+  const adminUrl = baseUrl;
 
   log(`baseUrl`, baseUrl);
   log(`expsUrl`, expsUrl);
