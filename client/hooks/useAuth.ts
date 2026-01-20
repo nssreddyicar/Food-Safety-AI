@@ -75,9 +75,9 @@ export function useAuth() {
           setActiveJurisdiction(officerUser.jurisdiction);
         }
         return true;
-      } catch (error) {
-        console.error("Login failed:", error);
-        setLoginError("Unable to connect to server. Please try again.");
+      } catch (error: any) {
+        console.error("Login failed:", error?.message || error);
+        setLoginError(error?.message || "Unable to connect to server. Please try again.");
         return false;
       } finally {
         setIsLoading(false);
