@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback } from "react";
 import { StyleSheet, View, Text, ActivityIndicator } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -6,7 +6,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
-import * as Font from "expo-font";
+import { useFonts } from "expo-font";
 import { Feather } from "@expo/vector-icons";
 
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -20,31 +20,17 @@ import { Colors } from "@/constants/theme";
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
-  const [appIsReady, setAppIsReady] = useState(false);
+  const [fontsLoaded, fontError] = useFonts({
+    ...Feather.font,
+  });
 
-  useEffect(() => {
-    async function prepare() {
-      try {
-        await Font.loadAsync({
-          ...Feather.font,
-        });
-      } catch (e) {
-        console.warn("Error loading fonts:", e);
-      } finally {
-        setAppIsReady(true);
-      }
+  const onLayoutRootView = useCallback(async () => {
+    if (fontsLoaded || fontError) {
+      await SplashScreen.hideAsync();
     }
+  }, [fontsLoaded, fontError]);
 
-    prepare();
-  }, []);
-
-  useEffect(() => {
-    if (appIsReady) {
-      SplashScreen.hideAsync();
-    }
-  }, [appIsReady]);
-
-  if (!appIsReady) {
+  if (!fontsLoaded && !fontError) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={Colors.light.primary} />
@@ -58,7 +44,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <SafeAreaProvider>
-            <GestureHandlerRootView style={styles.root}>
+            <GestureHandlerRootView style={styles.root} onLayout={onLayoutRootView}>
               <KeyboardProvider>
                 <NavigationContainer>
                   <RootStackNavigator />
