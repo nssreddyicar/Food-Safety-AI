@@ -1,12 +1,11 @@
 import React, { useEffect } from "react";
-import { StyleSheet, View, ActivityIndicator, Text } from "react-native";
+import { StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
-import { useFonts } from "expo-font";
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
@@ -14,29 +13,13 @@ import { queryClient } from "@/lib/query-client";
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/context/AuthContext";
-import { Colors } from "@/constants/theme";
 
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
-    Feather: require("../assets/fonts/Feather.ttf"),
-  });
-
   useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
-
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={Colors.light.primary} />
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
-  }
+    SplashScreen.hideAsync();
+  }, []);
 
   return (
     <ErrorBoundary>
@@ -61,16 +44,5 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-  },
-  loading: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: "#666",
   },
 });
