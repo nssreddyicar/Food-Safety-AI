@@ -215,7 +215,7 @@ function configureExpoAndLanding(app: express.Application) {
   // Proxy to Expo dev server for mobile web app (when running in dev mode)
   if (process.env.NODE_ENV === "development") {
     const expoProxy = createProxyMiddleware({
-      target: "http://localhost:8081",
+      target: "http://localhost:8080",
       changeOrigin: true,
       ws: true,
     });
