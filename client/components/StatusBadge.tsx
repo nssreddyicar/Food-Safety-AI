@@ -1,46 +1,46 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { ThemedText } from '@/components/ThemedText';
-import { useTheme } from '@/hooks/useTheme';
-import { BorderRadius, Spacing } from '@/constants/theme';
-import { InspectionStatus, SampleResult } from '@/types';
+import React from "react";
+import { View, StyleSheet } from "react-native";
+import { ThemedText } from "@/components/ThemedText";
+import { useTheme } from "@/hooks/useTheme";
+import { BorderRadius, Spacing } from "@/constants/theme";
+import { InspectionStatus, SampleResult } from "@/types";
 
 interface StatusBadgeProps {
-  status: InspectionStatus | SampleResult | 'overdue';
-  size?: 'small' | 'medium';
+  status: InspectionStatus | SampleResult | "overdue";
+  size?: "small" | "medium";
 }
 
 const statusLabels: Record<string, string> = {
-  draft: 'Draft',
-  submitted: 'Submitted',
-  under_review: 'Under Review',
-  closed: 'Closed',
-  pending: 'Pending',
-  not_unsafe: 'Safe',
-  substandard: 'Substandard',
-  unsafe: 'Unsafe',
-  overdue: 'Overdue',
+  draft: "Draft",
+  submitted: "Submitted",
+  under_review: "Under Review",
+  closed: "Closed",
+  pending: "Pending",
+  not_unsafe: "Safe",
+  substandard: "Substandard",
+  unsafe: "Unsafe",
+  overdue: "Overdue",
 };
 
-export function StatusBadge({ status, size = 'small' }: StatusBadgeProps) {
+export function StatusBadge({ status, size = "small" }: StatusBadgeProps) {
   const { theme } = useTheme();
 
   const getStatusColor = () => {
     switch (status) {
-      case 'draft':
-      case 'pending':
+      case "draft":
+      case "pending":
         return theme.statusDraft;
-      case 'submitted':
+      case "submitted":
         return theme.statusSubmitted;
-      case 'under_review':
+      case "under_review":
         return theme.statusUnderReview;
-      case 'closed':
-      case 'not_unsafe':
+      case "closed":
+      case "not_unsafe":
         return theme.statusClosed;
-      case 'overdue':
-      case 'unsafe':
+      case "overdue":
+      case "unsafe":
         return theme.statusOverdue;
-      case 'substandard':
+      case "substandard":
         return theme.statusUnderReview;
       default:
         return theme.statusDraft;
@@ -50,16 +50,18 @@ export function StatusBadge({ status, size = 'small' }: StatusBadgeProps) {
   const backgroundColor = getStatusColor();
 
   return (
-    <View style={[
-      styles.badge,
-      size === 'medium' && styles.badgeMedium,
-      { backgroundColor },
-    ]}>
+    <View
+      style={[
+        styles.badge,
+        size === "medium" && styles.badgeMedium,
+        { backgroundColor },
+      ]}
+    >
       <ThemedText
         style={[
           styles.text,
-          size === 'medium' && styles.textMedium,
-          { color: '#FFFFFF' },
+          size === "medium" && styles.textMedium,
+          { color: "#FFFFFF" },
         ]}
       >
         {statusLabels[status] || status}
@@ -73,7 +75,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.xs,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   badgeMedium: {
     paddingHorizontal: Spacing.md,
@@ -81,8 +83,8 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 10,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   textMedium: {

@@ -1,9 +1,9 @@
-import React from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { ThemedText } from '@/components/ThemedText';
-import { useTheme } from '@/hooks/useTheme';
-import { BorderRadius, Spacing, Shadows } from '@/constants/theme';
+import React from "react";
+import { View, StyleSheet, Pressable } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { ThemedText } from "@/components/ThemedText";
+import { useTheme } from "@/hooks/useTheme";
+import { BorderRadius, Spacing, Shadows } from "@/constants/theme";
 
 interface StatCardProps {
   title: string;
@@ -13,7 +13,13 @@ interface StatCardProps {
   onPress?: () => void;
 }
 
-export function StatCard({ title, value, icon, color, onPress }: StatCardProps) {
+export function StatCard({
+  title,
+  value,
+  icon,
+  color,
+  onPress,
+}: StatCardProps) {
   const { theme } = useTheme();
 
   return (
@@ -26,7 +32,7 @@ export function StatCard({ title, value, icon, color, onPress }: StatCardProps) 
         pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
       ]}
     >
-      <View style={[styles.iconContainer, { backgroundColor: color + '20' }]}>
+      <View style={[styles.iconContainer, { backgroundColor: color + "20" }]}>
         <Feather name={icon} size={20} color={color} />
       </View>
       <View style={styles.content}>
@@ -52,8 +58,8 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.md,
   },
   content: {

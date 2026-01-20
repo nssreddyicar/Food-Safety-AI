@@ -1,10 +1,14 @@
-export type InspectionStatus = 'draft' | 'submitted' | 'under_review' | 'closed';
+export type InspectionStatus =
+  | "draft"
+  | "submitted"
+  | "under_review"
+  | "closed";
 
-export type SampleResult = 'pending' | 'not_unsafe' | 'substandard' | 'unsafe';
+export type SampleResult = "pending" | "not_unsafe" | "substandard" | "unsafe";
 
-export type SampleType = 'enforcement' | 'surveillance';
+export type SampleType = "enforcement" | "surveillance";
 
-export type PackingType = 'packed' | 'loose';
+export type PackingType = "packed" | "loose";
 
 export interface JurisdictionInfo {
   assignmentId?: string;
@@ -19,7 +23,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'fso' | 'do' | 'commissioner' | 'super_admin';
+  role: "fso" | "do" | "commissioner" | "super_admin";
   designation: string;
   district?: string;
   phone?: string;
@@ -55,7 +59,7 @@ export interface Deviation {
   id: string;
   category: string;
   description: string;
-  severity: 'minor' | 'major' | 'critical';
+  severity: "minor" | "major" | "critical";
 }
 
 export interface Witness {
@@ -119,7 +123,7 @@ export interface Sample {
   useByDate?: string;
   lotBatchNumber?: string;
   dispatchDate?: string;
-  dispatchMode?: 'post' | 'courier' | 'by_hand';
+  dispatchMode?: "post" | "courier" | "by_hand";
   acknowledgementImage?: string;
   labReportDate?: string;
   labResult?: SampleResult;
@@ -216,7 +220,7 @@ export interface ProsecutionCase {
   firstHearingDate?: string;
   nextHearingDate?: string;
   lastHearingDate?: string;
-  status: 'pending' | 'ongoing' | 'convicted' | 'acquitted' | 'closed';
+  status: "pending" | "ongoing" | "convicted" | "acquitted" | "closed";
   outcome?: string;
   sentenceDetails?: string;
   fineAmount?: number;
@@ -240,7 +244,7 @@ export interface ProsecutionHearing {
   nextDatePurpose?: string;
   notes?: string;
   images?: string[];
-  status: 'scheduled' | 'completed' | 'adjourned' | 'cancelled';
+  status: "scheduled" | "completed" | "adjourned" | "cancelled";
   createdByOfficerId?: string;
   createdAt: string;
   updatedAt: string;
@@ -248,7 +252,7 @@ export interface ProsecutionHearing {
 
 export interface UrgentAction {
   id: string;
-  type: 'sample_deadline' | 'report_pending' | 'notice_due';
+  type: "sample_deadline" | "report_pending" | "notice_due";
   title: string;
   description: string;
   daysRemaining: number;
@@ -257,28 +261,33 @@ export interface UrgentAction {
 }
 
 export const PRESERVATIVE_TYPES = [
-  'Sodium Benzoate',
-  'Potassium Sorbate',
-  'Sodium Metabisulphite',
-  'Citric Acid',
-  'Acetic Acid',
-  'Formalin',
-  'Other'
+  "Sodium Benzoate",
+  "Potassium Sorbate",
+  "Sodium Metabisulphite",
+  "Citric Acid",
+  "Acetic Acid",
+  "Formalin",
+  "Other",
 ];
 
 export const ACTION_TYPES = [
-  'Warning Issued',
-  'Improvement Notice',
-  'Seizure Order',
-  'Prohibition Order',
-  'Prosecution Initiated',
-  'License Suspended',
-  'License Cancelled',
-  'No Issues Found'
+  "Warning Issued",
+  "Improvement Notice",
+  "Seizure Order",
+  "Prohibition Order",
+  "Prosecution Initiated",
+  "License Suspended",
+  "License Cancelled",
+  "No Issues Found",
 ];
 
-export type ActionCategoryGroup = 'legal' | 'inspection' | 'sampling' | 'administrative' | 'protocol';
-export type ActionPriority = 'critical' | 'high' | 'normal';
+export type ActionCategoryGroup =
+  | "legal"
+  | "inspection"
+  | "sampling"
+  | "administrative"
+  | "protocol";
+export type ActionPriority = "critical" | "high" | "normal";
 
 export interface ActionCategoryCounts {
   total: number;
@@ -324,7 +333,7 @@ export interface StatisticsCard {
   icon: string;
   color: string;
   group: string;
-  valueType: 'count' | 'currency' | 'percentage';
+  valueType: "count" | "currency" | "percentage";
   entityType?: string;
   displayOrder: number;
   isEnabled: boolean;
@@ -337,7 +346,7 @@ export interface ReportSection {
   name: string;
   code: string;
   description?: string;
-  sectionType: 'summary' | 'table' | 'statistics' | 'chart';
+  sectionType: "summary" | "table" | "statistics" | "chart";
   displayOrder: number;
   isEnabled: boolean;
   showInPdf: boolean;

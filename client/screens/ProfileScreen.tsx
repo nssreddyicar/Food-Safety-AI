@@ -1,23 +1,30 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Image, Pressable, Alert, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHeaderHeight } from '@react-navigation/elements';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
-import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
-import { ThemedText } from '@/components/ThemedText';
-import { Button } from '@/components/Button';
-import { JurisdictionSwitcher } from '@/components/JurisdictionSwitcher';
-import { useTheme } from '@/hooks/useTheme';
-import { useAuthContext } from '@/context/AuthContext';
-import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
-import { getApiUrl } from '@/lib/query-client';
-import { ProfileStackParamList } from '@/navigation/ProfileStackNavigator';
+import React, { useState } from "react";
+import {
+  View,
+  StyleSheet,
+  Image,
+  Pressable,
+  Alert,
+  Platform,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useHeaderHeight } from "@react-navigation/elements";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { ThemedText } from "@/components/ThemedText";
+import { Button } from "@/components/Button";
+import { JurisdictionSwitcher } from "@/components/JurisdictionSwitcher";
+import { useTheme } from "@/hooks/useTheme";
+import { useAuthContext } from "@/context/AuthContext";
+import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { getApiUrl } from "@/lib/query-client";
+import { ProfileStackParamList } from "@/navigation/ProfileStackNavigator";
 
 interface MenuItemProps {
   icon: keyof typeof Feather.glyphMap;
@@ -40,8 +47,17 @@ function MenuItem({ icon, label, value, onPress, danger }: MenuItemProps) {
         pressed && { opacity: 0.8 },
       ]}
     >
-      <View style={[styles.menuIcon, { backgroundColor: (danger ? theme.accent : theme.primary) + '15' }]}>
-        <Feather name={icon} size={18} color={danger ? theme.accent : theme.primary} />
+      <View
+        style={[
+          styles.menuIcon,
+          { backgroundColor: (danger ? theme.accent : theme.primary) + "15" },
+        ]}
+      >
+        <Feather
+          name={icon}
+          size={18}
+          color={danger ? theme.accent : theme.primary}
+        />
       </View>
       <View style={styles.menuContent}>
         <ThemedText type="body" style={{ color }}>
@@ -60,7 +76,10 @@ function MenuItem({ icon, label, value, onPress, danger }: MenuItemProps) {
   );
 }
 
-type ProfileNavigationProp = NativeStackNavigationProp<ProfileStackParamList, 'Profile'>;
+type ProfileNavigationProp = NativeStackNavigationProp<
+  ProfileStackParamList,
+  "Profile"
+>;
 
 export default function ProfileScreen() {
   const { theme } = useTheme();
@@ -69,38 +88,39 @@ export default function ProfileScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<ProfileNavigationProp>();
   const { user, logout } = useAuthContext();
-  const [showJurisdictionSwitcher, setShowJurisdictionSwitcher] = useState(false);
+  const [showJurisdictionSwitcher, setShowJurisdictionSwitcher] =
+    useState(false);
 
   const hasMultipleJurisdictions = (user?.allJurisdictions?.length || 0) > 1;
 
   const handleLogout = () => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       logout();
       return;
     }
-    
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out of Food Safety Inspector?',
+      "Sign Out",
+      "Are you sure you want to sign out of Food Safety Inspector?",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Sign Out',
-          style: 'destructive',
+          text: "Sign Out",
+          style: "destructive",
           onPress: () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             logout();
           },
         },
-      ]
+      ],
     );
   };
 
   const handleOpenAdminPanel = async () => {
     const adminUrl = `${getApiUrl()}/admin`;
-    if (Platform.OS === 'web') {
-      window.open(adminUrl, '_blank');
+    if (Platform.OS === "web") {
+      window.open(adminUrl, "_blank");
     } else {
       await WebBrowser.openBrowserAsync(adminUrl);
     }
@@ -118,22 +138,33 @@ export default function ProfileScreen() {
       ]}
       scrollIndicatorInsets={{ bottom: insets.bottom }}
     >
-      <View style={[styles.profileCard, { backgroundColor: theme.backgroundDefault }, Shadows.md]}>
-        <View style={[styles.avatarContainer, { backgroundColor: theme.primary }]}>
-          <ThemedText type="h1" style={{ color: '#FFFFFF' }}>
-            {user?.name?.charAt(0).toUpperCase() || 'U'}
+      <View
+        style={[
+          styles.profileCard,
+          { backgroundColor: theme.backgroundDefault },
+          Shadows.md,
+        ]}
+      >
+        <View
+          style={[styles.avatarContainer, { backgroundColor: theme.primary }]}
+        >
+          <ThemedText type="h1" style={{ color: "#FFFFFF" }}>
+            {user?.name?.charAt(0).toUpperCase() || "U"}
           </ThemedText>
         </View>
         <ThemedText type="h2" style={styles.name}>
-          {user?.name || 'Officer'}
+          {user?.name || "Officer"}
         </ThemedText>
         <ThemedText type="body" style={{ color: theme.textSecondary }}>
-          {user?.email || 'officer@fssai.gov.in'}
+          {user?.email || "officer@fssai.gov.in"}
         </ThemedText>
-        <View style={[styles.badge, { backgroundColor: theme.primary + '15' }]}>
+        <View style={[styles.badge, { backgroundColor: theme.primary + "15" }]}>
           <Feather name="shield" size={14} color={theme.primary} />
-          <ThemedText type="small" style={{ color: theme.primary, fontWeight: '600' }}>
-            {user?.designation || 'Food Safety Officer'}
+          <ThemedText
+            type="small"
+            style={{ color: theme.primary, fontWeight: "600" }}
+          >
+            {user?.designation || "Food Safety Officer"}
           </ThemedText>
         </View>
       </View>
@@ -143,36 +174,54 @@ export default function ProfileScreen() {
           Account Information
         </ThemedText>
         <View style={[styles.menuGroup, Shadows.sm]}>
-          <MenuItem 
-            icon="map-pin" 
-            label="Jurisdiction" 
-            value={user?.jurisdiction?.unitName || 'Not assigned'} 
-            onPress={hasMultipleJurisdictions ? () => setShowJurisdictionSwitcher(true) : undefined}
+          <MenuItem
+            icon="map-pin"
+            label="Jurisdiction"
+            value={user?.jurisdiction?.unitName || "Not assigned"}
+            onPress={
+              hasMultipleJurisdictions
+                ? () => setShowJurisdictionSwitcher(true)
+                : undefined
+            }
           />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <MenuItem 
-            icon="briefcase" 
-            label="Assignment" 
+          <MenuItem
+            icon="briefcase"
+            label="Assignment"
             value={
               user?.jurisdiction?.roleName && user?.jurisdiction?.capacityName
                 ? `${user.jurisdiction.roleName} (${user.jurisdiction.capacityName})`
-                : user?.jurisdiction?.roleName || user?.role?.toUpperCase() || 'FSO'
-            } 
+                : user?.jurisdiction?.roleName ||
+                  user?.role?.toUpperCase() ||
+                  "FSO"
+            }
           />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           {user?.employeeId ? (
             <>
-              <MenuItem icon="hash" label="Employee ID" value={user.employeeId} />
-              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+              <MenuItem
+                icon="hash"
+                label="Employee ID"
+                value={user.employeeId}
+              />
+              <View
+                style={[styles.divider, { backgroundColor: theme.border }]}
+              />
             </>
           ) : null}
           {user?.phone ? (
             <>
               <MenuItem icon="phone" label="Phone" value={user.phone} />
-              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+              <View
+                style={[styles.divider, { backgroundColor: theme.border }]}
+              />
             </>
           ) : null}
-          <MenuItem icon="user" label="User ID" value={user?.id?.substring(0, 8) || 'N/A'} />
+          <MenuItem
+            icon="user"
+            label="User ID"
+            value={user?.id?.substring(0, 8) || "N/A"}
+          />
         </View>
       </View>
 
@@ -182,11 +231,11 @@ export default function ProfileScreen() {
             Jurisdiction
           </ThemedText>
           <View style={[styles.menuGroup, Shadows.sm]}>
-            <MenuItem 
-              icon="repeat" 
-              label="Switch Jurisdiction" 
+            <MenuItem
+              icon="repeat"
+              label="Switch Jurisdiction"
               value={`${user?.allJurisdictions?.length || 0} assigned jurisdictions`}
-              onPress={() => setShowJurisdictionSwitcher(true)} 
+              onPress={() => setShowJurisdictionSwitcher(true)}
             />
           </View>
         </View>
@@ -197,11 +246,11 @@ export default function ProfileScreen() {
           Sample Management
         </ThemedText>
         <View style={[styles.menuGroup, Shadows.sm]}>
-          <MenuItem 
-            icon="database" 
-            label="Sample Code Bank" 
+          <MenuItem
+            icon="database"
+            label="Sample Code Bank"
             value="Generate & manage sample codes"
-            onPress={() => navigation.navigate('SampleCodeBank')} 
+            onPress={() => navigation.navigate("SampleCodeBank")}
           />
         </View>
       </View>
@@ -211,11 +260,11 @@ export default function ProfileScreen() {
           Prosecution
         </ThemedText>
         <View style={[styles.menuGroup, Shadows.sm]}>
-          <MenuItem 
-            icon="briefcase" 
-            label="Court Cases" 
+          <MenuItem
+            icon="briefcase"
+            label="Court Cases"
             value="Track prosecution cases & hearings"
-            onPress={() => navigation.navigate('CourtCases')} 
+            onPress={() => navigation.navigate("CourtCases")}
           />
         </View>
       </View>
@@ -225,11 +274,11 @@ export default function ProfileScreen() {
           Travel Records
         </ThemedText>
         <View style={[styles.menuGroup, Shadows.sm]}>
-          <MenuItem 
-            icon="map" 
-            label="Tour Diary" 
+          <MenuItem
+            icon="map"
+            label="Tour Diary"
             value="Monthly travel log & distance tracking"
-            onPress={() => navigation.navigate('TourDiary')} 
+            onPress={() => navigation.navigate("TourDiary")}
           />
         </View>
       </View>
@@ -241,7 +290,11 @@ export default function ProfileScreen() {
         <View style={[styles.menuGroup, Shadows.sm]}>
           <MenuItem icon="bell" label="Notifications" onPress={() => {}} />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <MenuItem icon="help-circle" label="Help & Support" onPress={() => {}} />
+          <MenuItem
+            icon="help-circle"
+            label="Help & Support"
+            onPress={() => {}}
+          />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <MenuItem icon="info" label="About" value="Version 1.0.0" />
         </View>
@@ -253,24 +306,36 @@ export default function ProfileScreen() {
             Administration
           </ThemedText>
           <View style={[styles.menuGroup, Shadows.sm]}>
-            <MenuItem icon="shield" label="Super Admin Panel" onPress={handleOpenAdminPanel} />
+            <MenuItem
+              icon="shield"
+              label="Super Admin Panel"
+              onPress={handleOpenAdminPanel}
+            />
           </View>
         </View>
       ) : null}
 
       <View style={styles.section}>
         <View style={[styles.menuGroup, Shadows.sm]}>
-          <MenuItem icon="log-out" label="Sign Out" onPress={handleLogout} danger />
+          <MenuItem
+            icon="log-out"
+            label="Sign Out"
+            onPress={handleLogout}
+            danger
+          />
         </View>
       </View>
 
-      <ThemedText type="small" style={[styles.footer, { color: theme.textSecondary }]}>
+      <ThemedText
+        type="small"
+        style={[styles.footer, { color: theme.textSecondary }]}
+      >
         Food Safety and Standards Authority of India
       </ThemedText>
 
-      <JurisdictionSwitcher 
-        visible={showJurisdictionSwitcher} 
-        onClose={() => setShowJurisdictionSwitcher(false)} 
+      <JurisdictionSwitcher
+        visible={showJurisdictionSwitcher}
+        onClose={() => setShowJurisdictionSwitcher(false)}
       />
     </KeyboardAwareScrollViewCompat>
   );
@@ -285,8 +350,8 @@ const styles = StyleSheet.create({
     gap: Spacing.xl,
   },
   profileCard: {
-    alignItems: 'center',
-    padding: Spacing['2xl'],
+    alignItems: "center",
+    padding: Spacing["2xl"],
     borderRadius: BorderRadius.xl,
     gap: Spacing.sm,
   },
@@ -294,16 +359,16 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.sm,
   },
   name: {
-    textAlign: 'center',
+    textAlign: "center",
   },
   badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
@@ -318,11 +383,11 @@ const styles = StyleSheet.create({
   },
   menuGroup: {
     borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.lg,
     gap: Spacing.md,
   },
@@ -330,8 +395,8 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   menuContent: {
     flex: 1,
@@ -342,7 +407,7 @@ const styles = StyleSheet.create({
     marginLeft: 68,
   },
   footer: {
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: Spacing.lg,
   },
 });

@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { ThemedText } from '@/components/ThemedText';
-import { useTheme } from '@/hooks/useTheme';
-import { BorderRadius, Spacing } from '@/constants/theme';
+import React from "react";
+import { View, StyleSheet, Pressable, ScrollView } from "react-native";
+import { ThemedText } from "@/components/ThemedText";
+import { useTheme } from "@/hooks/useTheme";
+import { BorderRadius, Spacing } from "@/constants/theme";
 
 interface FilterChipsProps {
   options: { value: string; label: string }[];
@@ -10,7 +10,11 @@ interface FilterChipsProps {
   onSelect: (value: string) => void;
 }
 
-export function FilterChips({ options, selectedValue, onSelect }: FilterChipsProps) {
+export function FilterChips({
+  options,
+  selectedValue,
+  onSelect,
+}: FilterChipsProps) {
   const { theme } = useTheme();
 
   return (
@@ -28,7 +32,9 @@ export function FilterChips({ options, selectedValue, onSelect }: FilterChipsPro
             style={({ pressed }) => [
               styles.chip,
               {
-                backgroundColor: isSelected ? theme.primary : theme.backgroundSecondary,
+                backgroundColor: isSelected
+                  ? theme.primary
+                  : theme.backgroundSecondary,
                 borderColor: isSelected ? theme.primary : theme.border,
               },
               pressed && { opacity: 0.8 },
@@ -38,7 +44,7 @@ export function FilterChips({ options, selectedValue, onSelect }: FilterChipsPro
               type="small"
               style={[
                 styles.chipText,
-                { color: isSelected ? '#FFFFFF' : theme.text },
+                { color: isSelected ? "#FFFFFF" : theme.text },
               ]}
             >
               {option.label}
@@ -52,7 +58,7 @@ export function FilterChips({ options, selectedValue, onSelect }: FilterChipsPro
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.sm,
     paddingHorizontal: Spacing.lg,
   },
@@ -63,6 +69,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   chipText: {
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });

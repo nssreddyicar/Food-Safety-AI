@@ -1,5 +1,13 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  varchar,
+  integer,
+  boolean,
+  timestamp,
+  jsonb,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -235,7 +243,9 @@ export const documentTemplates = pgTable("document_templates", {
   pageNumberPosition: text("page_number_position").notNull().default("center"),
   pageNumberOffset: integer("page_number_offset").notNull().default(0),
   showContinuationText: boolean("show_continuation_text").default(false),
-  continuationFormat: text("continuation_format").notNull().default("contd_on_page"),
+  continuationFormat: text("continuation_format")
+    .notNull()
+    .default("contd_on_page"),
   showHeader: boolean("show_header").default(true),
   showFooter: boolean("show_footer").default(true),
   headerText: text("header_text"),

@@ -1,10 +1,10 @@
-import React from 'react';
-import { StyleSheet, Pressable } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { useTheme } from '@/hooks/useTheme';
-import { BorderRadius, Spacing, Shadows } from '@/constants/theme';
+import React from "react";
+import { StyleSheet, Pressable } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useTheme } from "@/hooks/useTheme";
+import { BorderRadius, Spacing, Shadows } from "@/constants/theme";
 
 interface FABProps {
   icon: keyof typeof Feather.glyphMap;
@@ -23,7 +23,7 @@ export function FAB({ icon, onPress, testID }: FABProps) {
       testID={testID}
       style={({ pressed }) => [
         styles.fab,
-        { 
+        {
           backgroundColor: theme.primary,
           bottom: tabBarHeight + Spacing.lg,
         },
@@ -38,12 +38,12 @@ export function FAB({ icon, onPress, testID }: FABProps) {
 
 const styles = StyleSheet.create({
   fab: {
-    position: 'absolute',
+    position: "absolute",
     right: Spacing.lg,
     width: 56,
     height: 56,
     borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

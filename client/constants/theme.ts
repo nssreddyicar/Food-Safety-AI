@@ -24,6 +24,7 @@ export const Colors = {
     statusUnderReview: "#D97706",
     statusClosed: "#059669",
     statusOverdue: "#DC2626",
+    backgroundElevated: "#FFFFFF",
   },
   dark: {
     text: "#F9FAFB",
@@ -48,6 +49,7 @@ export const Colors = {
     statusUnderReview: "#F59E0B",
     statusClosed: "#10B981",
     statusOverdue: "#EF4444",
+    backgroundElevated: "#374151",
   },
 };
 

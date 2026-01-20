@@ -148,7 +148,7 @@ function serveLandingPage({
   const host = forwardedHost || req.get("host");
   const baseUrl = `${protocol}://${host}`;
   const expsUrl = `${host}`;
-  
+
   // Create admin URL - strip port if present and add :5000
   const hostWithoutPort = (host || "").split(":")[0];
   const adminUrl = `${protocol}://${hostWithoutPort}:5000`;
@@ -220,7 +220,7 @@ function configureExpoAndLanding(app: express.Application) {
       changeOrigin: true,
       ws: true,
     });
-    
+
     // Proxy Expo-specific routes to the dev server
     app.use("/_expo", expoProxy);
     app.use("/node_modules", expoProxy);
@@ -268,7 +268,6 @@ function setupErrorHandler(app: express.Application) {
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
     },
     () => {
       log(`express server serving on port ${port}`);

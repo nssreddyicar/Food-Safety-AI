@@ -1,4 +1,10 @@
-import { DashboardMetrics, ActionDashboardData, ActionCategory, ReportSection, StatisticsCard } from '@/types';
+import {
+  DashboardMetrics,
+  ActionDashboardData,
+  ActionCategory,
+  ReportSection,
+  StatisticsCard,
+} from "@/types";
 
 interface ReportData {
   timePeriod: string;
@@ -13,10 +19,10 @@ interface ReportData {
 }
 
 const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
+  return new Date(dateStr).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   });
 };
 
@@ -24,33 +30,45 @@ const formatCurrency = (amount: number) => {
   if (amount >= 10000000) return `Rs ${(amount / 10000000).toFixed(2)} Cr`;
   if (amount >= 100000) return `Rs ${(amount / 100000).toFixed(2)} L`;
   if (amount >= 1000) return `Rs ${(amount / 1000).toFixed(1)} K`;
-  return `Rs ${amount.toLocaleString('en-IN')}`;
+  return `Rs ${amount.toLocaleString("en-IN")}`;
 };
 
 const getGroupName = (group: string): string => {
   const names: Record<string, string> = {
-    legal: 'Legal & Court',
-    inspection: 'Inspection & Enforcement',
-    sampling: 'Sampling & Laboratory',
-    administrative: 'Administrative',
-    protocol: 'Protocol & Duties',
+    legal: "Legal & Court",
+    inspection: "Inspection & Enforcement",
+    sampling: "Sampling & Laboratory",
+    administrative: "Administrative",
+    protocol: "Protocol & Duties",
   };
   return names[group] || group;
 };
 
-const getGroupColor = (group: string): { bg: string; text: string; border: string } => {
+const getGroupColor = (
+  group: string,
+): { bg: string; text: string; border: string } => {
   const colors: Record<string, { bg: string; text: string; border: string }> = {
-    legal: { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-    inspection: { bg: '#DBEAFE', text: '#1E40AF', border: '#3B82F6' },
-    sampling: { bg: '#D1FAE5', text: '#065F46', border: '#10B981' },
-    administrative: { bg: '#F3E8FF', text: '#6B21A8', border: '#A855F7' },
-    protocol: { bg: '#FCE7F3', text: '#9D174D', border: '#EC4899' },
+    legal: { bg: "#FEF3C7", text: "#92400E", border: "#F59E0B" },
+    inspection: { bg: "#DBEAFE", text: "#1E40AF", border: "#3B82F6" },
+    sampling: { bg: "#D1FAE5", text: "#065F46", border: "#10B981" },
+    administrative: { bg: "#F3E8FF", text: "#6B21A8", border: "#A855F7" },
+    protocol: { bg: "#FCE7F3", text: "#9D174D", border: "#EC4899" },
   };
-  return colors[group] || { bg: '#F3F4F6', text: '#374151', border: '#9CA3AF' };
+  return colors[group] || { bg: "#F3F4F6", text: "#374151", border: "#9CA3AF" };
 };
 
 export function generateReportHTML(data: ReportData): string {
-  const { timePeriod, dateRange, actionData, metrics, officerName, jurisdictionName, generatedAt, reportSections, statisticsCards } = data;
+  const {
+    timePeriod,
+    dateRange,
+    actionData,
+    metrics,
+    officerName,
+    jurisdictionName,
+    generatedAt,
+    reportSections,
+    statisticsCards,
+  } = data;
 
   const groupedCategories: Record<string, ActionCategory[]> = {};
   actionData.categories.forEach((cat) => {
@@ -60,11 +78,17 @@ export function generateReportHTML(data: ReportData): string {
     groupedCategories[cat.group].push(cat);
   });
 
-  const groupOrder = ['legal', 'inspection', 'sampling', 'administrative', 'protocol'];
+  const groupOrder = [
+    "legal",
+    "inspection",
+    "sampling",
+    "administrative",
+    "protocol",
+  ];
 
   const shouldShowSection = (code: string): boolean => {
     if (!reportSections || reportSections.length === 0) return true;
-    const section = reportSections.find(s => s.code === code);
+    const section = reportSections.find((s) => s.code === code);
     return section ? section.isEnabled && section.showInPdf : true;
   };
 
@@ -640,11 +664,12 @@ export function generateReportHTML(data: ReportData): string {
     </div>
     
     <!-- Action Categories Breakdown -->
-    ${groupOrder.map(group => {
-      const categories = groupedCategories[group];
-      if (!categories || categories.length === 0) return '';
-      const colors = getGroupColor(group);
-      return `
+    ${groupOrder
+      .map((group) => {
+        const categories = groupedCategories[group];
+        if (!categories || categories.length === 0) return "";
+        const colors = getGroupColor(group);
+        return `
       <div class="category-section">
         <div class="category-group-header" style="background: ${colors.bg}; color: ${colors.text}; border-left: 4px solid ${colors.border};">
           ${getGroupName(group)}
@@ -661,7 +686,9 @@ export function generateReportHTML(data: ReportData): string {
             </tr>
           </thead>
           <tbody>
-            ${categories.map(cat => `
+            ${categories
+              .map(
+                (cat) => `
             <tr>
               <td>
                 <div class="category-name-cell">
@@ -676,21 +703,24 @@ export function generateReportHTML(data: ReportData): string {
                 <span style="color: #6B7280;">${cat.slaDefaultDays}d</span>
               </td>
               <td class="count-cell">
-                <span class="count-badge ${cat.counts.overdue > 0 ? 'overdue' : 'zero'}">${cat.counts.overdue}</span>
+                <span class="count-badge ${cat.counts.overdue > 0 ? "overdue" : "zero"}">${cat.counts.overdue}</span>
               </td>
               <td class="count-cell">
-                <span class="count-badge ${cat.counts.pending > 0 ? 'pending' : 'zero'}">${cat.counts.pending}</span>
+                <span class="count-badge ${cat.counts.pending > 0 ? "pending" : "zero"}">${cat.counts.pending}</span>
               </td>
               <td class="count-cell">
                 <span class="count-badge total">${cat.counts.total}</span>
               </td>
             </tr>
-            `).join('')}
+            `,
+              )
+              .join("")}
           </tbody>
         </table>
       </div>
       `;
-    }).join('')}
+      })
+      .join("")}
     
     <!-- Page Break for Stats -->
     <div class="page-break"></div>

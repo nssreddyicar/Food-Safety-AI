@@ -29,7 +29,7 @@ export default function App() {
           ...Feather.font,
         });
       } catch (e) {
-        console.warn('Error loading fonts:', e);
+        console.warn("Error loading fonts:", e);
       } finally {
         setAppIsReady(true);
       }
@@ -79,13 +79,13 @@ const styles = StyleSheet.create({
   },
   loading: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
 });

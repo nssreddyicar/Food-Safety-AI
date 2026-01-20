@@ -1,24 +1,34 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Modal, Pressable, FlatList, Platform } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { ThemedText } from '@/components/ThemedText';
-import { useTheme } from '@/hooks/useTheme';
-import { useAuthContext } from '@/context/AuthContext';
-import { JurisdictionInfo } from '@/types';
-import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import React, { useState } from "react";
+import {
+  View,
+  StyleSheet,
+  Modal,
+  Pressable,
+  FlatList,
+  Platform,
+} from "react-native";
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { ThemedText } from "@/components/ThemedText";
+import { useTheme } from "@/hooks/useTheme";
+import { useAuthContext } from "@/context/AuthContext";
+import { JurisdictionInfo } from "@/types";
+import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 interface JurisdictionSwitcherProps {
   visible: boolean;
   onClose: () => void;
 }
 
-export function JurisdictionSwitcher({ visible, onClose }: JurisdictionSwitcherProps) {
+export function JurisdictionSwitcher({
+  visible,
+  onClose,
+}: JurisdictionSwitcherProps) {
   const { theme } = useTheme();
   const { user, activeJurisdiction, switchJurisdiction } = useAuthContext();
 
   const handleSelect = async (jurisdiction: JurisdictionInfo) => {
-    if (Platform.OS !== 'web') {
+    if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     await switchJurisdiction(jurisdiction);
@@ -35,8 +45,10 @@ export function JurisdictionSwitcher({ visible, onClose }: JurisdictionSwitcherP
         onPress={() => handleSelect(item)}
         style={({ pressed }) => [
           styles.jurisdictionItem,
-          { 
-            backgroundColor: isActive ? theme.primary + '15' : theme.backgroundDefault,
+          {
+            backgroundColor: isActive
+              ? theme.primary + "15"
+              : theme.backgroundDefault,
             borderColor: isActive ? theme.primary : theme.border,
           },
           pressed && { opacity: 0.8 },
@@ -44,19 +56,28 @@ export function JurisdictionSwitcher({ visible, onClose }: JurisdictionSwitcherP
       >
         <View style={styles.jurisdictionContent}>
           <View style={styles.jurisdictionHeader}>
-            <ThemedText type="body" style={{ fontWeight: '600' }}>
-              {item.unitName || 'Unknown Unit'}
+            <ThemedText type="body" style={{ fontWeight: "600" }}>
+              {item.unitName || "Unknown Unit"}
             </ThemedText>
             {item.isPrimary ? (
-              <View style={[styles.primaryBadge, { backgroundColor: theme.primary }]}>
-                <ThemedText type="small" style={{ color: '#FFFFFF', fontSize: 10 }}>
+              <View
+                style={[
+                  styles.primaryBadge,
+                  { backgroundColor: theme.primary },
+                ]}
+              >
+                <ThemedText
+                  type="small"
+                  style={{ color: "#FFFFFF", fontSize: 10 }}
+                >
                   PRIMARY
                 </ThemedText>
               </View>
             ) : null}
           </View>
           <ThemedText type="small" style={{ color: theme.textSecondary }}>
-            {item.roleName}{item.capacityName ? ` (${item.capacityName})` : ''}
+            {item.roleName}
+            {item.capacityName ? ` (${item.capacityName})` : ""}
           </ThemedText>
         </View>
         {isActive ? (
@@ -77,9 +98,11 @@ export function JurisdictionSwitcher({ visible, onClose }: JurisdictionSwitcherP
     >
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+        <View
+          style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
+        >
           <View style={styles.handle} />
-          
+
           <View style={styles.header}>
             <ThemedText type="h3">Switch Jurisdiction</ThemedText>
             <Pressable onPress={onClose} style={styles.closeButton}>
@@ -87,24 +110,36 @@ export function JurisdictionSwitcher({ visible, onClose }: JurisdictionSwitcherP
             </Pressable>
           </View>
 
-          <ThemedText type="body" style={[styles.subtitle, { color: theme.textSecondary }]}>
+          <ThemedText
+            type="body"
+            style={[styles.subtitle, { color: theme.textSecondary }]}
+          >
             Select the jurisdiction you want to work in
           </ThemedText>
 
           {jurisdictions.length === 0 ? (
             <View style={styles.emptyState}>
               <Feather name="map-pin" size={48} color={theme.textSecondary} />
-              <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center', marginTop: Spacing.md }}>
-                No jurisdictions assigned.{'\n'}Contact your administrator.
+              <ThemedText
+                type="body"
+                style={{
+                  color: theme.textSecondary,
+                  textAlign: "center",
+                  marginTop: Spacing.md,
+                }}
+              >
+                No jurisdictions assigned.{"\n"}Contact your administrator.
               </ThemedText>
             </View>
           ) : (
             <FlatList
               data={jurisdictions}
-              keyExtractor={(item) => item.assignmentId || item.unitId || ''}
+              keyExtractor={(item) => item.assignmentId || item.unitId || ""}
               renderItem={renderItem}
               contentContainerStyle={styles.list}
-              ItemSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
+              ItemSeparatorComponent={() => (
+                <View style={{ height: Spacing.sm }} />
+              )}
             />
           )}
         </View>
@@ -116,32 +151,32 @@ export function JurisdictionSwitcher({ visible, onClose }: JurisdictionSwitcherP
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   container: {
     borderTopLeftRadius: BorderRadius.xl,
     borderTopRightRadius: BorderRadius.xl,
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing['3xl'],
-    maxHeight: '70%',
+    paddingBottom: Spacing["3xl"],
+    maxHeight: "70%",
   },
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: "#E0E0E0",
     borderRadius: 2,
-    alignSelf: 'center',
+    alignSelf: "center",
     marginTop: Spacing.md,
     marginBottom: Spacing.lg,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: Spacing.sm,
   },
   closeButton: {
@@ -154,8 +189,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.lg,
   },
   jurisdictionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
     borderWidth: 2,
@@ -165,8 +200,8 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   jurisdictionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   primaryBadge: {
@@ -178,12 +213,12 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing['3xl'],
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing["3xl"],
   },
 });

@@ -1,11 +1,11 @@
-import React from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { ThemedText } from '@/components/ThemedText';
-import { StatusBadge } from '@/components/StatusBadge';
-import { useTheme } from '@/hooks/useTheme';
-import { BorderRadius, Spacing, Shadows } from '@/constants/theme';
-import { Inspection } from '@/types';
+import React from "react";
+import { View, StyleSheet, Pressable } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { ThemedText } from "@/components/ThemedText";
+import { StatusBadge } from "@/components/StatusBadge";
+import { useTheme } from "@/hooks/useTheme";
+import { BorderRadius, Spacing, Shadows } from "@/constants/theme";
+import { Inspection } from "@/types";
 
 interface InspectionCardProps {
   inspection: Inspection;
@@ -15,11 +15,14 @@ interface InspectionCardProps {
 export function InspectionCard({ inspection, onPress }: InspectionCardProps) {
   const { theme } = useTheme();
 
-  const formattedDate = new Date(inspection.createdAt).toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  const formattedDate = new Date(inspection.createdAt).toLocaleDateString(
+    "en-IN",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    },
+  );
 
   return (
     <Pressable
@@ -34,7 +37,9 @@ export function InspectionCard({ inspection, onPress }: InspectionCardProps) {
     >
       <View style={styles.header}>
         <View style={styles.typeContainer}>
-          <View style={[styles.typeIcon, { backgroundColor: theme.primary + '20' }]}>
+          <View
+            style={[styles.typeIcon, { backgroundColor: theme.primary + "20" }]}
+          >
             <Feather name="clipboard" size={16} color={theme.primary} />
           </View>
           <ThemedText type="small" style={{ color: theme.textSecondary }}>
@@ -48,7 +53,11 @@ export function InspectionCard({ inspection, onPress }: InspectionCardProps) {
         <ThemedText type="h3" numberOfLines={1}>
           {inspection.fboDetails.name}
         </ThemedText>
-        <ThemedText type="small" style={{ color: theme.textSecondary }} numberOfLines={1}>
+        <ThemedText
+          type="small"
+          style={{ color: theme.textSecondary }}
+          numberOfLines={1}
+        >
           {inspection.fboDetails.address}
         </ThemedText>
       </View>
@@ -64,7 +73,8 @@ export function InspectionCard({ inspection, onPress }: InspectionCardProps) {
           <View style={styles.metaItem}>
             <Feather name="droplet" size={14} color={theme.primary} />
             <ThemedText type="small" style={{ color: theme.primary }}>
-              {inspection.samples.length} sample{inspection.samples.length !== 1 ? 's' : ''}
+              {inspection.samples.length} sample
+              {inspection.samples.length !== 1 ? "s" : ""}
             </ThemedText>
           </View>
         ) : null}
@@ -88,33 +98,33 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   typeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   typeIcon: {
     width: 28,
     height: 28,
     borderRadius: BorderRadius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   content: {
     gap: Spacing.xs,
   },
   footer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.lg,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
   },
   metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
 });

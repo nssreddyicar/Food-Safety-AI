@@ -1,24 +1,37 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, StyleSheet, FlatList, Pressable, Platform, ActivityIndicator, Alert, Modal, ScrollView, Dimensions, TextInput } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHeaderHeight } from '@react-navigation/elements';
-import { Feather } from '@expo/vector-icons';
-import * as Sharing from 'expo-sharing';
-import * as Print from 'expo-print';
-import { useQuery } from '@tanstack/react-query';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { Card } from '@/components/Card';
-import { SkeletonLoader } from '@/components/SkeletonLoader';
-import { useTheme } from '@/hooks/useTheme';
-import { useAuthContext } from '@/context/AuthContext';
-import { Spacing, BorderRadius, Shadows } from '@/constants/theme';
-import { storage } from '@/lib/storage';
-import { Sample, Inspection } from '@/types';
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  Pressable,
+  Platform,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  Dimensions,
+  TextInput,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useHeaderHeight } from "@react-navigation/elements";
+import { Feather } from "@expo/vector-icons";
+import * as Sharing from "expo-sharing";
+import * as Print from "expo-print";
+import { useQuery } from "@tanstack/react-query";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { Card } from "@/components/Card";
+import { SkeletonLoader } from "@/components/SkeletonLoader";
+import { useTheme } from "@/hooks/useTheme";
+import { useAuthContext } from "@/context/AuthContext";
+import { Spacing, BorderRadius } from "@/constants/theme";
+import { storage } from "@/lib/storage";
+import { Sample, Inspection } from "@/types";
 
 let WebView: any = null;
-if (Platform.OS !== 'web') {
-  WebView = require('react-native-webview').WebView;
+if (Platform.OS !== "web") {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  WebView = require("react-native-webview").WebView;
 }
 
 interface DocumentTemplate {
@@ -52,29 +65,32 @@ interface DocumentTemplate {
 }
 
 const categoryColors: Record<string, { bg: string; text: string }> = {
-  general: { bg: '#e0e7ff', text: '#4338ca' },
-  inspection: { bg: '#dbeafe', text: '#1E40AF' },
-  sample: { bg: '#dcfce7', text: '#059669' },
-  notice: { bg: '#fef3c7', text: '#d97706' },
-  prosecution: { bg: '#fee2e2', text: '#dc2626' },
-  certificate: { bg: '#e0e7ff', text: '#6366f1' },
+  general: { bg: "#e0e7ff", text: "#4338ca" },
+  inspection: { bg: "#dbeafe", text: "#1E40AF" },
+  sample: { bg: "#dcfce7", text: "#059669" },
+  notice: { bg: "#fef3c7", text: "#d97706" },
+  prosecution: { bg: "#fee2e2", text: "#dc2626" },
+  certificate: { bg: "#e0e7ff", text: "#6366f1" },
 };
 
-const pageSizes: Record<string, { width: number; height: number; label: string }> = {
-  'A4': { width: 210, height: 297, label: 'A4' },
-  'Letter': { width: 215.9, height: 279.4, label: 'Letter' },
-  'Legal': { width: 215.9, height: 355.6, label: 'Legal' },
-  'A3': { width: 297, height: 420, label: 'A3' }
+const pageSizes: Record<
+  string,
+  { width: number; height: number; label: string }
+> = {
+  A4: { width: 210, height: 297, label: "A4" },
+  Letter: { width: 215.9, height: 279.4, label: "Letter" },
+  Legal: { width: 215.9, height: 355.6, label: "Legal" },
+  A3: { width: 297, height: 420, label: "A3" },
 };
 
-function TemplateCard({ 
-  template, 
-  onDownload, 
+function TemplateCard({
+  template,
+  onDownload,
   onPreview,
-  isDownloading 
-}: { 
-  template: DocumentTemplate; 
-  onDownload: () => void; 
+  isDownloading,
+}: {
+  template: DocumentTemplate;
+  onDownload: () => void;
   onPreview: () => void;
   isDownloading: boolean;
 }) {
@@ -85,7 +101,10 @@ function TemplateCard({
     <Card style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={[styles.categoryBadge, { backgroundColor: colors.bg }]}>
-          <ThemedText type="small" style={{ color: colors.text, fontWeight: '600' }}>
+          <ThemedText
+            type="small"
+            style={{ color: colors.text, fontWeight: "600" }}
+          >
             {template.category.toUpperCase()}
           </ThemedText>
         </View>
@@ -95,17 +114,20 @@ function TemplateCard({
           </ThemedText>
         </View>
       </View>
-      
+
       <ThemedText type="h4" style={styles.templateName}>
         {template.name}
       </ThemedText>
-      
+
       {template.description ? (
-        <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
+        <ThemedText
+          type="small"
+          style={{ color: theme.textSecondary, marginTop: Spacing.xs }}
+        >
           {template.description}
         </ThemedText>
       ) : null}
-      
+
       <View style={styles.cardFooter}>
         <View style={styles.formatTags}>
           <View style={[styles.tag, { backgroundColor: theme.backgroundRoot }]}>
@@ -121,22 +143,28 @@ function TemplateCard({
             </ThemedText>
           </View>
         </View>
-        
+
         <View style={styles.buttonGroup}>
           <Pressable
             style={({ pressed }) => [
               styles.previewBtn,
-              { backgroundColor: theme.backgroundRoot, borderColor: theme.primary },
+              {
+                backgroundColor: theme.backgroundRoot,
+                borderColor: theme.primary,
+              },
               pressed && { opacity: 0.8 },
             ]}
             onPress={onPreview}
           >
             <Feather name="eye" size={16} color={theme.primary} />
-            <ThemedText type="small" style={{ color: theme.primary, fontWeight: '600' }}>
+            <ThemedText
+              type="small"
+              style={{ color: theme.primary, fontWeight: "600" }}
+            >
               Preview
             </ThemedText>
           </Pressable>
-          
+
           <Pressable
             style={({ pressed }) => [
               styles.downloadBtn,
@@ -152,7 +180,10 @@ function TemplateCard({
             ) : (
               <>
                 <Feather name="download" size={16} color="#FFFFFF" />
-                <ThemedText type="small" style={{ color: '#FFFFFF', fontWeight: '600' }}>
+                <ThemedText
+                  type="small"
+                  style={{ color: "#FFFFFF", fontWeight: "600" }}
+                >
                   PDF
                 </ThemedText>
               </>
@@ -179,34 +210,42 @@ export default function TemplatesScreen() {
   const headerHeight = useHeaderHeight();
   const { user, activeJurisdiction } = useAuthContext();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const [previewTemplate, setPreviewTemplate] = useState<DocumentTemplate | null>(null);
+  const [previewTemplate, setPreviewTemplate] =
+    useState<DocumentTemplate | null>(null);
   const [zoomLevel, setZoomLevel] = useState(0.5);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const screenWidth = Dimensions.get('window').width;
+  const screenWidth = Dimensions.get("window").width;
   const webViewRef = useRef<any>(null);
-  
+
   // Sample selection state
   const [samples, setSamples] = useState<SampleWithInspection[]>([]);
-  const [selectedSample, setSelectedSample] = useState<SampleWithInspection | null>(null);
+  const [selectedSample, setSelectedSample] =
+    useState<SampleWithInspection | null>(null);
   const [showSampleSelector, setShowSampleSelector] = useState(false);
-  
+
   // Filter state
-  const [sampleTypeFilter, setSampleTypeFilter] = useState<'all' | 'enforcement' | 'surveillance'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState<'all' | '7days' | '30days' | '90days'>('all');
+  const [sampleTypeFilter, setSampleTypeFilter] = useState<
+    "all" | "enforcement" | "surveillance"
+  >("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState<
+    "all" | "7days" | "30days" | "90days"
+  >("all");
 
   const { data: templates = [], isLoading } = useQuery<DocumentTemplate[]>({
-    queryKey: ['/api/templates'],
+    queryKey: ["/api/templates"],
   });
 
   // Load samples from storage
   useEffect(() => {
     const loadSamples = async () => {
       try {
-        const inspections = await storage.getInspections(activeJurisdiction?.unitId);
+        const inspections = await storage.getInspections(
+          activeJurisdiction?.unitId,
+        );
         const allSamples: SampleWithInspection[] = [];
-        
+
         inspections.forEach((inspection: Inspection) => {
           if (inspection.samples && inspection.samples.length > 0) {
             inspection.samples.forEach((sample: Sample) => {
@@ -215,132 +254,182 @@ export default function TemplatesScreen() {
                 establishmentName: inspection.fboDetails?.establishmentName,
                 fboName: inspection.fboDetails?.name,
                 fboAddress: inspection.fboDetails?.address,
-                fboLicense: inspection.fboDetails?.licenseNumber || inspection.fboDetails?.registrationNumber,
+                fboLicense:
+                  inspection.fboDetails?.licenseNumber ||
+                  inspection.fboDetails?.registrationNumber,
                 inspectionDate: inspection.createdAt,
                 inspectionType: inspection.type,
               });
             });
           }
         });
-        
+
         // Sort by lifted date (most recent first)
-        allSamples.sort((a, b) => new Date(b.liftedDate).getTime() - new Date(a.liftedDate).getTime());
+        allSamples.sort(
+          (a, b) =>
+            new Date(b.liftedDate).getTime() - new Date(a.liftedDate).getTime(),
+        );
         setSamples(allSamples);
       } catch (error) {
-        console.error('Failed to load samples:', error);
+        console.error("Failed to load samples:", error);
       }
     };
-    
+
     loadSamples();
   }, [activeJurisdiction?.unitId]);
 
   // Filter samples based on current filters
   const filteredSamples = useMemo(() => {
     let result = [...samples];
-    
+
     // Type filter
-    if (sampleTypeFilter !== 'all') {
-      result = result.filter(s => s.sampleType === sampleTypeFilter);
+    if (sampleTypeFilter !== "all") {
+      result = result.filter((s) => s.sampleType === sampleTypeFilter);
     }
-    
+
     // Date filter
-    if (dateFilter !== 'all') {
+    if (dateFilter !== "all") {
       const now = new Date();
-      const daysAgo = dateFilter === '7days' ? 7 : dateFilter === '30days' ? 30 : 90;
-      const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
-      result = result.filter(s => new Date(s.liftedDate) >= cutoffDate);
+      const daysAgo =
+        dateFilter === "7days" ? 7 : dateFilter === "30days" ? 30 : 90;
+      const cutoffDate = new Date(
+        now.getTime() - daysAgo * 24 * 60 * 60 * 1000,
+      );
+      result = result.filter((s) => new Date(s.liftedDate) >= cutoffDate);
     }
-    
+
     // Search filter (establishment name, sample code, sample name)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(s => 
-        s.name?.toLowerCase().includes(query) ||
-        s.code?.toLowerCase().includes(query) ||
-        s.establishmentName?.toLowerCase().includes(query) ||
-        s.fboName?.toLowerCase().includes(query)
+      result = result.filter(
+        (s) =>
+          s.name?.toLowerCase().includes(query) ||
+          s.code?.toLowerCase().includes(query) ||
+          s.establishmentName?.toLowerCase().includes(query) ||
+          s.fboName?.toLowerCase().includes(query),
       );
     }
-    
+
     return result;
   }, [samples, sampleTypeFilter, dateFilter, searchQuery]);
 
   const replacePlaceholders = (content: string): string => {
     const now = new Date();
     const sample = selectedSample;
-    
+
     // Format date helper
     const formatDate = (dateStr?: string) => {
-      if (!dateStr) return '[Date]';
-      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+      if (!dateStr) return "[Date]";
+      return new Date(dateStr).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
     };
-    
+
     const placeholderValues: Record<string, string> = {
       // Officer details
-      officer_name: user?.name || '',
-      officer_designation: user?.designation || 'Food Safety Officer',
-      officer_email: user?.email || '',
-      officer_phone: user?.phone || '',
-      officer_employee_id: user?.employeeId || '',
-      
+      officer_name: user?.name || "",
+      officer_designation: user?.designation || "Food Safety Officer",
+      officer_email: user?.email || "",
+      officer_phone: user?.phone || "",
+      officer_employee_id: user?.employeeId || "",
+
       // Jurisdiction details
-      jurisdiction_name: user?.jurisdiction?.unitName || activeJurisdiction?.unitName || '',
-      jurisdiction_type: user?.jurisdiction?.roleName || activeJurisdiction?.roleName || '',
-      
+      jurisdiction_name:
+        user?.jurisdiction?.unitName || activeJurisdiction?.unitName || "",
+      jurisdiction_type:
+        user?.jurisdiction?.roleName || activeJurisdiction?.roleName || "",
+
       // Current date/time
-      current_date: now.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
-      current_time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-      
+      current_date: now.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      }),
+      current_time: now.toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+
       // FBO/Establishment details (from selected sample's inspection)
-      fbo_name: sample?.fboName || '[FBO Name]',
-      fbo_address: sample?.fboAddress || '[FBO Address]',
-      fbo_license: sample?.fboLicense || '[FBO License Number]',
-      establishment_name: sample?.establishmentName || '[Establishment Name]',
-      
+      fbo_name: sample?.fboName || "[FBO Name]",
+      fbo_address: sample?.fboAddress || "[FBO Address]",
+      fbo_license: sample?.fboLicense || "[FBO License Number]",
+      establishment_name: sample?.establishmentName || "[Establishment Name]",
+
       // Inspection details
-      inspection_date: sample?.inspectionDate ? formatDate(sample.inspectionDate) : '[Inspection Date]',
-      inspection_type: sample?.inspectionType || '[Inspection Type]',
-      
+      inspection_date: sample?.inspectionDate
+        ? formatDate(sample.inspectionDate)
+        : "[Inspection Date]",
+      inspection_type: sample?.inspectionType || "[Inspection Type]",
+
       // Sample details
-      sample_code: sample?.code || '[Sample Code]',
-      sample_name: sample?.name || '[Sample Name]',
-      sample_type: sample?.sampleType === 'enforcement' ? 'Enforcement' : sample?.sampleType === 'surveillance' ? 'Surveillance' : '[Sample Type]',
-      sample_lifted_date: sample?.liftedDate ? formatDate(sample.liftedDate) : '[Lifted Date]',
-      sample_lifted_place: sample?.liftedPlace || '[Lifted Place]',
-      sample_cost: sample?.cost ? `Rs. ${sample.cost}` : '[Sample Cost]',
-      sample_quantity: sample?.quantityInGrams ? `${sample.quantityInGrams} grams` : '[Quantity]',
-      sample_packing_type: sample?.packingType === 'packed' ? 'Packed' : sample?.packingType === 'loose' ? 'Loose' : '[Packing Type]',
-      sample_preservative: sample?.preservativeAdded ? (sample.preservativeType || 'Yes') : 'No',
-      sample_dispatch_date: sample?.dispatchDate ? formatDate(sample.dispatchDate) : '[Dispatch Date]',
-      sample_dispatch_mode: sample?.dispatchMode || '[Dispatch Mode]',
-      
+      sample_code: sample?.code || "[Sample Code]",
+      sample_name: sample?.name || "[Sample Name]",
+      sample_type:
+        sample?.sampleType === "enforcement"
+          ? "Enforcement"
+          : sample?.sampleType === "surveillance"
+            ? "Surveillance"
+            : "[Sample Type]",
+      sample_lifted_date: sample?.liftedDate
+        ? formatDate(sample.liftedDate)
+        : "[Lifted Date]",
+      sample_lifted_place: sample?.liftedPlace || "[Lifted Place]",
+      sample_cost: sample?.cost ? `Rs. ${sample.cost}` : "[Sample Cost]",
+      sample_quantity: sample?.quantityInGrams
+        ? `${sample.quantityInGrams} grams`
+        : "[Quantity]",
+      sample_packing_type:
+        sample?.packingType === "packed"
+          ? "Packed"
+          : sample?.packingType === "loose"
+            ? "Loose"
+            : "[Packing Type]",
+      sample_preservative: sample?.preservativeAdded
+        ? sample.preservativeType || "Yes"
+        : "No",
+      sample_dispatch_date: sample?.dispatchDate
+        ? formatDate(sample.dispatchDate)
+        : "[Dispatch Date]",
+      sample_dispatch_mode: sample?.dispatchMode || "[Dispatch Mode]",
+
       // Manufacturer details (for packed samples)
-      manufacturer_name: sample?.manufacturerDetails?.name || '[Manufacturer Name]',
-      manufacturer_address: sample?.manufacturerDetails?.address || '[Manufacturer Address]',
-      manufacturer_license: sample?.manufacturerDetails?.licenseNumber || '[Manufacturer License]',
-      
+      manufacturer_name:
+        sample?.manufacturerDetails?.name || "[Manufacturer Name]",
+      manufacturer_address:
+        sample?.manufacturerDetails?.address || "[Manufacturer Address]",
+      manufacturer_license:
+        sample?.manufacturerDetails?.licenseNumber || "[Manufacturer License]",
+
       // Additional packed sample details
-      mfg_date: sample?.mfgDate || '[Manufacturing Date]',
-      expiry_date: sample?.useByDate || '[Expiry Date]',
-      lot_batch_number: sample?.lotBatchNumber || '[Lot/Batch Number]',
-      
+      mfg_date: sample?.mfgDate || "[Manufacturing Date]",
+      expiry_date: sample?.useByDate || "[Expiry Date]",
+      lot_batch_number: sample?.lotBatchNumber || "[Lot/Batch Number]",
+
       // Lab result (if available)
-      lab_report_date: sample?.labReportDate ? formatDate(sample.labReportDate) : '[Lab Report Date]',
-      lab_result: sample?.labResult ? sample.labResult.replace('_', ' ').toUpperCase() : '[Lab Result]',
+      lab_report_date: sample?.labReportDate
+        ? formatDate(sample.labReportDate)
+        : "[Lab Report Date]",
+      lab_result: sample?.labResult
+        ? sample.labResult.replace("_", " ").toUpperCase()
+        : "[Lab Result]",
     };
 
     let result = content;
     Object.entries(placeholderValues).forEach(([key, value]) => {
       // Wrap replaced values in bold tags for emphasis
-      const boldValue = value && !value.startsWith('[') ? `<strong>${value}</strong>` : value;
-      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), boldValue);
+      const boldValue =
+        value && !value.startsWith("[") ? `<strong>${value}</strong>` : value;
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), boldValue);
     });
     return result;
   };
 
   const getPageDimensions = (pageSize: string, orientation: string) => {
-    const size = pageSizes[pageSize] || pageSizes['A4'];
-    if (orientation === 'landscape') {
+    const size = pageSizes[pageSize] || pageSizes["A4"];
+    if (orientation === "landscape") {
       return { width: size.height, height: size.width, label: size.label };
     }
     return { width: size.width, height: size.height, label: size.label };
@@ -348,32 +437,35 @@ export default function TemplatesScreen() {
 
   const isRawHtmlContent = (content: string): boolean => {
     const trimmed = content.trim();
-    return trimmed.startsWith('<!DOCTYPE') || 
-           trimmed.startsWith('<html') ||
-           (trimmed.startsWith('<') && (
-             trimmed.includes('<style>') ||
-             trimmed.includes('<div class=') ||
-             trimmed.includes('<table')
-           ));
+    return (
+      trimmed.startsWith("<!DOCTYPE") ||
+      trimmed.startsWith("<html") ||
+      (trimmed.startsWith("<") &&
+        (trimmed.includes("<style>") ||
+          trimmed.includes("<div class=") ||
+          trimmed.includes("<table")))
+    );
   };
 
-  const generatePreviewHtml = (template: DocumentTemplate, scale: number = 1): string => {
+  const generatePreviewHtml = (
+    template: DocumentTemplate,
+    scale: number = 1,
+  ): string => {
     const processedContent = replacePlaceholders(template.content);
     const dims = getPageDimensions(template.pageSize, template.orientation);
     const mmToPx = 3.7795275591;
-    const pageWidthPx = dims.width * mmToPx;
     const pageHeightPx = dims.height * mmToPx;
-    const marginPx = template.marginTop * mmToPx + template.marginBottom * mmToPx;
-    const contentHeightPx = pageHeightPx - marginPx;
-    
+    const marginPx =
+      template.marginTop * mmToPx + template.marginBottom * mmToPx;
+
     // JavaScript for page calculation and scroll tracking
     const showPageNumbers = template.showPageNumbers !== false;
-    const pageNumberFormat = template.pageNumberFormat || 'page_x_of_y';
-    const pageNumberPosition = template.pageNumberPosition || 'center';
+    const pageNumberFormat = template.pageNumberFormat || "page_x_of_y";
+    const pageNumberPosition = template.pageNumberPosition || "center";
     const pageNumberOffset = template.pageNumberOffset || 0;
     const showContinuationText = template.showContinuationText || false;
-    const continuationFormat = template.continuationFormat || 'contd_on_page';
-    
+    const continuationFormat = template.continuationFormat || "contd_on_page";
+
     const pageTrackingScript = `
       <script>
         (function() {
@@ -507,26 +599,32 @@ export default function TemplatesScreen() {
         })();
       </script>
     `;
-    
+
     // Check if content is raw HTML - render it directly
     if (isRawHtmlContent(processedContent)) {
       // Extract styles from raw HTML
-      let extractedStyles = '';
-      const styleMatches = processedContent.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+      let extractedStyles = "";
+      const styleMatches = processedContent.matchAll(
+        /<style[^>]*>([\s\S]*?)<\/style>/gi,
+      );
       for (const match of styleMatches) {
         extractedStyles += match[1];
       }
-      
+
       // Extract body content if full HTML document
       let bodyContent = processedContent;
-      const bodyMatch = processedContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      const bodyMatch = processedContent.match(
+        /<body[^>]*>([\s\S]*?)<\/body>/i,
+      );
       if (bodyMatch) {
         bodyContent = bodyMatch[1];
       }
-      
+
       // Check if content has multiple .page divs (multi-page document)
-      const hasMultiplePages = bodyContent.includes('class="page"') || bodyContent.includes("class='page'");
-      
+      const hasMultiplePages =
+        bodyContent.includes('class="page"') ||
+        bodyContent.includes("class='page'");
+
       // For raw HTML with multi-page support - render with scale wrapper
       return `
         <!DOCTYPE html>
@@ -619,36 +717,39 @@ export default function TemplatesScreen() {
         </html>
       `;
     }
-    
+
     // Plain text content - use standard formatting
-    const contentWithLineBreaks = processedContent.replace(/\n/g, '<br>');
-    
-    const headerAlignment = template.headerAlignment || 'center';
-    const footerAlignment = template.footerAlignment || 'center';
+    const contentWithLineBreaks = processedContent.replace(/\n/g, "<br>");
+
+    const headerAlignment = template.headerAlignment || "center";
+    const footerAlignment = template.footerAlignment || "center";
 
     let pageNumberStyle = `text-align: ${pageNumberPosition};`;
-    if (pageNumberPosition === 'left') {
+    if (pageNumberPosition === "left") {
       pageNumberStyle += ` padding-left: ${pageNumberOffset}mm;`;
-    } else if (pageNumberPosition === 'right') {
+    } else if (pageNumberPosition === "right") {
       pageNumberStyle += ` padding-right: ${-pageNumberOffset}mm;`;
     } else {
       pageNumberStyle += ` margin-left: ${pageNumberOffset}mm;`;
     }
 
-    const headerHtml = template.showHeader !== false && template.headerText 
-      ? `<div class="header" style="text-align: ${headerAlignment};">${template.headerText}</div>` 
-      : '';
-    
-    const footerHtml = template.showFooter !== false && template.footerText 
-      ? `<div class="footer" style="text-align: ${footerAlignment};">${template.footerText}</div>` 
-      : '';
-    
-    const pageNumberHtml = template.showPageNumbers !== false 
-      ? `<div class="page-number" style="${pageNumberStyle}">Page 1 of 1</div>` 
-      : '';
+    const headerHtml =
+      template.showHeader !== false && template.headerText
+        ? `<div class="header" style="text-align: ${headerAlignment};">${template.headerText}</div>`
+        : "";
+
+    const footerHtml =
+      template.showFooter !== false && template.footerText
+        ? `<div class="footer" style="text-align: ${footerAlignment};">${template.footerText}</div>`
+        : "";
+
+    const pageNumberHtml =
+      template.showPageNumbers !== false
+        ? `<div class="page-number" style="${pageNumberStyle}">Page 1 of 1</div>`
+        : "";
 
     const verticalGapMM = 297 * (1 - scale);
-    
+
     return `
       <!DOCTYPE html>
       <html>
@@ -754,15 +855,15 @@ export default function TemplatesScreen() {
 
   const generatePdfHtml = (template: DocumentTemplate): string => {
     const processedContent = replacePlaceholders(template.content);
-    
+
     // Check if content is raw HTML - use it directly for PDF
     if (isRawHtmlContent(processedContent)) {
       // For raw HTML templates, use the content as-is (it already has proper styling)
       // Just add @page rule for print sizing if not present
-      if (processedContent.includes('@page')) {
+      if (processedContent.includes("@page")) {
         return processedContent;
       }
-      
+
       // Insert @page rule for proper print sizing
       const pageRule = `
         @page {
@@ -798,31 +899,35 @@ export default function TemplatesScreen() {
           }
         }
       `;
-      
+
       // Insert style into existing HTML
-      if (processedContent.includes('<style>')) {
-        return processedContent.replace('<style>', `<style>${pageRule}`);
-      } else if (processedContent.includes('</head>')) {
-        return processedContent.replace('</head>', `<style>${pageRule}</style></head>`);
+      if (processedContent.includes("<style>")) {
+        return processedContent.replace("<style>", `<style>${pageRule}`);
+      } else if (processedContent.includes("</head>")) {
+        return processedContent.replace(
+          "</head>",
+          `<style>${pageRule}</style></head>`,
+        );
       }
-      
+
       return processedContent;
     }
-    
-    // Plain text content - use standard formatting
-    const contentWithLineBreaks = processedContent.replace(/\n/g, '<br>');
-    
-    const headerAlignment = template.headerAlignment || 'center';
-    const footerAlignment = template.footerAlignment || 'center';
-    const showPageNumbers = template.showPageNumbers !== false;
 
-    const headerHtml = template.showHeader !== false && template.headerText 
-      ? `<div class="doc-header" style="text-align: ${headerAlignment};">${template.headerText}</div>` 
-      : '';
-    
-    const footerHtml = template.showFooter !== false && template.footerText 
-      ? `<div class="doc-footer" style="text-align: ${footerAlignment};">${template.footerText}</div>` 
-      : '';
+    // Plain text content - use standard formatting
+    const contentWithLineBreaks = processedContent.replace(/\n/g, "<br>");
+
+    const headerAlignment = template.headerAlignment || "center";
+    const footerAlignment = template.footerAlignment || "center";
+
+    const headerHtml =
+      template.showHeader !== false && template.headerText
+        ? `<div class="doc-header" style="text-align: ${headerAlignment};">${template.headerText}</div>`
+        : "";
+
+    const footerHtml =
+      template.showFooter !== false && template.footerText
+        ? `<div class="doc-footer" style="text-align: ${footerAlignment};">${template.footerText}</div>`
+        : "";
 
     return `
       <!DOCTYPE html>
@@ -953,24 +1058,38 @@ export default function TemplatesScreen() {
       setDownloadingId(template.id);
 
       const html = generatePdfHtml(template);
-      
-      if (Platform.OS === 'web') {
+
+      if (Platform.OS === "web") {
         // For web: Use html2pdf.js library loaded from CDN
         const generateWebPdf = async () => {
           return new Promise<void>((resolve, reject) => {
             // Check if html2pdf is already loaded
             if ((window as any).html2pdf) {
-              createPdf((window as any).html2pdf, template, html, resolve, reject);
+              createPdf(
+                (window as any).html2pdf,
+                template,
+                html,
+                resolve,
+                reject,
+              );
               return;
             }
 
             // Load html2pdf.js from CDN
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            const script = document.createElement("script");
+            script.src =
+              "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
             script.onload = () => {
-              createPdf((window as any).html2pdf, template, html, resolve, reject);
+              createPdf(
+                (window as any).html2pdf,
+                template,
+                html,
+                resolve,
+                reject,
+              );
             };
-            script.onerror = () => reject(new Error('Failed to load PDF library'));
+            script.onerror = () =>
+              reject(new Error("Failed to load PDF library"));
             document.head.appendChild(script);
           });
         };
@@ -980,30 +1099,33 @@ export default function TemplatesScreen() {
           template: DocumentTemplate,
           html: string,
           resolve: () => void,
-          reject: (error: Error) => void
+          reject: (error: Error) => void,
         ) => {
           try {
             // Create a hidden container for rendering
-            const container = document.createElement('div');
+            const container = document.createElement("div");
             container.innerHTML = html;
-            container.style.position = 'absolute';
-            container.style.left = '-9999px';
-            container.style.top = '0';
+            container.style.position = "absolute";
+            container.style.left = "-9999px";
+            container.style.top = "0";
             document.body.appendChild(container);
 
-            const dims = getPageDimensions(template.pageSize, template.orientation);
-            
+            const dims = getPageDimensions(
+              template.pageSize,
+              template.orientation,
+            );
+
             const opt = {
               margin: 0,
-              filename: `${template.name.replace(/\s+/g, '_')}.pdf`,
-              image: { type: 'jpeg', quality: 0.98 },
+              filename: `${template.name.replace(/\s+/g, "_")}.pdf`,
+              image: { type: "jpeg", quality: 0.98 },
               html2canvas: { scale: 2, useCORS: true },
-              jsPDF: { 
-                unit: 'mm', 
-                format: [dims.width, dims.height], 
-                orientation: template.orientation || 'portrait' 
+              jsPDF: {
+                unit: "mm",
+                format: [dims.width, dims.height],
+                orientation: template.orientation || "portrait",
               },
-              pagebreak: { mode: ['css', 'legacy'] }
+              pagebreak: { mode: ["css", "legacy"] },
             };
 
             html2pdf()
@@ -1037,15 +1159,15 @@ export default function TemplatesScreen() {
       const isAvailable = await Sharing.isAvailableAsync();
       if (isAvailable) {
         await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
+          mimeType: "application/pdf",
           dialogTitle: `Share ${template.name}`,
         });
       } else {
-        Alert.alert('Success', 'PDF generated successfully');
+        Alert.alert("Success", "PDF generated successfully");
       }
     } catch (error) {
-      console.error('PDF generation error:', error);
-      Alert.alert('Error', 'Failed to generate PDF. Please try again.');
+      console.error("PDF generation error:", error);
+      Alert.alert("Error", "Failed to generate PDF. Please try again.");
     } finally {
       setDownloadingId(null);
     }
@@ -1059,16 +1181,19 @@ export default function TemplatesScreen() {
   };
 
   const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 0.1, 1.5));
+    setZoomLevel((prev) => Math.min(prev + 0.1, 1.5));
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 0.1, 0.2));
+    setZoomLevel((prev) => Math.max(prev - 0.1, 0.2));
   };
 
   const handleZoomFit = () => {
     if (previewTemplate) {
-      const dims = getPageDimensions(previewTemplate.pageSize, previewTemplate.orientation);
+      const dims = getPageDimensions(
+        previewTemplate.pageSize,
+        previewTemplate.orientation,
+      );
       const mmToPx = 3.7795275591;
       const pageWidth = dims.width * mmToPx;
       const fitZoom = (screenWidth - 60) / pageWidth;
@@ -1091,7 +1216,9 @@ export default function TemplatesScreen() {
 
   if (isLoading) {
     return (
-      <ThemedView style={[styles.container, { paddingTop: headerHeight + Spacing.xl }]}>
+      <ThemedView
+        style={[styles.container, { paddingTop: headerHeight + Spacing.xl }]}
+      >
         <View style={styles.loadingContainer}>
           <SkeletonLoader height={180} />
           <SkeletonLoader height={180} />
@@ -1101,7 +1228,9 @@ export default function TemplatesScreen() {
     );
   }
 
-  const previewDims = previewTemplate ? getPageDimensions(previewTemplate.pageSize, previewTemplate.orientation) : null;
+  const previewDims = previewTemplate
+    ? getPageDimensions(previewTemplate.pageSize, previewTemplate.orientation)
+    : null;
 
   return (
     <ThemedView style={styles.container}>
@@ -1119,47 +1248,83 @@ export default function TemplatesScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Feather name="file-text" size={64} color={theme.textSecondary} style={{ opacity: 0.4 }} />
-            <ThemedText type="h3" style={[styles.emptyTitle, { color: theme.text }]}>
+            <Feather
+              name="file-text"
+              size={64}
+              color={theme.textSecondary}
+              style={{ opacity: 0.4 }}
+            />
+            <ThemedText
+              type="h3"
+              style={[styles.emptyTitle, { color: theme.text }]}
+            >
               No Templates Available
             </ThemedText>
-            <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center' }}>
-              Document templates will appear here once they are configured by the administrator.
+            <ThemedText
+              type="body"
+              style={{ color: theme.textSecondary, textAlign: "center" }}
+            >
+              Document templates will appear here once they are configured by
+              the administrator.
             </ThemedText>
           </View>
         }
         ListHeaderComponent={
           templates.length > 0 ? (
             <View style={styles.header}>
-              <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+              <ThemedText
+                type="body"
+                style={{ color: theme.textSecondary, marginBottom: Spacing.md }}
+              >
                 Select a sample to fill template placeholders with actual data
               </ThemedText>
-              
+
               {/* Sample Selection Button */}
               <Pressable
-                style={[styles.sampleSelectorBtn, { backgroundColor: theme.backgroundRoot, borderColor: selectedSample ? theme.success : theme.border }]}
+                style={[
+                  styles.sampleSelectorBtn,
+                  {
+                    backgroundColor: theme.backgroundRoot,
+                    borderColor: selectedSample ? theme.success : theme.border,
+                  },
+                ]}
                 onPress={() => setShowSampleSelector(true)}
               >
-                <Feather name="database" size={18} color={selectedSample ? theme.success : theme.primary} />
+                <Feather
+                  name="database"
+                  size={18}
+                  color={selectedSample ? theme.success : theme.primary}
+                />
                 <View style={styles.sampleSelectorText}>
                   {selectedSample ? (
                     <>
-                      <ThemedText type="body" style={{ fontWeight: '600' }}>
+                      <ThemedText type="body" style={{ fontWeight: "600" }}>
                         {selectedSample.code}
                       </ThemedText>
-                      <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                        {selectedSample.name} - {selectedSample.establishmentName}
+                      <ThemedText
+                        type="small"
+                        style={{ color: theme.textSecondary }}
+                      >
+                        {selectedSample.name} -{" "}
+                        {selectedSample.establishmentName}
                       </ThemedText>
                     </>
                   ) : (
-                    <ThemedText type="body" style={{ color: theme.textSecondary }}>
+                    <ThemedText
+                      type="body"
+                      style={{ color: theme.textSecondary }}
+                    >
                       Select a sample to fill placeholders...
                     </ThemedText>
                   )}
                 </View>
-                <Feather name="chevron-down" size={20} color={theme.textSecondary} />
+                <Feather
+                  name="chevron-down"
+                  size={20}
+                  color={theme.textSecondary}
+                />
               </Pressable>
-              
+
               {selectedSample ? (
                 <Pressable
                   style={[styles.clearSampleBtn]}
@@ -1182,11 +1347,19 @@ export default function TemplatesScreen() {
         presentationStyle="fullScreen"
         onRequestClose={() => setPreviewTemplate(null)}
       >
-        <View style={[styles.modalContainer, { backgroundColor: '#374151' }]}>
-          <View style={[styles.modalHeader, { paddingTop: insets.top + Spacing.sm }]}>
+        <View style={[styles.modalContainer, { backgroundColor: "#374151" }]}>
+          <View
+            style={[
+              styles.modalHeader,
+              { paddingTop: insets.top + Spacing.sm },
+            ]}
+          >
             <View style={styles.modalTitleRow}>
               <Feather name="eye" size={20} color="white" />
-              <ThemedText type="h4" style={{ color: 'white', marginLeft: Spacing.sm }}>
+              <ThemedText
+                type="h4"
+                style={{ color: "white", marginLeft: Spacing.sm }}
+              >
                 Preview
               </ThemedText>
             </View>
@@ -1195,7 +1368,7 @@ export default function TemplatesScreen() {
                 <Feather name="minus" size={18} color="white" />
               </Pressable>
               <View style={styles.zoomLevel}>
-                <ThemedText type="small" style={{ color: 'white' }}>
+                <ThemedText type="small" style={{ color: "white" }}>
                   {Math.round(zoomLevel * 100)}%
                 </ThemedText>
               </View>
@@ -1211,7 +1384,7 @@ export default function TemplatesScreen() {
             </View>
           </View>
 
-          {previewTemplate && Platform.OS !== 'web' && WebView ? (
+          {previewTemplate && Platform.OS !== "web" && WebView ? (
             <WebView
               key={`preview-${zoomLevel}`}
               ref={webViewRef}
@@ -1223,73 +1396,110 @@ export default function TemplatesScreen() {
               onMessage={(event: { nativeEvent: { data: string } }) => {
                 try {
                   const data = JSON.parse(event.nativeEvent.data);
-                  if (data.type === 'totalPages') {
+                  if (data.type === "totalPages") {
                     setTotalPages(Math.max(1, data.value));
-                  } else if (data.type === 'currentPage') {
+                  } else if (data.type === "currentPage") {
                     setCurrentPage(Math.min(data.value, totalPages));
                   }
-                } catch (e) {
+                } catch (_e) {
                   // Ignore parse errors
                 }
               }}
             />
-          ) : previewTemplate && Platform.OS === 'web' ? (
+          ) : previewTemplate && Platform.OS === "web" ? (
             <View style={styles.webPreview}>
               <iframe
                 key={`preview-${zoomLevel}`}
                 srcDoc={generatePreviewHtml(previewTemplate, zoomLevel)}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                  backgroundColor: '#4b5563',
-                  overflow: 'auto',
-                } as any}
+                style={
+                  {
+                    width: "100%",
+                    height: "100%",
+                    border: "none",
+                    backgroundColor: "#4b5563",
+                    overflow: "auto",
+                  } as any
+                }
               />
             </View>
           ) : null}
 
-          <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, Spacing.sm) }]}>
+          <View
+            style={[
+              styles.bottomBar,
+              { paddingBottom: Math.max(insets.bottom, Spacing.sm) },
+            ]}
+          >
             <View style={styles.pdfNavBar}>
-              <Pressable 
-                style={[styles.pdfNavBtn, currentPage <= 1 && styles.pdfNavBtnDisabled]} 
+              <Pressable
+                style={[
+                  styles.pdfNavBtn,
+                  currentPage <= 1 && styles.pdfNavBtnDisabled,
+                ]}
                 onPress={() => setCurrentPage(1)}
                 disabled={currentPage <= 1}
               >
-                <Feather name="chevrons-left" size={18} color={currentPage <= 1 ? '#6b7280' : 'white'} />
+                <Feather
+                  name="chevrons-left"
+                  size={18}
+                  color={currentPage <= 1 ? "#6b7280" : "white"}
+                />
               </Pressable>
-              <Pressable 
-                style={[styles.pdfNavBtn, currentPage <= 1 && styles.pdfNavBtnDisabled]} 
-                onPress={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              <Pressable
+                style={[
+                  styles.pdfNavBtn,
+                  currentPage <= 1 && styles.pdfNavBtnDisabled,
+                ]}
+                onPress={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={currentPage <= 1}
               >
-                <Feather name="chevron-left" size={18} color={currentPage <= 1 ? '#6b7280' : 'white'} />
+                <Feather
+                  name="chevron-left"
+                  size={18}
+                  color={currentPage <= 1 ? "#6b7280" : "white"}
+                />
               </Pressable>
-              
+
               <View style={styles.pdfPageIndicator}>
                 <ThemedText style={styles.pdfPageText}>
                   {currentPage} OF {totalPages}
                 </ThemedText>
               </View>
-              
-              <Pressable 
-                style={[styles.pdfNavBtn, currentPage >= totalPages && styles.pdfNavBtnDisabled]} 
-                onPress={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+
+              <Pressable
+                style={[
+                  styles.pdfNavBtn,
+                  currentPage >= totalPages && styles.pdfNavBtnDisabled,
+                ]}
+                onPress={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
                 disabled={currentPage >= totalPages}
               >
-                <Feather name="chevron-right" size={18} color={currentPage >= totalPages ? '#6b7280' : 'white'} />
+                <Feather
+                  name="chevron-right"
+                  size={18}
+                  color={currentPage >= totalPages ? "#6b7280" : "white"}
+                />
               </Pressable>
-              <Pressable 
-                style={[styles.pdfNavBtn, currentPage >= totalPages && styles.pdfNavBtnDisabled]} 
+              <Pressable
+                style={[
+                  styles.pdfNavBtn,
+                  currentPage >= totalPages && styles.pdfNavBtnDisabled,
+                ]}
                 onPress={() => setCurrentPage(totalPages)}
                 disabled={currentPage >= totalPages}
               >
-                <Feather name="chevrons-right" size={18} color={currentPage >= totalPages ? '#6b7280' : 'white'} />
+                <Feather
+                  name="chevrons-right"
+                  size={18}
+                  color={currentPage >= totalPages ? "#6b7280" : "white"}
+                />
               </Pressable>
             </View>
-            
+
             {previewDims ? (
-              <ThemedText type="small" style={{ color: '#9ca3af' }}>
+              <ThemedText type="small" style={{ color: "#9ca3af" }}>
                 {previewDims.label}
               </ThemedText>
             ) : null}
@@ -1304,8 +1514,21 @@ export default function TemplatesScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowSampleSelector(false)}
       >
-        <View style={[styles.sampleModal, { backgroundColor: theme.backgroundDefault }]}>
-          <View style={[styles.sampleModalHeader, { paddingTop: insets.top + Spacing.sm, borderBottomColor: theme.border }]}>
+        <View
+          style={[
+            styles.sampleModal,
+            { backgroundColor: theme.backgroundDefault },
+          ]}
+        >
+          <View
+            style={[
+              styles.sampleModalHeader,
+              {
+                paddingTop: insets.top + Spacing.sm,
+                borderBottomColor: theme.border,
+              },
+            ]}
+          >
             <ThemedText type="h3">Select Sample</ThemedText>
             <Pressable onPress={() => setShowSampleSelector(false)}>
               <Feather name="x" size={24} color={theme.text} />
@@ -1313,7 +1536,15 @@ export default function TemplatesScreen() {
           </View>
 
           {/* Search Bar */}
-          <View style={[styles.searchBar, { backgroundColor: theme.backgroundRoot, borderColor: theme.border }]}>
+          <View
+            style={[
+              styles.searchBar,
+              {
+                backgroundColor: theme.backgroundRoot,
+                borderColor: theme.border,
+              },
+            ]}
+          >
             <Feather name="search" size={18} color={theme.textSecondary} />
             <TextInput
               style={[styles.searchInput, { color: theme.text }]}
@@ -1323,37 +1554,79 @@ export default function TemplatesScreen() {
               onChangeText={setSearchQuery}
             />
             {searchQuery ? (
-              <Pressable onPress={() => setSearchQuery('')}>
-                <Feather name="x-circle" size={18} color={theme.textSecondary} />
+              <Pressable onPress={() => setSearchQuery("")}>
+                <Feather
+                  name="x-circle"
+                  size={18}
+                  color={theme.textSecondary}
+                />
               </Pressable>
             ) : null}
           </View>
 
           {/* Filter Chips */}
           <View style={styles.filterRow}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterChips}
+            >
               {/* Type Filter */}
               <Pressable
-                style={[styles.filterChip, sampleTypeFilter === 'all' && { backgroundColor: theme.primary }]}
-                onPress={() => setSampleTypeFilter('all')}
+                style={[
+                  styles.filterChip,
+                  sampleTypeFilter === "all" && {
+                    backgroundColor: theme.primary,
+                  },
+                ]}
+                onPress={() => setSampleTypeFilter("all")}
               >
-                <ThemedText type="small" style={{ color: sampleTypeFilter === 'all' ? 'white' : theme.text }}>
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: sampleTypeFilter === "all" ? "white" : theme.text,
+                  }}
+                >
                   All Types
                 </ThemedText>
               </Pressable>
               <Pressable
-                style={[styles.filterChip, sampleTypeFilter === 'enforcement' && { backgroundColor: '#dc2626' }]}
-                onPress={() => setSampleTypeFilter('enforcement')}
+                style={[
+                  styles.filterChip,
+                  sampleTypeFilter === "enforcement" && {
+                    backgroundColor: "#dc2626",
+                  },
+                ]}
+                onPress={() => setSampleTypeFilter("enforcement")}
               >
-                <ThemedText type="small" style={{ color: sampleTypeFilter === 'enforcement' ? 'white' : theme.text }}>
+                <ThemedText
+                  type="small"
+                  style={{
+                    color:
+                      sampleTypeFilter === "enforcement" ? "white" : theme.text,
+                  }}
+                >
                   Enforcement
                 </ThemedText>
               </Pressable>
               <Pressable
-                style={[styles.filterChip, sampleTypeFilter === 'surveillance' && { backgroundColor: '#059669' }]}
-                onPress={() => setSampleTypeFilter('surveillance')}
+                style={[
+                  styles.filterChip,
+                  sampleTypeFilter === "surveillance" && {
+                    backgroundColor: "#059669",
+                  },
+                ]}
+                onPress={() => setSampleTypeFilter("surveillance")}
               >
-                <ThemedText type="small" style={{ color: sampleTypeFilter === 'surveillance' ? 'white' : theme.text }}>
+                <ThemedText
+                  type="small"
+                  style={{
+                    color:
+                      sampleTypeFilter === "surveillance"
+                        ? "white"
+                        : theme.text,
+                  }}
+                >
                   Surveillance
                 </ThemedText>
               </Pressable>
@@ -1362,34 +1635,64 @@ export default function TemplatesScreen() {
 
               {/* Date Filter */}
               <Pressable
-                style={[styles.filterChip, dateFilter === 'all' && { backgroundColor: theme.primary }]}
-                onPress={() => setDateFilter('all')}
+                style={[
+                  styles.filterChip,
+                  dateFilter === "all" && { backgroundColor: theme.primary },
+                ]}
+                onPress={() => setDateFilter("all")}
               >
-                <ThemedText type="small" style={{ color: dateFilter === 'all' ? 'white' : theme.text }}>
+                <ThemedText
+                  type="small"
+                  style={{ color: dateFilter === "all" ? "white" : theme.text }}
+                >
                   All Time
                 </ThemedText>
               </Pressable>
               <Pressable
-                style={[styles.filterChip, dateFilter === '7days' && { backgroundColor: theme.primary }]}
-                onPress={() => setDateFilter('7days')}
+                style={[
+                  styles.filterChip,
+                  dateFilter === "7days" && { backgroundColor: theme.primary },
+                ]}
+                onPress={() => setDateFilter("7days")}
               >
-                <ThemedText type="small" style={{ color: dateFilter === '7days' ? 'white' : theme.text }}>
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: dateFilter === "7days" ? "white" : theme.text,
+                  }}
+                >
                   Last 7 Days
                 </ThemedText>
               </Pressable>
               <Pressable
-                style={[styles.filterChip, dateFilter === '30days' && { backgroundColor: theme.primary }]}
-                onPress={() => setDateFilter('30days')}
+                style={[
+                  styles.filterChip,
+                  dateFilter === "30days" && { backgroundColor: theme.primary },
+                ]}
+                onPress={() => setDateFilter("30days")}
               >
-                <ThemedText type="small" style={{ color: dateFilter === '30days' ? 'white' : theme.text }}>
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: dateFilter === "30days" ? "white" : theme.text,
+                  }}
+                >
                   Last 30 Days
                 </ThemedText>
               </Pressable>
               <Pressable
-                style={[styles.filterChip, dateFilter === '90days' && { backgroundColor: theme.primary }]}
-                onPress={() => setDateFilter('90days')}
+                style={[
+                  styles.filterChip,
+                  dateFilter === "90days" && { backgroundColor: theme.primary },
+                ]}
+                onPress={() => setDateFilter("90days")}
               >
-                <ThemedText type="small" style={{ color: dateFilter === '90days' ? 'white' : theme.text }}>
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: dateFilter === "90days" ? "white" : theme.text,
+                  }}
+                >
                   Last 90 Days
                 </ThemedText>
               </Pressable>
@@ -1403,9 +1706,23 @@ export default function TemplatesScreen() {
             contentContainerStyle={styles.sampleList}
             ListEmptyComponent={
               <View style={styles.emptySampleList}>
-                <Feather name="inbox" size={48} color={theme.textSecondary} style={{ opacity: 0.5 }} />
-                <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center', marginTop: Spacing.md }}>
-                  {samples.length === 0 ? 'No samples found. Lift samples during inspections to see them here.' : 'No samples match your filters.'}
+                <Feather
+                  name="inbox"
+                  size={48}
+                  color={theme.textSecondary}
+                  style={{ opacity: 0.5 }}
+                />
+                <ThemedText
+                  type="body"
+                  style={{
+                    color: theme.textSecondary,
+                    textAlign: "center",
+                    marginTop: Spacing.md,
+                  }}
+                >
+                  {samples.length === 0
+                    ? "No samples found. Lift samples during inspections to see them here."
+                    : "No samples match your filters."}
                 </ThemedText>
               </View>
             }
@@ -1413,7 +1730,13 @@ export default function TemplatesScreen() {
               <Pressable
                 style={[
                   styles.sampleItem,
-                  { backgroundColor: theme.backgroundRoot, borderColor: selectedSample?.id === item.id ? theme.primary : theme.border }
+                  {
+                    backgroundColor: theme.backgroundRoot,
+                    borderColor:
+                      selectedSample?.id === item.id
+                        ? theme.primary
+                        : theme.border,
+                  },
                 ]}
                 onPress={() => {
                   setSelectedSample(item);
@@ -1421,40 +1744,78 @@ export default function TemplatesScreen() {
                 }}
               >
                 <View style={styles.sampleItemHeader}>
-                  <View style={[
-                    styles.sampleTypeBadge,
-                    { backgroundColor: item.sampleType === 'enforcement' ? '#fee2e2' : '#dcfce7' }
-                  ]}>
-                    <ThemedText type="small" style={{ 
-                      color: item.sampleType === 'enforcement' ? '#dc2626' : '#059669',
-                      fontWeight: '600'
-                    }}>
-                      {item.sampleType === 'enforcement' ? 'ENF' : 'SRV'}
+                  <View
+                    style={[
+                      styles.sampleTypeBadge,
+                      {
+                        backgroundColor:
+                          item.sampleType === "enforcement"
+                            ? "#fee2e2"
+                            : "#dcfce7",
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      type="small"
+                      style={{
+                        color:
+                          item.sampleType === "enforcement"
+                            ? "#dc2626"
+                            : "#059669",
+                        fontWeight: "600",
+                      }}
+                    >
+                      {item.sampleType === "enforcement" ? "ENF" : "SRV"}
                     </ThemedText>
                   </View>
-                  <ThemedText type="body" style={{ fontWeight: '700', flex: 1 }}>
+                  <ThemedText
+                    type="body"
+                    style={{ fontWeight: "700", flex: 1 }}
+                  >
                     {item.code}
                   </ThemedText>
                   {selectedSample?.id === item.id ? (
-                    <Feather name="check-circle" size={20} color={theme.primary} />
+                    <Feather
+                      name="check-circle"
+                      size={20}
+                      color={theme.primary}
+                    />
                   ) : null}
                 </View>
-                
+
                 <ThemedText type="body" style={{ marginTop: Spacing.xs }}>
                   {item.name}
                 </ThemedText>
-                
+
                 <View style={styles.sampleItemDetails}>
                   <View style={styles.sampleDetail}>
-                    <Feather name="home" size={12} color={theme.textSecondary} />
-                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                      {item.establishmentName || 'Unknown Establishment'}
+                    <Feather
+                      name="home"
+                      size={12}
+                      color={theme.textSecondary}
+                    />
+                    <ThemedText
+                      type="small"
+                      style={{ color: theme.textSecondary }}
+                    >
+                      {item.establishmentName || "Unknown Establishment"}
                     </ThemedText>
                   </View>
                   <View style={styles.sampleDetail}>
-                    <Feather name="calendar" size={12} color={theme.textSecondary} />
-                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                      {new Date(item.liftedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    <Feather
+                      name="calendar"
+                      size={12}
+                      color={theme.textSecondary}
+                    />
+                    <ThemedText
+                      type="small"
+                      style={{ color: theme.textSecondary }}
+                    >
+                      {new Date(item.liftedDate).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
                     </ThemedText>
                   </View>
                 </View>
@@ -1487,9 +1848,9 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   categoryBadge: {
     paddingHorizontal: Spacing.sm,
@@ -1497,42 +1858,42 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
   },
   formatInfo: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.xs,
   },
   templateName: {
     marginTop: Spacing.xs,
   },
   cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: Spacing.md,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: "#e5e7eb",
   },
   formatTags: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.sm,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
     flex: 1,
   },
   tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.sm,
   },
   buttonGroup: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.sm,
   },
   previewBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
@@ -1540,84 +1901,84 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   downloadBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
   },
   emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing['2xl'],
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing["2xl"],
     gap: Spacing.md,
   },
   emptyTitle: {
     marginTop: Spacing.md,
-    textAlign: 'center',
+    textAlign: "center",
   },
   modalContainer: {
     flex: 1,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.sm,
-    backgroundColor: '#1f2937',
+    backgroundColor: "#1f2937",
   },
   modalTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   zoomControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
   zoomBtn: {
     width: 36,
     height: 36,
     borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   zoomLevel: {
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 4,
     minWidth: 50,
-    alignItems: 'center',
+    alignItems: "center",
   },
   webview: {
     flex: 1,
-    backgroundColor: '#4b5563',
+    backgroundColor: "#4b5563",
   },
   webPreview: {
     flex: 1,
-    backgroundColor: '#4b5563',
+    backgroundColor: "#4b5563",
   },
   webPreviewContent: {
     padding: 20,
   },
   bottomBar: {
-    backgroundColor: '#374151',
+    backgroundColor: "#374151",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     borderTopWidth: 1,
-    borderTopColor: '#4b5563',
+    borderTopColor: "#4b5563",
   },
   pdfNavBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1f2937',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1f2937",
     borderRadius: BorderRadius.sm,
     paddingHorizontal: 4,
     paddingVertical: 4,
@@ -1625,8 +1986,8 @@ const styles = StyleSheet.create({
   pdfNavBtn: {
     width: 32,
     height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 4,
   },
   pdfNavBtnDisabled: {
@@ -1635,41 +1996,41 @@ const styles = StyleSheet.create({
   pdfPageIndicator: {
     paddingHorizontal: Spacing.md,
     paddingVertical: 4,
-    backgroundColor: '#374151',
+    backgroundColor: "#374151",
     borderRadius: 4,
     marginHorizontal: 4,
   },
   pdfPageText: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   bottomBarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   bottomBarLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   pageNavigation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E40AF',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1E40AF",
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.sm,
     gap: 6,
   },
   pageNavText: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   // Sample selector styles
   sampleSelectorBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
@@ -1679,26 +2040,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   clearSampleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     marginTop: Spacing.sm,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   sampleModal: {
     flex: 1,
   },
   sampleModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.md,
     borderBottomWidth: 1,
   },
   searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     margin: Spacing.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
@@ -1722,11 +2083,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.lg,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: "#e5e7eb",
   },
   filterDivider: {
     width: 1,
-    backgroundColor: '#d1d5db',
+    backgroundColor: "#d1d5db",
     marginHorizontal: Spacing.sm,
   },
   sampleList: {
@@ -1735,8 +2096,8 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   emptySampleList: {
-    alignItems: 'center',
-    padding: Spacing['2xl'],
+    alignItems: "center",
+    padding: Spacing["2xl"],
   },
   sampleItem: {
     padding: Spacing.md,
@@ -1744,8 +2105,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   sampleItemHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   sampleTypeBadge: {
@@ -1754,13 +2115,13 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
   },
   sampleItemDetails: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.lg,
     marginTop: Spacing.sm,
   },
   sampleDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
 });

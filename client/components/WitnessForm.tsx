@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, Image, Modal } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import * as Haptics from 'expo-haptics';
-import { ThemedText } from '@/components/ThemedText';
-import { Input } from '@/components/Input';
-import { useTheme } from '@/hooks/useTheme';
-import { Witness } from '@/types';
-import { Spacing, BorderRadius } from '@/constants/theme';
+import React, { useState } from "react";
+import { View, StyleSheet, Pressable, Image, Modal } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import * as Haptics from "expo-haptics";
+import { ThemedText } from "@/components/ThemedText";
+import { Input } from "@/components/Input";
+import { useTheme } from "@/hooks/useTheme";
+import { Witness } from "@/types";
+import { Spacing, BorderRadius } from "@/constants/theme";
 
 interface WitnessFormProps {
   witness: Partial<Witness>;
@@ -16,13 +16,18 @@ interface WitnessFormProps {
   index: number;
 }
 
-export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormProps) {
+export function WitnessForm({
+  witness,
+  onUpdate,
+  onRemove,
+  index,
+}: WitnessFormProps) {
   const { theme } = useTheme();
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const handleAadhaarImagePick = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images',
+      mediaTypes: "images",
       allowsEditing: true,
       quality: 0.8,
     });
@@ -35,7 +40,7 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
 
   const handleSignaturePick = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images',
+      mediaTypes: "images",
       allowsEditing: true,
       quality: 0.8,
     });
@@ -47,7 +52,12 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: theme.backgroundDefault, borderColor: theme.border },
+      ]}
+    >
       <View style={styles.header}>
         <ThemedText type="h4">Witness {index + 1}</ThemedText>
         <Pressable onPress={onRemove} style={styles.removeButton}>
@@ -58,7 +68,7 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
       <Input
         label="Witness Name"
         placeholder="Enter full name"
-        value={witness.name || ''}
+        value={witness.name || ""}
         onChangeText={(text) => onUpdate({ ...witness, name: text })}
       />
 
@@ -67,7 +77,7 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
           <Input
             label="S/o, D/o, W/o"
             placeholder="Son of / Daughter of / Wife of"
-            value={witness.sonOfName || ''}
+            value={witness.sonOfName || ""}
             onChangeText={(text) => onUpdate({ ...witness, sonOfName: text })}
           />
         </View>
@@ -75,8 +85,10 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
           <Input
             label="Age (Years)"
             placeholder="Age"
-            value={witness.age?.toString() || ''}
-            onChangeText={(text) => onUpdate({ ...witness, age: text ? parseInt(text) : undefined })}
+            value={witness.age?.toString() || ""}
+            onChangeText={(text) =>
+              onUpdate({ ...witness, age: text ? parseInt(text) : undefined })
+            }
             keyboardType="numeric"
           />
         </View>
@@ -85,7 +97,7 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
       <Input
         label="Address"
         placeholder="Enter complete address"
-        value={witness.address || ''}
+        value={witness.address || ""}
         onChangeText={(text) => onUpdate({ ...witness, address: text })}
         multiline
       />
@@ -93,7 +105,7 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
       <Input
         label="Phone Number"
         placeholder="Enter phone number"
-        value={witness.phone || ''}
+        value={witness.phone || ""}
         onChangeText={(text) => onUpdate({ ...witness, phone: text })}
         keyboardType="phone-pad"
       />
@@ -101,22 +113,35 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
       <Input
         label="Aadhaar Number (Optional)"
         placeholder="XXXX XXXX XXXX"
-        value={witness.aadhaarNumber || ''}
+        value={witness.aadhaarNumber || ""}
         onChangeText={(text) => onUpdate({ ...witness, aadhaarNumber: text })}
         keyboardType="numeric"
       />
 
       <View style={styles.imageRow}>
         <View style={styles.imageContainer}>
-          <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}>Aadhaar Image (Optional)</ThemedText>
+          <ThemedText
+            type="small"
+            style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}
+          >
+            Aadhaar Image (Optional)
+          </ThemedText>
           <View style={styles.imageUploadRow}>
             {witness.aadhaarImage ? (
               <>
                 <View style={styles.thumbnailWrapper}>
-                  <Image source={{ uri: witness.aadhaarImage }} style={styles.thumbnailImage} />
+                  <Image
+                    source={{ uri: witness.aadhaarImage }}
+                    style={styles.thumbnailImage}
+                  />
                   <Pressable
-                    onPress={() => onUpdate({ ...witness, aadhaarImage: undefined })}
-                    style={[styles.removeThumbBtn, { backgroundColor: theme.accent }]}
+                    onPress={() =>
+                      onUpdate({ ...witness, aadhaarImage: undefined })
+                    }
+                    style={[
+                      styles.removeThumbBtn,
+                      { backgroundColor: theme.accent },
+                    ]}
                   >
                     <Feather name="x" size={10} color="#fff" />
                   </Pressable>
@@ -131,7 +156,13 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
             ) : null}
             <Pressable
               onPress={handleAadhaarImagePick}
-              style={[styles.uploadBtn, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]}
+              style={[
+                styles.uploadBtn,
+                {
+                  borderColor: theme.primary,
+                  backgroundColor: theme.primary + "10",
+                },
+              ]}
             >
               <Feather name="image" size={16} color={theme.primary} />
             </Pressable>
@@ -139,15 +170,28 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
         </View>
 
         <View style={styles.imageContainer}>
-          <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}>Signature (Optional)</ThemedText>
+          <ThemedText
+            type="small"
+            style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}
+          >
+            Signature (Optional)
+          </ThemedText>
           <View style={styles.imageUploadRow}>
             {witness.signature ? (
               <>
                 <View style={styles.thumbnailWrapper}>
-                  <Image source={{ uri: witness.signature }} style={styles.thumbnailImage} />
+                  <Image
+                    source={{ uri: witness.signature }}
+                    style={styles.thumbnailImage}
+                  />
                   <Pressable
-                    onPress={() => onUpdate({ ...witness, signature: undefined })}
-                    style={[styles.removeThumbBtn, { backgroundColor: theme.accent }]}
+                    onPress={() =>
+                      onUpdate({ ...witness, signature: undefined })
+                    }
+                    style={[
+                      styles.removeThumbBtn,
+                      { backgroundColor: theme.accent },
+                    ]}
                   >
                     <Feather name="x" size={10} color="#fff" />
                   </Pressable>
@@ -162,7 +206,13 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
             ) : null}
             <Pressable
               onPress={handleSignaturePick}
-              style={[styles.uploadBtn, { borderColor: theme.primary, backgroundColor: theme.primary + '10' }]}
+              style={[
+                styles.uploadBtn,
+                {
+                  borderColor: theme.primary,
+                  backgroundColor: theme.primary + "10",
+                },
+              ]}
             >
               <Feather name="edit-3" size={16} color={theme.primary} />
             </Pressable>
@@ -177,12 +227,22 @@ export function WitnessForm({ witness, onUpdate, onRemove, index }: WitnessFormP
         onRequestClose={() => setPreviewImage(null)}
       >
         <View style={styles.previewModal}>
-          <Pressable style={styles.previewBackdrop} onPress={() => setPreviewImage(null)} />
+          <Pressable
+            style={styles.previewBackdrop}
+            onPress={() => setPreviewImage(null)}
+          />
           <View style={styles.previewContent}>
             {previewImage ? (
-              <Image source={{ uri: previewImage }} style={styles.previewFullImage} resizeMode="contain" />
+              <Image
+                source={{ uri: previewImage }}
+                style={styles.previewFullImage}
+                resizeMode="contain"
+              />
             ) : null}
-            <Pressable style={styles.previewCloseBtn} onPress={() => setPreviewImage(null)}>
+            <Pressable
+              style={styles.previewCloseBtn}
+              onPress={() => setPreviewImage(null)}
+            >
               <Feather name="x" size={24} color="#fff" />
             </Pressable>
           </View>
@@ -200,15 +260,15 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   removeButton: {
     padding: Spacing.sm,
   },
   row: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.md,
   },
   flexOne: {
@@ -218,19 +278,19 @@ const styles = StyleSheet.create({
     flex: 2,
   },
   imageRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.md,
   },
   imageContainer: {
     flex: 1,
   },
   imageUploadRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   thumbnailWrapper: {
-    position: 'relative',
+    position: "relative",
   },
   thumbnailImage: {
     width: 48,
@@ -238,64 +298,64 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
   },
   removeThumbBtn: {
-    position: 'absolute',
+    position: "absolute",
     top: -4,
     right: -4,
     width: 16,
     height: 16,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   eyeBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   uploadBtn: {
     width: 36,
     height: 36,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
   },
   previewModal: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   previewBackdrop: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
   },
   previewContent: {
-    width: '90%',
-    height: '80%',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "90%",
+    height: "80%",
+    alignItems: "center",
+    justifyContent: "center",
   },
   previewFullImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     borderRadius: BorderRadius.lg,
   },
   previewCloseBtn: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     right: 0,
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

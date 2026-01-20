@@ -1,26 +1,26 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHeaderHeight } from '@react-navigation/elements';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { ThemedText } from '@/components/ThemedText';
-import { FilterChips } from '@/components/FilterChips';
-import { SampleCard } from '@/components/SampleCard';
-import { EmptyState } from '@/components/EmptyState';
-import { SampleCardSkeleton } from '@/components/SkeletonLoader';
-import { useTheme } from '@/hooks/useTheme';
-import { useAuthContext } from '@/context/AuthContext';
-import { storage } from '@/lib/storage';
-import { Sample } from '@/types';
-import { Spacing } from '@/constants/theme';
+import React, { useState, useCallback } from "react";
+import { View, StyleSheet, FlatList, RefreshControl } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useHeaderHeight } from "@react-navigation/elements";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { ThemedText } from "@/components/ThemedText";
+import { FilterChips } from "@/components/FilterChips";
+import { SampleCard } from "@/components/SampleCard";
+import { EmptyState } from "@/components/EmptyState";
+import { SampleCardSkeleton } from "@/components/SkeletonLoader";
+import { useTheme } from "@/hooks/useTheme";
+import { useAuthContext } from "@/context/AuthContext";
+import { storage } from "@/lib/storage";
+import { Sample } from "@/types";
+import { Spacing } from "@/constants/theme";
 
 const STATUS_FILTERS = [
-  { value: 'all', label: 'All' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'dispatched', label: 'Dispatched' },
-  { value: 'completed', label: 'Completed' },
+  { value: "all", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "dispatched", label: "Dispatched" },
+  { value: "completed", label: "Completed" },
 ];
 
 export default function SamplesScreen() {
@@ -35,7 +35,7 @@ export default function SamplesScreen() {
   const [filteredSamples, setFilteredSamples] = useState<Sample[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const jurisdictionId = user?.jurisdiction?.unitId;
 
@@ -45,7 +45,7 @@ export default function SamplesScreen() {
       setSamples(data);
       filterSamples(data, statusFilter);
     } catch (error) {
-      console.error('Failed to load samples:', error);
+      console.error("Failed to load samples:", error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -55,20 +55,20 @@ export default function SamplesScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [loadData])
+    }, [loadData]),
   );
 
   const filterSamples = (data: Sample[], status: string) => {
     let filtered = data;
 
     switch (status) {
-      case 'pending':
+      case "pending":
         filtered = filtered.filter((s) => !s.dispatchDate && !s.labResult);
         break;
-      case 'dispatched':
+      case "dispatched":
         filtered = filtered.filter((s) => s.dispatchDate && !s.labResult);
         break;
-      case 'completed':
+      case "completed":
         filtered = filtered.filter((s) => !!s.labResult);
         break;
     }
@@ -106,19 +106,21 @@ export default function SamplesScreen() {
     <Animated.View entering={FadeInDown.delay(index * 50).duration(300)}>
       <SampleCard
         sample={item}
-        onPress={() => navigation.navigate('SampleDetails', { sampleId: item.id })}
+        onPress={() =>
+          navigation.navigate("SampleDetails", { sampleId: item.id })
+        }
       />
     </Animated.View>
   );
 
   const renderEmptyState = () => (
     <EmptyState
-      image={require('../../assets/images/samples-empty.png')}
+      image={require("../../assets/images/samples-empty.png")}
       title="No Samples Found"
       description={
-        statusFilter !== 'all'
-          ? 'Try adjusting your filter to see more samples'
-          : 'Samples lifted during inspections will appear here'
+        statusFilter !== "all"
+          ? "Try adjusting your filter to see more samples"
+          : "Samples lifted during inspections will appear here"
       }
     />
   );
@@ -179,9 +181,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   skeletonContainer: {
     gap: Spacing.md,
