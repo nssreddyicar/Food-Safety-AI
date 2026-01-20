@@ -156,15 +156,7 @@ export const storage = {
   },
 
   async seedDemoData(): Promise<void> {
-    const demoUser: User = {
-      id: "fso_001",
-      name: "Rajesh Kumar",
-      email: "rajesh.kumar@fssai.gov.in",
-      role: "fso",
-      designation: "Food Safety Officer",
-      district: "Mumbai Central",
-    };
-
+    // Only seed inspection data, don't overwrite the logged-in user
     const demoInspections: Inspection[] = [
       {
         id: "insp_001",
@@ -360,7 +352,6 @@ export const storage = {
       },
     ];
 
-    await this.setUser(demoUser);
     await this.setInspections(demoInspections);
   },
 };
