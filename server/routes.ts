@@ -262,9 +262,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       adminSessions.set(token, { expires });
       res.cookie("admin_session", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         maxAge: 24 * 60 * 60 * 1000,
-        sameSite: "lax",
+        sameSite: "none",
       });
       return res.json({ success: true, message: "Login successful" });
     }
@@ -284,9 +284,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         adminSessions.set(token, { expires });
         res.cookie("admin_session", token, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: true,
           maxAge: 24 * 60 * 60 * 1000,
-          sameSite: "lax",
+          sameSite: "none",
         });
         return res.json({ success: true, message: "Login successful" });
       }
