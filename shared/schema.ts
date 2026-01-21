@@ -1656,3 +1656,38 @@ export const fboInspectionConfig = pgTable("fbo_inspection_config", {
 });
 
 export type FboInspectionConfig = typeof fboInspectionConfig.$inferSelect;
+
+/**
+ * FBO Inspection Form Fields - Admin-configurable form fields for FBO inspections.
+ * 
+ * WHY: Allows Super Admin to customize the inspection form fields.
+ * RULES:
+ * - Fields can be grouped (fbo_details, inspection_details, findings, evidence)
+ * - Each field has display order, visibility, and validation settings
+ */
+export const fboInspectionFormFields = pgTable("fbo_inspection_form_fields", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  fieldName: text("field_name").notNull(), // Internal name (e.g., "fbo_name", "license_number")
+  fieldLabel: text("field_label").notNull(), // Display label (e.g., "FBO Name")
+  fieldType: text("field_type").notNull(), // text, textarea, date, dropdown, phone, number, file, location, checkbox, time
+  fieldGroup: text("field_group").notNull(), // fbo_details, inspection_details, findings, actions, evidence
+  displayOrder: integer("display_order").notNull().default(0),
+  isRequired: boolean("is_required").default(false),
+  isVisible: boolean("is_visible").default(true),
+  isEditable: boolean("is_editable").default(true), // Can officer edit after inspection?
+  validationRules: jsonb("validation_rules"), // { minLength, maxLength, pattern, min, max, etc. }
+  dropdownOptions: jsonb("dropdown_options"), // For dropdown fields: [{value, label}]
+  defaultValue: text("default_value"),
+  helpText: text("help_text"), // Instructions for officer
+  placeholder: text("placeholder"), // Placeholder text
+  isSystemField: boolean("is_system_field").default(false), // Can't be deleted
+  watermarkSettings: jsonb("watermark_settings"), // For file fields: { enabled, showGps, showTimestamp, position, opacity }
+  fileSettings: jsonb("file_settings"), // For file fields: { maxFiles, maxSizeMB, allowedTypes }
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type FboInspectionFormField = typeof fboInspectionFormFields.$inferSelect;
