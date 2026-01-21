@@ -57,7 +57,7 @@ export default function InstitutionalInspectionAssessmentScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'InstitutionalInspectionAssessment'>>();
-  const { token, user } = useAuthContext();
+  const { user } = useAuthContext();
   const { inspectionId } = route.params;
 
   const [pillars, setPillars] = useState<Pillar[]>([]);
@@ -147,7 +147,6 @@ export default function InstitutionalInspectionAssessmentScreen() {
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ responses: responsesArray, officerId: user?.id }),
@@ -164,7 +163,6 @@ export default function InstitutionalInspectionAssessmentScreen() {
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ officerId: user?.id }),
@@ -331,10 +329,11 @@ export default function InstitutionalInspectionAssessmentScreen() {
 
       <View style={[styles.footer, { paddingBottom: tabBarHeight + insets.bottom + Spacing.md }]}>
         <Button
-          title={isSubmitting ? "Submitting..." : "Submit Assessment"}
           onPress={handleSubmit}
           disabled={isSubmitting}
-        />
+        >
+          {isSubmitting ? "Submitting..." : "Submit Assessment"}
+        </Button>
       </View>
     </ThemedView>
   );

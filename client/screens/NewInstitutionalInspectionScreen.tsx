@@ -42,7 +42,7 @@ export default function NewInstitutionalInspectionScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
-  const { user, token } = useAuthContext();
+  const { user } = useAuthContext();
 
   const [isLoading, setIsLoading] = useState(false);
   const [institutionTypes, setInstitutionTypes] = useState<InstitutionType[]>([]);
@@ -110,14 +110,13 @@ export default function NewInstitutionalInspectionScreen() {
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             institutionTypeId: selectedTypeId,
             institutionName,
             institutionAddress,
-            districtId: user?.districtId || user?.jurisdiction?.unitId,
+            districtId: user?.jurisdiction?.unitId,
             jurisdictionId: user?.jurisdiction?.unitId,
             latitude,
             longitude,
@@ -178,12 +177,12 @@ export default function NewInstitutionalInspectionScreen() {
             <Feather name="chevron-down" size={20} color={theme.textSecondary} />
           </Pressable>
           
-          {showTypePicker && (
-            <View style={[styles.pickerOptions, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+          {showTypePicker ? (
+            <View style={[styles.pickerOptions, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
               {institutionTypes.map(type => (
                 <Pressable
                   key={type.id}
-                  style={[styles.pickerOption, selectedTypeId === type.id && { backgroundColor: theme.primary + '20' }]}
+                  style={[styles.pickerOption, selectedTypeId === type.id ? { backgroundColor: theme.primary + '20' } : undefined]}
                   onPress={() => {
                     setSelectedTypeId(type.id);
                     setShowTypePicker(false);
@@ -196,7 +195,7 @@ export default function NewInstitutionalInspectionScreen() {
                 </Pressable>
               ))}
             </View>
-          )}
+          ) : null}
 
           <Input
             label="Institution Name *"
@@ -350,11 +349,12 @@ export default function NewInstitutionalInspectionScreen() {
         </Card>
 
         <Button
-          title={isLoading ? "Creating..." : "Create Inspection"}
           onPress={handleSubmit}
           disabled={isLoading}
           style={styles.submitBtn}
-        />
+        >
+          {isLoading ? "Creating..." : "Create Inspection"}
+        </Button>
       </KeyboardAwareScrollViewCompat>
     </ThemedView>
   );

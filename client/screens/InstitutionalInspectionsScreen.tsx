@@ -15,12 +15,11 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Input } from "@/components/Input";
 import { FilterChips } from "@/components/FilterChips";
-import { EmptyState } from "@/components/EmptyState";
 import { FAB } from "@/components/FAB";
 import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuthContext } from "@/context/AuthContext";
-import { Spacing, FontSize } from "@/constants/theme";
+import { Spacing, FontSize, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 
 interface InstitutionalInspection {
@@ -52,7 +51,7 @@ export default function InstitutionalInspectionsScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const navigation = useNavigation<any>();
-  const { user, token } = useAuthContext();
+  const { user } = useAuthContext();
 
   const [inspections, setInspections] = useState<InstitutionalInspection[]>([]);
   const [filteredInspections, setFilteredInspections] = useState<InstitutionalInspection[]>([]);
@@ -61,17 +60,16 @@ export default function InstitutionalInspectionsScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  const jurisdictionId = user?.jurisdiction?.unitId;
+
   const loadData = useCallback(async () => {
     try {
-      const response = await fetch(
-        new URL('/api/institutional-inspections', getApiUrl()).toString(),
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const url = new URL('/api/institutional-inspections', getApiUrl());
+      if (jurisdictionId) {
+        url.searchParams.set("jurisdictionId", jurisdictionId);
+      }
+      
+      const response = await fetch(url.toString());
       
       if (response.ok) {
         const data = await response.json();
@@ -84,7 +82,7 @@ export default function InstitutionalInspectionsScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [searchQuery, statusFilter, token]);
+  }, [searchQuery, statusFilter, jurisdictionId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -185,7 +183,7 @@ export default function InstitutionalInspectionsScreen() {
             </View>
           </View>
           
-          {item.totalScore > 0 && (
+          {item.totalScore > 0 ? (
             <View style={styles.scoreContainer}>
               <ThemedText style={[styles.scoreLabel, { color: theme.textSecondary }]}>
                 Risk Score:
@@ -194,24 +192,28 @@ export default function InstitutionalInspectionsScreen() {
                 {item.totalScore}
               </ThemedText>
             </View>
-          )}
+          ) : null}
         </Card>
       </Pressable>
     </Animated.View>
   );
 
   const renderEmpty = () => (
-    <EmptyState
-      icon="clipboard"
-      title="No Institutional Inspections"
-      message="Start by creating a new institutional food safety inspection"
-    />
+    <View style={styles.emptyContainer}>
+      <Feather name="clipboard" size={48} color={theme.textSecondary} />
+      <ThemedText type="h3" style={styles.emptyTitle}>
+        No Institutional Inspections
+      </ThemedText>
+      <ThemedText style={[styles.emptyMessage, { color: theme.textSecondary }]}>
+        Start by creating a new institutional food safety inspection
+      </ThemedText>
+    </View>
   );
 
   const renderSkeleton = () => (
     <View style={styles.skeletonContainer}>
       {[1, 2, 3].map((i) => (
-        <Card key={i} style={[styles.card, styles.skeleton]}>
+        <Card key={i} style={styles.skeletonCard}>
           <View style={[styles.skeletonLine, { width: '40%', backgroundColor: theme.border }]} />
           <View style={[styles.skeletonLine, { width: '80%', backgroundColor: theme.border }]} />
           <View style={[styles.skeletonLine, { width: '60%', backgroundColor: theme.border }]} />
@@ -231,12 +233,13 @@ export default function InstitutionalInspectionsScreen() {
           style={styles.searchInput}
         />
         
-        <FilterChips
-          options={STATUS_FILTERS}
-          selected={statusFilter}
-          onSelect={handleFilterChange}
-          style={styles.filters}
-        />
+        <View style={styles.filtersContainer}>
+          <FilterChips
+            options={STATUS_FILTERS}
+            selectedValue={statusFilter}
+            onSelect={handleFilterChange}
+          />
+        </View>
 
         {isLoading ? (
           renderSkeleton()
@@ -265,7 +268,6 @@ export default function InstitutionalInspectionsScreen() {
       <FAB
         icon="plus"
         onPress={() => navigation.navigate("NewInstitutionalInspection")}
-        style={{ bottom: insets.bottom + 80 }}
       />
     </ThemedView>
   );
@@ -282,7 +284,7 @@ const styles = StyleSheet.create({
   searchInput: {
     marginBottom: Spacing.sm,
   },
-  filters: {
+  filtersContainer: {
     marginBottom: Spacing.md,
   },
   list: {
@@ -364,10 +366,26 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontWeight: '700',
   },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing["2xl"],
+    gap: Spacing.md,
+  },
+  emptyTitle: {
+    textAlign: 'center',
+  },
+  emptyMessage: {
+    textAlign: 'center',
+    maxWidth: 280,
+  },
   skeletonContainer: {
     paddingTop: Spacing.md,
   },
-  skeleton: {
+  skeletonCard: {
+    marginBottom: Spacing.md,
+    padding: Spacing.md,
     opacity: 0.5,
   },
   skeletonLine: {
