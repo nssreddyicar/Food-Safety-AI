@@ -51,6 +51,7 @@ import { createServer, type Server } from "node:http";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
+import * as storageService from "./services/storage.service";
 import {
   officers,
   districts,
@@ -949,6 +950,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error dispatching sample:", error);
       res.status(500).json({ error: "Failed to dispatch sample" });
+    }
+  });
+
+  // ==================== FILE STORAGE API ====================
+
+  // Upload file (base64)
+  app.post("/api/files/upload", async (req: Request, res: Response) => {
+    try {
+      const { file, filename, mimeType, category, entityId, officerId } = req.body;
+
+      if (!file || !filename || !mimeType || !category) {
+        return res.status(400).json({ 
+          error: "Missing required fields: file, filename, mimeType, category" 
+        });
+      }
+
+      const validCategories = ['inspection', 'sample', 'document', 'profile'];
+      if (!validCategories.includes(category)) {
+        return res.status(400).json({ 
+          error: `Invalid category. Must be one of: ${validCategories.join(', ')}` 
+        });
+      }
+
+      const uploaded = await storageService.saveFile(
+        file,
+        filename,
+        mimeType,
+        { category, entityId, officerId }
+      );
+
+      res.json(uploaded);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ error: "Failed to upload file" });
+    }
+  });
+
+  // Get file by filename
+  app.get("/api/files/:filename", async (req: Request, res: Response) => {
+    try {
+      const filename = req.params.filename as string;
+
+      const file = await storageService.getFile(filename);
+
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+
+      res.setHeader("Content-Type", file.mimeType);
+      res.setHeader("Cache-Control", "public, max-age=31536000");
+      res.send(file.buffer);
+    } catch (error) {
+      console.error("Error getting file:", error);
+      res.status(500).json({ error: "Failed to get file" });
+    }
+  });
+
+  // Delete file
+  app.delete("/api/files/:filename", async (req: Request, res: Response) => {
+    try {
+      const filename = req.params.filename as string;
+
+      const deleted = await storageService.deleteFile(filename);
+
+      if (!deleted) {
+        return res.status(404).json({ error: "File not found" });
+      }
+
+      res.json({ success: true, message: "File deleted" });
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      res.status(500).json({ error: "Failed to delete file" });
+    }
+  });
+
+  // List files by category
+  app.get("/api/files", async (req: Request, res: Response) => {
+    try {
+      const { category } = req.query;
+
+      const files = await storageService.listFiles(category as string);
+
+      res.json({ files });
+    } catch (error) {
+      console.error("Error listing files:", error);
+      res.status(500).json({ error: "Failed to list files" });
     }
   });
 

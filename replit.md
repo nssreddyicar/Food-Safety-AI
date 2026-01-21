@@ -86,13 +86,22 @@ Express.js with strict layered architecture:
 - `server/routes.ts` - API endpoints
 - `server/domain/` - Business logic
 - `server/data/repositories/` - Data access
+- `server/services/storage.service.ts` - File storage service
 - `shared/schema.ts` - Drizzle ORM schema
+
+### File Storage API
+- `POST /api/files/upload` - Upload file (base64, categories: inspection/sample/document/profile)
+- `GET /api/files/:filename` - Download file
+- `DELETE /api/files/:filename` - Delete file
+- `GET /api/files?category=inspection` - List files by category
 
 ## Credentials
 - **Super Admin**: superadmin / Admin@123
 - **Test Officer**: officer@test.com / Officer@123
 
 ## Recent Changes
+- Added file storage service with API endpoints for upload/download/delete
+- Added Flutter storage service for file uploads
 - Made Flutter the production app (Play Store deployment)
 - Expo remains for development/testing on Replit
 - Added all screens to Flutter: Dashboard, Inspections, Samples, Scanner, Court Cases, Profile
