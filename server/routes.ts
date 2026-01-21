@@ -1039,6 +1039,262 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== COMPLAINT MANAGEMENT API ====================
+  // Dynamic, location-aware, evidence-supported complaint system
+
+  // Import complaint service
+  const { complaintService } = await import("./domain/complaint/complaint.service");
+
+  // Get complaint form configuration (public)
+  app.get("/api/complaints/form-config", async (req: Request, res: Response) => {
+    try {
+      const result = await complaintService.getFormConfig();
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+      res.json(result.data);
+    } catch (error) {
+      console.error("Error getting form config:", error);
+      res.status(500).json({ error: "Failed to get form configuration" });
+    }
+  });
+
+  // Submit a new complaint (public)
+  app.post("/api/complaints/submit", async (req: Request, res: Response) => {
+    try {
+      const { 
+        complainantName, 
+        complainantMobile, 
+        complainantEmail,
+        location,
+        incidentDate,
+        incidentDescription,
+        formData,
+        submittedVia,
+      } = req.body;
+
+      const result = await complaintService.submitComplaint({
+        complainantName,
+        complainantMobile,
+        complainantEmail,
+        location: {
+          latitude: location?.latitude,
+          longitude: location?.longitude,
+          accuracy: location?.accuracy,
+          timestamp: location?.timestamp ? new Date(location.timestamp) : undefined,
+          source: location?.source || "manual",
+          address: location?.address,
+          landmark: location?.landmark,
+        },
+        incidentDate: incidentDate ? new Date(incidentDate) : undefined,
+        incidentDescription,
+        formData,
+        submittedVia,
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error, code: result.code });
+      }
+
+      res.json({ 
+        success: true, 
+        complaintCode: result.data.complaintCode,
+        message: "Complaint submitted successfully"
+      });
+    } catch (error) {
+      console.error("Error submitting complaint:", error);
+      res.status(500).json({ error: "Failed to submit complaint" });
+    }
+  });
+
+  // Track complaint by code (public)
+  app.get("/api/complaints/track/:code", async (req: Request, res: Response) => {
+    try {
+      const code = req.params.code as string;
+      const result = await complaintService.trackComplaint(code);
+
+      if (!result.success) {
+        return res.status(404).json({ error: result.error });
+      }
+
+      res.json(result.data);
+    } catch (error) {
+      console.error("Error tracking complaint:", error);
+      res.status(500).json({ error: "Failed to track complaint" });
+    }
+  });
+
+  // Get complaints list (officer)
+  app.get("/api/complaints", async (req: Request, res: Response) => {
+    try {
+      const { status, jurisdictionId, assignedOfficerId, fromDate, toDate, search, limit, offset } = req.query;
+
+      const result = await complaintService.getComplaints({
+        status: status as string,
+        jurisdictionId: jurisdictionId as string,
+        assignedOfficerId: assignedOfficerId as string,
+        fromDate: fromDate ? new Date(fromDate as string) : undefined,
+        toDate: toDate ? new Date(toDate as string) : undefined,
+        search: search as string,
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json(result.data);
+    } catch (error) {
+      console.error("Error getting complaints:", error);
+      res.status(500).json({ error: "Failed to get complaints" });
+    }
+  });
+
+  // Get complaint details (officer)
+  app.get("/api/complaints/:id", async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      const result = await complaintService.getComplaint(id);
+
+      if (!result.success) {
+        return res.status(404).json({ error: result.error });
+      }
+
+      res.json(result.data);
+    } catch (error) {
+      console.error("Error getting complaint:", error);
+      res.status(500).json({ error: "Failed to get complaint" });
+    }
+  });
+
+  // Update complaint status (officer)
+  app.put("/api/complaints/:id/status", async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      const { toStatus, remarks, officerId, officerName, location } = req.body;
+
+      if (!officerId) {
+        return res.status(401).json({ error: "Officer ID required" });
+      }
+
+      const result = await complaintService.updateStatus(id, {
+        toStatus,
+        remarks,
+        officerId,
+        officerName,
+        location,
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error, code: result.code });
+      }
+
+      res.json(result.data);
+    } catch (error) {
+      console.error("Error updating complaint status:", error);
+      res.status(500).json({ error: "Failed to update complaint status" });
+    }
+  });
+
+  // Assign complaint to officer (officer/admin)
+  app.put("/api/complaints/:id/assign", async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      const { officerId, assignedBy, remarks } = req.body;
+
+      if (!officerId || !assignedBy) {
+        return res.status(400).json({ error: "Officer ID and assignedBy required" });
+      }
+
+      const result = await complaintService.assignToOfficer(id, officerId, assignedBy, remarks);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json(result.data);
+    } catch (error) {
+      console.error("Error assigning complaint:", error);
+      res.status(500).json({ error: "Failed to assign complaint" });
+    }
+  });
+
+  // Add evidence to complaint
+  app.post("/api/complaints/:id/evidence", async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      const { 
+        file, 
+        filename, 
+        mimeType, 
+        fileType,
+        latitude, 
+        longitude, 
+        captureTimestamp,
+        uploadedBy,
+        uploadedByOfficerId,
+        description,
+      } = req.body;
+
+      if (!file || !filename || !mimeType) {
+        return res.status(400).json({ error: "File, filename, and mimeType required" });
+      }
+
+      // Save file using storage service
+      const uploaded = await storageService.saveFile(
+        file,
+        filename,
+        mimeType,
+        { category: "document", entityId: id as string }
+      );
+
+      // Add evidence record
+      const result = await complaintService.addEvidence(id, {
+        filename: uploaded.filename,
+        originalName: filename,
+        fileType: fileType || "document",
+        mimeType,
+        fileSize: uploaded.size,
+        fileUrl: uploaded.url,
+        latitude,
+        longitude,
+        captureTimestamp: captureTimestamp ? new Date(captureTimestamp) : undefined,
+        uploadedBy: uploadedBy || "complainant",
+        uploadedByOfficerId,
+        description,
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json(result.data);
+    } catch (error) {
+      console.error("Error adding evidence:", error);
+      res.status(500).json({ error: "Failed to add evidence" });
+    }
+  });
+
+  // Get complaint statistics
+  app.get("/api/complaints/stats", async (req: Request, res: Response) => {
+    try {
+      const { jurisdictionId } = req.query;
+      const result = await complaintService.getStatistics(jurisdictionId as string);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json(result.data);
+    } catch (error) {
+      console.error("Error getting complaint stats:", error);
+      res.status(500).json({ error: "Failed to get statistics" });
+    }
+  });
+
   // Basic validation for mobile app API routes
   app.use(/\/api\/.*/, (req, res, next) => {
     // Skip auth for routes already handled or public

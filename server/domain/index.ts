@@ -21,6 +21,7 @@ export { officerService } from "./officer/officer.service";
 export { inspectionService } from "./inspection/inspection.service";
 export { sampleService } from "./sample/sample.service";
 export { jurisdictionService } from "./jurisdiction/jurisdiction.service";
+export { complaintService } from "./complaint/complaint.service";
 
 export type { ServiceResult, AuthenticatedOfficer, JurisdictionAssignment } from "./officer/officer.service";
 export { INSPECTION_STATUSES } from "./inspection/inspection.service";
