@@ -55,6 +55,9 @@
     "expo-system-ui": "~6.0.8",
     "expo-web-browser": "~15.0.9",
     "express": "^5.0.1",
+    "express-rate-limit": "^8.2.1",
+    "express-validator": "^7.3.1",
+    "helmet": "^8.1.0",
     "http-proxy-middleware": "^3.0.5",
     "pdfkit": "^0.17.2",
     "pg": "^8.16.3",
@@ -72,8 +75,10 @@
     "react-native-webview": "^13.16.0",
     "react-native-worklets": "0.5.1",
     "tsx": "^4.20.6",
+    "uuid": "^13.0.0",
+    "winston": "^3.19.0",
     "ws": "^8.18.0",
-    "zod": "^3.24.2",
+    "zod": "^3.25.76",
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
