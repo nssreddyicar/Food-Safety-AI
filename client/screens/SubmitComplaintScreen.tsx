@@ -39,6 +39,25 @@ interface SharedLinkInfo {
   sharedByOfficerName?: string;
 }
 
+interface FormFieldConfig {
+  id: string;
+  fieldName: string;
+  fieldLabel: string;
+  fieldType: string;
+  fieldGroup: string;
+  displayOrder: number;
+  isRequired: boolean;
+  isVisible: boolean;
+  dropdownOptions?: { value: string; label: string }[];
+  defaultValue?: string;
+  helpText?: string;
+}
+
+interface DropdownOption {
+  value: string;
+  label: string;
+}
+
 export default function SubmitComplaintScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -75,6 +94,31 @@ export default function SubmitComplaintScreen() {
     longitude: string;
     accuracy: string;
   } | null>(null);
+
+  // Dynamic form configuration from admin panel
+  const [formConfig, setFormConfig] = useState<FormFieldConfig[]>([]);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [complaintType, setComplaintType] = useState("");
+  const [complaintNature, setComplaintNature] = useState("");
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [showNatureDropdown, setShowNatureDropdown] = useState(false);
+
+  // Extract dropdown options from form config
+  const complaintTypeOptions: DropdownOption[] = React.useMemo(() => {
+    const typeField = formConfig.find(f => f.fieldName === "complaint_type");
+    if (typeField?.dropdownOptions) {
+      return typeField.dropdownOptions;
+    }
+    return [{ value: "Food Safety", label: "Food Safety" }];
+  }, [formConfig]);
+
+  const complaintNatureOptions: DropdownOption[] = React.useMemo(() => {
+    const natureField = formConfig.find(f => f.fieldName === "complaint_nature");
+    if (natureField?.dropdownOptions) {
+      return natureField.dropdownOptions;
+    }
+    return [{ value: "General", label: "General" }];
+  }, [formConfig]);
 
   // Validate shared link token if provided
   useEffect(() => {
@@ -113,6 +157,45 @@ export default function SubmitComplaintScreen() {
 
     validateToken();
   }, [route.params?.token]);
+
+  // Fetch dynamic form configuration from admin panel
+  useEffect(() => {
+    const fetchFormConfig = async () => {
+      try {
+        const apiUrl = getApiUrl();
+        const response = await fetch(`${apiUrl}/api/complaints/form-config`);
+        if (response.ok) {
+          const config = await response.json();
+          setFormConfig(config);
+          
+          // Set default values for dropdowns
+          const typeField = config.find((f: FormFieldConfig) => f.fieldName === "complaint_type");
+          const natureField = config.find((f: FormFieldConfig) => f.fieldName === "complaint_nature");
+          
+          if (typeField?.defaultValue) {
+            setComplaintType(typeField.defaultValue);
+          } else if (typeField?.dropdownOptions?.length > 0) {
+            setComplaintType(typeField.dropdownOptions[0].value);
+          }
+          
+          if (natureField?.defaultValue) {
+            setComplaintNature(natureField.defaultValue);
+          } else if (natureField?.dropdownOptions?.length > 0) {
+            setComplaintNature(natureField.dropdownOptions[0].value);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch form config:", error);
+        // Use default values on error
+        setComplaintType("Food Safety");
+        setComplaintNature("General");
+      } finally {
+        setIsLoadingConfig(false);
+      }
+    };
+
+    fetchFormConfig();
+  }, []);
 
   const handleGetLocation = async () => {
     setIsGettingLocation(true);
@@ -222,6 +305,9 @@ export default function SubmitComplaintScreen() {
           },
           evidence: evidenceData,
           submittedVia: "mobile",
+          complaintType: complaintType || "Food Safety",
+          complaintNature: complaintNature || "General",
+          establishmentName: establishmentName.trim(),
         }),
       });
 
@@ -239,8 +325,8 @@ export default function SubmitComplaintScreen() {
         complaintCode: data.complaintCode,
         submittedAt: data.submittedAt || new Date().toISOString(),
         districtName: sharedLinkInfo?.districtAbbreviation || "Assigned District",
-        complaintType: data.complaintType || "Food Safety",
-        complaintNature: data.complaintNature || "General",
+        complaintType: complaintType || data.complaintType || "Food Safety",
+        complaintNature: complaintNature || data.complaintNature || "General",
         address: address.trim() || undefined,
         trackingUrl,
       };
@@ -437,6 +523,35 @@ export default function SubmitComplaintScreen() {
             <ThemedText type="h4" style={styles.sectionTitle}>
               Incident Details
             </ThemedText>
+            
+            {/* Complaint Type Dropdown */}
+            <View style={styles.inputSpacing}>
+              <ThemedText style={styles.dropdownLabel}>Complaint Type *</ThemedText>
+              <Pressable
+                style={[styles.dropdownButton, { borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
+                onPress={() => setShowTypeDropdown(true)}
+              >
+                <ThemedText style={styles.dropdownButtonText}>
+                  {complaintTypeOptions.find(o => o.value === complaintType)?.label || "Select Type"}
+                </ThemedText>
+                <Feather name="chevron-down" size={20} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+
+            {/* Complaint Nature Dropdown */}
+            <View style={styles.inputSpacing}>
+              <ThemedText style={styles.dropdownLabel}>Complaint Nature *</ThemedText>
+              <Pressable
+                style={[styles.dropdownButton, { borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
+                onPress={() => setShowNatureDropdown(true)}
+              >
+                <ThemedText style={styles.dropdownButtonText}>
+                  {complaintNatureOptions.find(o => o.value === complaintNature)?.label || "Select Nature"}
+                </ThemedText>
+                <Feather name="chevron-down" size={20} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+
             <Input
               label="Description *"
               placeholder="Describe the food safety violation in detail..."
@@ -577,6 +692,84 @@ export default function SubmitComplaintScreen() {
             </View>
           </Card>
         </View>
+      </Modal>
+
+      {/* Complaint Type Dropdown Modal */}
+      <Modal
+        visible={showTypeDropdown}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowTypeDropdown(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowTypeDropdown(false)}>
+          <Card style={styles.dropdownModal}>
+            <View style={[styles.dropdownHeader, { borderBottomColor: theme.border }]}>
+              <ThemedText style={styles.dropdownTitle}>Select Complaint Type</ThemedText>
+              <Pressable onPress={() => setShowTypeDropdown(false)}>
+                <Feather name="x" size={24} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.dropdownList}>
+              {complaintTypeOptions.map((option) => (
+                <Pressable
+                  key={option.value}
+                  style={[
+                    styles.dropdownItem,
+                    complaintType === option.value && { backgroundColor: theme.primary + "15" },
+                  ]}
+                  onPress={() => {
+                    setComplaintType(option.value);
+                    setShowTypeDropdown(false);
+                  }}
+                >
+                  <ThemedText style={styles.dropdownItemText}>{option.label}</ThemedText>
+                  {complaintType === option.value ? (
+                    <Feather name="check" size={20} color={theme.primary} />
+                  ) : null}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Card>
+        </Pressable>
+      </Modal>
+
+      {/* Complaint Nature Dropdown Modal */}
+      <Modal
+        visible={showNatureDropdown}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowNatureDropdown(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowNatureDropdown(false)}>
+          <Card style={styles.dropdownModal}>
+            <View style={[styles.dropdownHeader, { borderBottomColor: theme.border }]}>
+              <ThemedText style={styles.dropdownTitle}>Select Complaint Nature</ThemedText>
+              <Pressable onPress={() => setShowNatureDropdown(false)}>
+                <Feather name="x" size={24} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.dropdownList}>
+              {complaintNatureOptions.map((option) => (
+                <Pressable
+                  key={option.value}
+                  style={[
+                    styles.dropdownItem,
+                    complaintNature === option.value && { backgroundColor: theme.primary + "15" },
+                  ]}
+                  onPress={() => {
+                    setComplaintNature(option.value);
+                    setShowNatureDropdown(false);
+                  }}
+                >
+                  <ThemedText style={styles.dropdownItemText}>{option.label}</ThemedText>
+                  {complaintNature === option.value ? (
+                    <Feather name="check" size={20} color={theme.primary} />
+                  ) : null}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Card>
+        </Pressable>
       </Modal>
     </ThemedView>
   );
@@ -782,5 +975,54 @@ const styles = StyleSheet.create({
   closeLinkText: {
     fontSize: 16,
     fontWeight: "500",
+  },
+  dropdownLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: Spacing.xs,
+  },
+  dropdownButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+  },
+  dropdownButtonText: {
+    fontSize: 16,
+  },
+  dropdownModal: {
+    width: "100%",
+    maxWidth: 360,
+    maxHeight: "60%",
+    borderRadius: BorderRadius.lg,
+  },
+  dropdownHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.md,
+    borderBottomWidth: 1,
+  },
+  dropdownTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  dropdownList: {
+    padding: Spacing.sm,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginVertical: 2,
+  },
+  dropdownItemText: {
+    fontSize: 16,
   },
 });
