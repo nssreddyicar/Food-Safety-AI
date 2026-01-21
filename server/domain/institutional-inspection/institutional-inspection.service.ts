@@ -17,6 +17,7 @@ interface IndicatorResponse {
   indicatorId: string;
   response: 'yes' | 'no' | 'na';
   remarks?: string;
+  images?: string[]; // Array of base64 image data URIs
 }
 
 interface RiskScoreResult {
@@ -307,6 +308,7 @@ export class InstitutionalInspectionService {
         indicatorId: resp.indicatorId,
         response: resp.response,
         remarks: resp.remarks,
+        images: resp.images || [],
         indicatorName: indicator?.name || 'Unknown',
         pillarName: pillar?.name || 'Unknown',
         riskLevel: indicator?.riskLevel || 'unknown',
