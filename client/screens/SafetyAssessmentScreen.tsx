@@ -117,8 +117,8 @@ interface AddedPerson {
 
 interface InstitutionType {
   id: string;
-  typeName: string;
-  typeCode: string;
+  name: string;
+  code: string;
   description: string;
 }
 
@@ -654,7 +654,7 @@ export default function SafetyAssessmentScreen() {
               onPress={() => setShowInstitutionTypeModal(true)}
             >
               <ThemedText style={styles.dropdownText}>
-                {institutionTypes.find(t => t.id === selectedInstitutionTypeId)?.typeName || "Select institution type"}
+                {institutionTypes.find(t => t.id === selectedInstitutionTypeId)?.name || "Select institution type"}
               </ThemedText>
               <Feather name="chevron-down" size={18} color={theme.textSecondary} />
             </Pressable>
@@ -877,7 +877,7 @@ export default function SafetyAssessmentScreen() {
                   }}
                 >
                   <View style={{ flex: 1 }}>
-                    <ThemedText style={styles.personTypeName}>{type.typeName}</ThemedText>
+                    <ThemedText style={styles.personTypeName}>{type.name}</ThemedText>
                     <ThemedText style={styles.personTypeDesc}>{type.description}</ThemedText>
                   </View>
                   {selectedInstitutionTypeId === type.id ? (
