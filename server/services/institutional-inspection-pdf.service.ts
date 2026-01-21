@@ -92,6 +92,7 @@ export class InstitutionalInspectionPdfService {
       this.addInstitutionDetails(doc, data);
       this.addRiskSummary(doc, data);
       this.addPillarDetails(doc, data);
+      this.addImageAppendix(doc, data);
       this.addFooter(doc, data);
 
       doc.end();
@@ -218,6 +219,103 @@ export class InstitutionalInspectionPdfService {
 
       doc.moveDown(0.5);
     });
+  }
+
+  private addImageAppendix(doc: PDFKit.PDFDocument, data: InspectionReportData) {
+    const { responses } = data;
+    
+    // Collect all images with their indicator names
+    const allImages: { indicatorName: string; imageData: string }[] = [];
+    
+    responses.forEach((response: any) => {
+      const images = response.images as string[] | null;
+      if (images && Array.isArray(images) && images.length > 0) {
+        images.forEach((imgData: string) => {
+          allImages.push({
+            indicatorName: response.indicatorName || 'Unknown Indicator',
+            imageData: imgData,
+          });
+        });
+      }
+    });
+
+    if (allImages.length === 0) {
+      return; // No images to display
+    }
+
+    // Start new page for image appendix
+    doc.addPage();
+    
+    doc.fontSize(14).font('Helvetica-Bold')
+      .text('PHOTOGRAPHIC EVIDENCE', { align: 'center' });
+    doc.moveDown();
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+    doc.moveDown();
+
+    // Grid settings: 2 columns, 5 rows = 10 images per page
+    const pageWidth = 495; // 545 - 50 margins
+    const colWidth = pageWidth / 2;
+    const imageWidth = colWidth - 20; // 10px padding on each side
+    const imageHeight = 100; // Height for each image
+    const captionHeight = 25; // Space for indicator name caption
+    const rowHeight = imageHeight + captionHeight + 10; // Total height per cell
+    const imagesPerPage = 10;
+    const startX = 50;
+    const startY = doc.y;
+
+    let imageIndex = 0;
+    
+    allImages.forEach((img, idx) => {
+      // Check if we need a new page (after every 10 images)
+      if (idx > 0 && idx % imagesPerPage === 0) {
+        doc.addPage();
+        doc.fontSize(14).font('Helvetica-Bold')
+          .text('PHOTOGRAPHIC EVIDENCE (continued)', { align: 'center' });
+        doc.moveDown();
+        doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+        doc.moveDown();
+        imageIndex = 0;
+      }
+
+      const col = imageIndex % 2;
+      const row = Math.floor(imageIndex % imagesPerPage / 2);
+      
+      const x = startX + (col * colWidth) + 10;
+      const y = (idx < imagesPerPage ? startY : doc.y) + (row * rowHeight);
+
+      try {
+        // Try to embed the image
+        if (img.imageData && img.imageData.startsWith('data:image')) {
+          // Convert base64 data URI to buffer
+          const base64Data = img.imageData.split(',')[1];
+          if (base64Data) {
+            const imageBuffer = Buffer.from(base64Data, 'base64');
+            doc.image(imageBuffer, x, y, { 
+              width: imageWidth, 
+              height: imageHeight,
+              fit: [imageWidth, imageHeight],
+            });
+          }
+        }
+      } catch (error) {
+        // If image fails, draw a placeholder box
+        doc.rect(x, y, imageWidth, imageHeight).stroke();
+        doc.fontSize(8).text('Image unavailable', x + 20, y + 40);
+      }
+
+      // Add indicator name caption below image
+      doc.fontSize(8).font('Helvetica')
+        .text(
+          img.indicatorName.substring(0, 40) + (img.indicatorName.length > 40 ? '...' : ''),
+          x, 
+          y + imageHeight + 5,
+          { width: imageWidth, align: 'center' }
+        );
+
+      imageIndex++;
+    });
+
+    doc.moveDown(2);
   }
 
   private addFooter(doc: PDFKit.PDFDocument, data: InspectionReportData) {
