@@ -7,7 +7,15 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
-import { Feather } from "@expo/vector-icons";
+import {
+  Feather,
+  FontAwesome,
+  FontAwesome5,
+  MaterialIcons,
+  MaterialCommunityIcons,
+  Ionicons,
+  AntDesign,
+} from "@expo/vector-icons";
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
@@ -24,7 +32,15 @@ export default function App() {
   useEffect(() => {
     async function loadFonts() {
       try {
-        await Font.loadAsync(Feather.font);
+        await Font.loadAsync({
+          ...Feather.font,
+          ...FontAwesome.font,
+          ...FontAwesome5.font,
+          ...MaterialIcons.font,
+          ...MaterialCommunityIcons.font,
+          ...Ionicons.font,
+          ...AntDesign.font,
+        });
         setFontsLoaded(true);
       } catch (e) {
         console.error("Error loading fonts:", e);
