@@ -27,14 +27,20 @@ import {
   complaintFormConfigs,
   complaintStatusWorkflows,
   complaintSettings,
+  complaintSequences,
+  sharedComplaintLinks,
+  districts,
   type Complaint,
   type ComplaintEvidence,
   type ComplaintHistory,
   type ComplaintFormConfig,
   type ComplaintStatusWorkflow,
   type ComplaintSetting,
+  type ComplaintSequence,
+  type SharedComplaintLink,
 } from "../../../shared/schema";
 import { eq, and, desc, gte, lte, like, sql } from "drizzle-orm";
+import crypto from "crypto";
 
 export interface NewComplaint {
   complaintCode: string;
@@ -300,7 +306,7 @@ export const complaintRepository = {
   },
 
   /**
-   * Generate unique complaint code.
+   * Generate unique complaint code (legacy format - fallback).
    */
   async generateComplaintCode(): Promise<string> {
     const prefix = "CMP";
@@ -315,6 +321,179 @@ export const complaintRepository = {
     
     const sequence = ((result?.count || 0) + 1).toString().padStart(4, "0");
     return `${prefix}${year}${month}${sequence}`;
+  },
+
+  /**
+   * Generate district-based complaint code.
+   * Format: {DISTRICT_ABBR}{4-digit-seq}{MMYYYY}
+   * Example: DEL0001012026 (Delhi, complaint #1, January 2026)
+   */
+  async generateDistrictComplaintCode(districtId: string): Promise<{ code: string; sequence: number }> {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    
+    // Get district abbreviation
+    const [district] = await db
+      .select()
+      .from(districts)
+      .where(eq(districts.id, districtId))
+      .limit(1);
+    
+    // Default abbreviation if district not found or no abbreviation
+    const abbr = district?.abbreviation || "GEN";
+    
+    // Get or create sequence for this district/month/year
+    let [sequence] = await db
+      .select()
+      .from(complaintSequences)
+      .where(
+        and(
+          eq(complaintSequences.districtId, districtId),
+          eq(complaintSequences.month, month),
+          eq(complaintSequences.year, year)
+        )
+      )
+      .limit(1);
+    
+    let nextSequence: number;
+    
+    if (sequence) {
+      // Increment existing sequence
+      nextSequence = sequence.lastSequence + 1;
+      await db
+        .update(complaintSequences)
+        .set({ lastSequence: nextSequence, updatedAt: new Date() })
+        .where(eq(complaintSequences.id, sequence.id));
+    } else {
+      // Create new sequence for this month
+      nextSequence = 1;
+      await db
+        .insert(complaintSequences)
+        .values({
+          districtId,
+          districtAbbreviation: abbr,
+          month,
+          year,
+          lastSequence: 1,
+        });
+    }
+    
+    // Format: ABBR + 4-digit sequence + MM + YYYY
+    const seqStr = nextSequence.toString().padStart(4, "0");
+    const monthStr = month.toString().padStart(2, "0");
+    const code = `${abbr}${seqStr}${monthStr}${year}`;
+    
+    return { code, sequence: nextSequence };
+  },
+
+  /**
+   * Get district by ID.
+   */
+  async getDistrictById(districtId: string) {
+    const [district] = await db
+      .select()
+      .from(districts)
+      .where(eq(districts.id, districtId))
+      .limit(1);
+    return district || null;
+  },
+
+  /**
+   * Get default district (first active district).
+   */
+  async getDefaultDistrict() {
+    const [district] = await db
+      .select()
+      .from(districts)
+      .where(eq(districts.status, "active"))
+      .limit(1);
+    return district || null;
+  },
+
+  /**
+   * Create a shared complaint link.
+   */
+  async createSharedLink(data: {
+    districtId?: string;
+    districtAbbreviation?: string;
+    sharedByOfficerId?: string;
+    sharedByOfficerName?: string;
+    expiresAt?: Date;
+  }): Promise<SharedComplaintLink> {
+    const token = crypto.randomBytes(32).toString("hex");
+    
+    const [created] = await db
+      .insert(sharedComplaintLinks)
+      .values({
+        token,
+        districtId: data.districtId,
+        districtAbbreviation: data.districtAbbreviation,
+        sharedByOfficerId: data.sharedByOfficerId,
+        sharedByOfficerName: data.sharedByOfficerName,
+        expiresAt: data.expiresAt,
+        status: "active",
+      })
+      .returning();
+    
+    return created;
+  },
+
+  /**
+   * Find shared link by token.
+   */
+  async findSharedLinkByToken(token: string): Promise<SharedComplaintLink | null> {
+    const [link] = await db
+      .select()
+      .from(sharedComplaintLinks)
+      .where(eq(sharedComplaintLinks.token, token))
+      .limit(1);
+    return link || null;
+  },
+
+  /**
+   * Mark shared link as submitted.
+   */
+  async markSharedLinkSubmitted(
+    token: string, 
+    complaintId: string, 
+    complaintCode: string
+  ): Promise<void> {
+    await db
+      .update(sharedComplaintLinks)
+      .set({
+        status: "submitted",
+        complaintId,
+        complaintCode,
+        submittedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(sharedComplaintLinks.token, token));
+  },
+
+  /**
+   * Update shared link with PDF info.
+   */
+  async updateSharedLinkPdf(token: string, pdfUrl: string): Promise<void> {
+    await db
+      .update(sharedComplaintLinks)
+      .set({
+        pdfGenerated: true,
+        pdfUrl,
+        updatedAt: new Date(),
+      })
+      .where(eq(sharedComplaintLinks.token, token));
+  },
+
+  /**
+   * Get shared links by officer.
+   */
+  async getSharedLinksByOfficer(officerId: string): Promise<SharedComplaintLink[]> {
+    return db
+      .select()
+      .from(sharedComplaintLinks)
+      .where(eq(sharedComplaintLinks.sharedByOfficerId, officerId))
+      .orderBy(desc(sharedComplaintLinks.createdAt));
   },
 
   /**
@@ -342,4 +521,4 @@ export const complaintRepository = {
   },
 };
 
-export type { Complaint, ComplaintEvidence, ComplaintHistory, ComplaintFormConfig };
+export type { Complaint, ComplaintEvidence, ComplaintHistory, ComplaintFormConfig, SharedComplaintLink, ComplaintSequence };

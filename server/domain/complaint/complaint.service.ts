@@ -59,7 +59,8 @@ interface LocationData {
  * Complaint submission data.
  */
 interface SubmissionData {
-  proposedComplaintCode?: string;
+  sharedLinkToken?: string; // If submitting via shared link
+  districtId?: string; // For district-based ID generation
   complainantName: string;
   complainantMobile?: string;
   complainantEmail?: string;
@@ -96,22 +97,35 @@ export const complaintService = {
    * - Location data becomes immutable once saved
    * - History record is created automatically
    */
-  async submitComplaint(data: SubmissionData): Promise<ServiceResult<Complaint>> {
+  async submitComplaint(data: SubmissionData): Promise<ServiceResult<Complaint & { sharedLinkToken?: string }>> {
     // Validate required fields
     if (!data.complainantName?.trim()) {
       return { success: false, error: "Complainant name is required", code: "REQUIRED_FIELD" };
     }
 
-    // Use proposed code or generate new one, ensure uniqueness
-    let complaintCode = data.proposedComplaintCode;
-    if (complaintCode) {
-      // Check if proposed code already exists
-      const existing = await complaintRepository.findByCode(complaintCode);
-      if (existing) {
-        // Code already exists, generate a new one
-        complaintCode = await complaintRepository.generateComplaintCode();
+    let complaintCode: string;
+    let sharedLink = null;
+    let districtId = data.districtId;
+
+    // Check if submitting via shared link
+    if (data.sharedLinkToken) {
+      sharedLink = await complaintRepository.findSharedLinkByToken(data.sharedLinkToken);
+      if (!sharedLink) {
+        return { success: false, error: "Invalid or expired link", code: "INVALID_LINK" };
       }
+      if (sharedLink.status !== "active") {
+        return { success: false, error: "This link has already been used", code: "LINK_USED" };
+      }
+      // Use district from shared link
+      districtId = sharedLink.districtId || districtId;
+    }
+
+    // Generate district-based complaint code
+    if (districtId) {
+      const result = await complaintRepository.generateDistrictComplaintCode(districtId);
+      complaintCode = result.code;
     } else {
+      // Fallback to legacy format if no district
       complaintCode = await complaintRepository.generateComplaintCode();
     }
 
@@ -154,7 +168,22 @@ export const complaintService = {
       ipAddress: data.ipAddress,
     });
 
-    return { success: true, data: complaint };
+    // Mark shared link as submitted if applicable
+    if (sharedLink && data.sharedLinkToken) {
+      await complaintRepository.markSharedLinkSubmitted(
+        data.sharedLinkToken,
+        complaint.id,
+        complaintCode
+      );
+    }
+
+    return { 
+      success: true, 
+      data: { 
+        ...complaint, 
+        sharedLinkToken: data.sharedLinkToken 
+      } 
+    };
   },
 
   /**

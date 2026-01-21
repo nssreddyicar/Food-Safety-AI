@@ -1042,8 +1042,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== COMPLAINT MANAGEMENT API ====================
   // Dynamic, location-aware, evidence-supported complaint system
 
-  // Import complaint service
+  // Import complaint service and repository
   const { complaintService } = await import("./domain/complaint/complaint.service");
+  const { complaintRepository } = await import("./data/repositories/complaint.repository");
 
   // Get complaint form configuration (public)
   app.get("/api/complaints/form-config", async (req: Request, res: Response) => {
@@ -1063,7 +1064,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/complaints/submit", async (req: Request, res: Response) => {
     try {
       const { 
-        proposedComplaintCode,
+        sharedLinkToken,
+        districtId,
         complainantName, 
         complainantMobile, 
         complainantEmail,
@@ -1075,7 +1077,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } = req.body;
 
       const result = await complaintService.submitComplaint({
-        proposedComplaintCode,
+        sharedLinkToken,
+        districtId,
         complainantName,
         complainantMobile,
         complainantEmail,
@@ -1103,6 +1106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         success: true, 
         complaintCode: result.data.complaintCode,
+        complaintId: result.data.id,
         message: "Complaint submitted successfully"
       });
     } catch (error) {
@@ -1125,6 +1129,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error tracking complaint:", error);
       res.status(500).json({ error: "Failed to track complaint" });
+    }
+  });
+
+  // ============== Shared Complaint Links ==============
+  
+  // Create a shared complaint link (officer)
+  app.post("/api/complaints/share-link", async (req: Request, res: Response) => {
+    try {
+      const { districtId, expiresInDays } = req.body;
+      const officerId = req.headers["x-officer-id"] as string;
+      const officerName = req.headers["x-officer-name"] as string;
+      
+      // Get district info
+      let districtAbbr: string | undefined;
+      if (districtId) {
+        const district = await complaintRepository.getDistrictById(districtId);
+        districtAbbr = district?.abbreviation || undefined;
+      } else {
+        // Use default district
+        const defaultDistrict = await complaintRepository.getDefaultDistrict();
+        if (defaultDistrict) {
+          districtAbbr = defaultDistrict.abbreviation || undefined;
+        }
+      }
+      
+      const expiresAt = expiresInDays 
+        ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
+        : undefined;
+      
+      const link = await complaintRepository.createSharedLink({
+        districtId,
+        districtAbbreviation: districtAbbr,
+        sharedByOfficerId: officerId,
+        sharedByOfficerName: officerName,
+        expiresAt,
+      });
+      
+      // Generate public URL
+      const baseUrl = process.env.EXPO_PUBLIC_DOMAIN 
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : `http://localhost:5000`;
+      const shareUrl = `${baseUrl}/complaint/submit?token=${link.token}`;
+      
+      res.json({
+        success: true,
+        token: link.token,
+        shareUrl,
+        expiresAt: link.expiresAt,
+      });
+    } catch (error) {
+      console.error("Error creating shared link:", error);
+      res.status(500).json({ error: "Failed to create shared link" });
+    }
+  });
+
+  // Validate a shared link (public)
+  app.get("/api/complaints/share-link/:token", async (req: Request, res: Response) => {
+    try {
+      const token = req.params.token as string;
+      const link = await complaintRepository.findSharedLinkByToken(token);
+      
+      if (!link) {
+        return res.status(404).json({ error: "Link not found", code: "NOT_FOUND" });
+      }
+      
+      if (link.status !== "active") {
+        return res.status(400).json({ 
+          error: "This link has already been used", 
+          code: "LINK_USED",
+          complaintCode: link.complaintCode,
+        });
+      }
+      
+      if (link.expiresAt && new Date() > new Date(link.expiresAt)) {
+        return res.status(400).json({ error: "Link has expired", code: "EXPIRED" });
+      }
+      
+      res.json({
+        valid: true,
+        token: link.token,
+        districtId: link.districtId,
+        districtAbbreviation: link.districtAbbreviation,
+        sharedByOfficerName: link.sharedByOfficerName,
+        sharedAt: link.sharedAt,
+      });
+    } catch (error) {
+      console.error("Error validating shared link:", error);
+      res.status(500).json({ error: "Failed to validate link" });
+    }
+  });
+
+  // Get officer's shared links (officer)
+  app.get("/api/complaints/my-shared-links", async (req: Request, res: Response) => {
+    try {
+      const officerId = req.headers["x-officer-id"] as string;
+      
+      if (!officerId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const links = await complaintRepository.getSharedLinksByOfficer(officerId);
+      res.json(links);
+    } catch (error) {
+      console.error("Error getting shared links:", error);
+      res.status(500).json({ error: "Failed to get shared links" });
     }
   });
 
