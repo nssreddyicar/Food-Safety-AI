@@ -5519,7 +5519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all inspections (with optional filters)
-  app.get("/api/institutional-inspections", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/institutional-inspections", async (req: Request, res: Response) => {
     try {
       const { districtId, officerId, limit } = req.query;
       
@@ -5540,7 +5540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get inspection by ID with full details
-  app.get("/api/institutional-inspections/:id", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/institutional-inspections/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const inspection = await institutionalInspectionService.getInspectionDetails(id);
@@ -5636,7 +5636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get inspection statistics
-  app.get("/api/institutional-inspections/stats", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/institutional-inspections/stats", async (req: Request, res: Response) => {
     try {
       const { districtId } = req.query;
       const stats = await institutionalInspectionService.getStats(districtId as string);
