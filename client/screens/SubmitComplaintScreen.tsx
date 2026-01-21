@@ -7,12 +7,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
+  Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/Card";
@@ -21,6 +25,7 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
+import { generateAcknowledgementHTML, ComplaintAcknowledgementData } from "@/lib/complaint-acknowledgement-template";
 import type { ComplaintsStackParamList } from "@/navigation/ComplaintsStackNavigator";
 
 type SubmitComplaintRouteProp = RouteProp<ComplaintsStackParamList, "SubmitComplaint">;
@@ -46,6 +51,12 @@ export default function SubmitComplaintScreen() {
   const [sharedLinkInfo, setSharedLinkInfo] = useState<SharedLinkInfo | null>(null);
   const [isValidatingLink, setIsValidatingLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+
+  // Success modal state
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [submittedData, setSubmittedData] = useState<ComplaintAcknowledgementData | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfUri, setPdfUri] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
@@ -188,22 +199,83 @@ export default function SubmitComplaintScreen() {
         throw new Error(data.error || "Failed to submit complaint");
       }
 
-      Alert.alert(
-        "Complaint Submitted",
-        `Your complaint has been registered.\n\nComplaint ID: ${data.complaintCode}\n\nPlease save this ID to track your complaint status.`,
-        [
-          {
-            text: "OK",
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      // Prepare acknowledgement data for PDF
+      const apiUrl = getApiUrl();
+      const trackingUrl = `${apiUrl}/track/${data.complaintCode}`;
+      
+      const ackData: ComplaintAcknowledgementData = {
+        complaintCode: data.complaintCode,
+        submittedAt: data.submittedAt || new Date().toISOString(),
+        districtName: sharedLinkInfo?.districtAbbreviation || "Assigned District",
+        complaintType: complaintType,
+        complaintNature: complaintNature,
+        address: address.trim() || undefined,
+        trackingUrl,
+      };
+      
+      setSubmittedData(ackData);
+      setShowSuccessModal(true);
     } catch (error: any) {
       console.error("Submit error:", error);
       Alert.alert("Error", error.message || "Failed to submit complaint");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Generate PDF acknowledgement
+  const generatePdf = async () => {
+    if (!submittedData) return;
+    
+    try {
+      setIsGeneratingPdf(true);
+      const html = generateAcknowledgementHTML(submittedData);
+      
+      if (Platform.OS === "web") {
+        const newWindow = window.open("", "_blank");
+        if (newWindow) {
+          newWindow.document.write(html);
+          newWindow.document.close();
+          newWindow.print();
+        }
+        setPdfUri("web-print");
+      } else {
+        const { uri } = await Print.printToFileAsync({ html });
+        setPdfUri(uri);
+      }
+    } catch (error) {
+      console.error("Failed to generate PDF:", error);
+      Alert.alert("Error", "Failed to generate acknowledgement PDF");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  // Share/download PDF
+  const sharePdf = async () => {
+    if (!pdfUri || pdfUri === "web-print") return;
+    
+    try {
+      const sharingAvailable = await Sharing.isAvailableAsync();
+      if (sharingAvailable) {
+        await Sharing.shareAsync(pdfUri, {
+          mimeType: "application/pdf",
+          dialogTitle: `Complaint Acknowledgement - ${submittedData?.complaintCode}`,
+          UTI: "com.adobe.pdf",
+        });
+      } else {
+        Alert.alert("Sharing not available", "Please use the print option instead.");
+      }
+    } catch (error) {
+      console.error("Failed to share PDF:", error);
+      Alert.alert("Error", "Failed to share the PDF");
+    }
+  };
+
+  // Close success modal and go back
+  const handleSuccessClose = () => {
+    setShowSuccessModal(false);
+    navigation.goBack();
   };
 
   // Show loading state while validating link
@@ -377,6 +449,71 @@ export default function SubmitComplaintScreen() {
           </Button>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        animationType="fade"
+        transparent
+        onRequestClose={handleSuccessClose}
+      >
+        <View style={styles.modalOverlay}>
+          <Card style={styles.successModal}>
+            <View style={[styles.successIconContainer, { backgroundColor: "#28a74520" }]}>
+              <Feather name="check-circle" size={48} color="#28a745" />
+            </View>
+            
+            <ThemedText type="h3" style={styles.successTitle}>
+              Complaint Submitted!
+            </ThemedText>
+            
+            <View style={[styles.complaintCodeBox, { borderColor: theme.primary }]}>
+              <ThemedText style={styles.codeLabel}>Complaint ID</ThemedText>
+              <ThemedText style={[styles.codeValue, { color: theme.primary }]}>
+                {submittedData?.complaintCode}
+              </ThemedText>
+            </View>
+            
+            <ThemedText style={styles.successDescription}>
+              Please save this ID to track your complaint status. You can download an acknowledgement receipt below.
+            </ThemedText>
+            
+            <View style={styles.modalButtons}>
+              {!pdfUri ? (
+                <Button
+                  onPress={generatePdf}
+                  disabled={isGeneratingPdf}
+                  style={styles.pdfButton}
+                >
+                  <View style={styles.buttonContent}>
+                    {isGeneratingPdf ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Feather name="file-text" size={18} color="white" />
+                    )}
+                    <ThemedText style={styles.buttonText}>
+                      {isGeneratingPdf ? "Generating..." : "Generate Receipt"}
+                    </ThemedText>
+                  </View>
+                </Button>
+              ) : (
+                <Button onPress={sharePdf} style={styles.pdfButton}>
+                  <View style={styles.buttonContent}>
+                    <Feather name="share-2" size={18} color="white" />
+                    <ThemedText style={styles.buttonText}>Share Receipt</ThemedText>
+                  </View>
+                </Button>
+              )}
+              
+              <Pressable onPress={handleSuccessClose} style={styles.closeLink}>
+                <ThemedText style={[styles.closeLinkText, { color: theme.primary }]}>
+                  Close
+                </ThemedText>
+              </Pressable>
+            </View>
+          </Card>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -489,5 +626,85 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: Spacing.md,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.lg,
+  },
+  successModal: {
+    width: "100%",
+    maxWidth: 360,
+    padding: Spacing.xl,
+    alignItems: "center",
+  },
+  successIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+  },
+  successTitle: {
+    textAlign: "center",
+    marginBottom: Spacing.lg,
+  },
+  complaintCodeBox: {
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    alignItems: "center",
+    width: "100%",
+    marginBottom: Spacing.lg,
+  },
+  codeLabel: {
+    fontSize: 12,
+    opacity: 0.6,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: Spacing.xs,
+  },
+  codeValue: {
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: 2,
+    fontFamily: Platform.select({ ios: "Courier", android: "monospace", default: "monospace" }),
+  },
+  successDescription: {
+    fontSize: 14,
+    textAlign: "center",
+    opacity: 0.7,
+    lineHeight: 20,
+    marginBottom: Spacing.lg,
+  },
+  modalButtons: {
+    width: "100%",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  pdfButton: {
+    width: "100%",
+  },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+  },
+  buttonText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  closeLink: {
+    paddingVertical: Spacing.md,
+  },
+  closeLinkText: {
+    fontSize: 16,
+    fontWeight: "500",
   },
 });
