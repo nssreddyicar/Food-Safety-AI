@@ -69,10 +69,16 @@ Same features as Flutter, accessible via:
 - Expo Go app (scan QR)
 - Web preview
 
-Complaint Screens (new):
+Complaint Screens:
 - `ComplaintsScreen.tsx` - List/filter/search complaints
 - `ComplaintDetailsScreen.tsx` - View details, update status, assign
 - `ComplaintsStackNavigator.tsx` - Navigation stack
+
+Institutional Inspection Screens (new):
+- `InstitutionalInspectionsScreen.tsx` - List/filter institutional inspections
+- `NewInstitutionalInspectionScreen.tsx` - Create new institutional inspection
+- `InstitutionalInspectionAssessmentScreen.tsx` - 35-indicator risk assessment
+- `InstitutionalInspectionsStackNavigator.tsx` - Navigation stack
 
 ### Backend Architecture
 Express.js with strict layered architecture:

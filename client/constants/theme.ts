@@ -67,6 +67,17 @@ export const Spacing = {
   buttonHeight: 52,
 };
 
+export const FontSize = {
+  xs: 10,
+  sm: 12,
+  md: 14,
+  lg: 16,
+  xl: 18,
+  "2xl": 20,
+  "3xl": 24,
+  "4xl": 28,
+};
+
 export const BorderRadius = {
   xs: 4,
   sm: 6,
