@@ -9,6 +9,9 @@
  */
 
 import { institutionalInspectionRepository } from "../../data/repositories/institutional-inspection.repository";
+import { db } from "../../db";
+import { officerAssignments, districts } from "../../../shared/schema";
+import { eq, and } from "drizzle-orm";
 
 interface IndicatorResponse {
   indicatorId: string;
@@ -185,8 +188,46 @@ export class InstitutionalInspectionService {
    * Create a new institutional inspection (draft)
    */
   async createInspection(data: CreateInspectionData): Promise<any> {
+    // Get district ID from officer's assignment if not provided
+    let districtId = data.districtId;
+    if (!districtId && data.officerId) {
+      // Try to get district from officer's active assignment
+      const assignment = await db
+        .select({ jurisdictionId: officerAssignments.jurisdictionId })
+        .from(officerAssignments)
+        .where(
+          and(
+            eq(officerAssignments.officerId, data.officerId),
+            eq(officerAssignments.status, 'active')
+          )
+        )
+        .limit(1);
+      
+      // If assignment found, use the jurisdiction ID directly
+      if (assignment.length > 0) {
+        districtId = assignment[0].jurisdictionId;
+      }
+      
+      // Fallback: get first available district
+      if (!districtId) {
+        const firstDistrict = await db
+          .select({ id: districts.id })
+          .from(districts)
+          .where(eq(districts.status, 'active'))
+          .limit(1);
+        
+        if (firstDistrict.length > 0) {
+          districtId = firstDistrict[0].id;
+        }
+      }
+    }
+    
+    if (!districtId) {
+      throw new Error('District ID is required. Please ensure officer has an active assignment.');
+    }
+    
     // Generate inspection code
-    const inspectionCode = await institutionalInspectionRepository.generateInspectionCode(data.districtId);
+    const inspectionCode = await institutionalInspectionRepository.generateInspectionCode(districtId);
     
     // Capture config snapshot for audit reproducibility
     const config = await institutionalInspectionRepository.getAllConfig();
@@ -200,7 +241,7 @@ export class InstitutionalInspectionService {
       institutionTypeId: data.institutionTypeId,
       institutionName: data.institutionName,
       institutionAddress: data.institutionAddress,
-      districtId: data.districtId,
+      districtId,
       jurisdictionId: data.jurisdictionId,
       latitude: data.latitude,
       longitude: data.longitude,
