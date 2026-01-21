@@ -1177,3 +1177,326 @@ export const sharedComplaintLinks = pgTable("shared_complaint_links", {
 });
 
 export type SharedComplaintLink = typeof sharedComplaintLinks.$inferSelect;
+
+// =============================================================================
+// INSTITUTIONAL FOOD SAFETY INSPECTION MODULE
+// =============================================================================
+// Government-grade inspection module for institutional food services.
+// Risk-based, indicator-driven, weighted scoring with full admin control.
+// Covers: Schools (MDM, KGBV), Hostels, Hospitals, Canteens, Temples, etc.
+// =============================================================================
+
+/**
+ * Institution Types - Dynamic list of institutional food service types.
+ * 
+ * WHY: Admin-configurable institution categories for inspection targeting.
+ * EXAMPLES: Mid Day Meal Schools, KGBV Schools, Residential Schools, Hostels,
+ *           Government Hospitals, College Hostels, Government Canteens, Temples.
+ * RULES:
+ * - Types can be added/disabled by admin
+ * - Never hardcode institution types in code
+ */
+export const institutionTypes = pgTable("institution_types", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  code: varchar("code", { length: 20 }).notNull().unique(), // Short code for IDs
+  description: text("description"),
+  category: text("category"), // education, healthcare, government, religious
+  displayOrder: integer("display_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type InstitutionType = typeof institutionTypes.$inferSelect;
+
+/**
+ * Institutional Inspection Pillars - The 7 assessment categories.
+ * 
+ * WHY: Organizes indicators into logical groups for structured assessment.
+ * FSSAI ALIGNMENT: Pillars cover procurement, storage, cooking, hygiene, etc.
+ * RULES:
+ * - Pillars can be enabled/disabled by admin
+ * - Display order is admin-configurable
+ * - Historical versions preserved for audit
+ */
+export const institutionalInspectionPillars = pgTable("institutional_inspection_pillars", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  pillarNumber: integer("pillar_number").notNull(), // 1-7
+  name: text("name").notNull(),
+  description: text("description"),
+  displayOrder: integer("display_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  version: integer("version").notNull().default(1), // For versioning
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type InstitutionalInspectionPillar = typeof institutionalInspectionPillars.$inferSelect;
+
+/**
+ * Institutional Inspection Indicators - The 35 risk indicators.
+ * 
+ * WHY: Individual assessment criteria with weighted scoring.
+ * RISK WEIGHTS: High (3), Medium (2), Low (1)
+ * RULES:
+ * - Each indicator belongs to a pillar
+ * - Weight determines scoring impact
+ * - Non-compliant indicators contribute their weight to total risk
+ * - Admin can modify weights, add/remove indicators
+ */
+export const institutionalInspectionIndicators = pgTable("institutional_inspection_indicators", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  pillarId: varchar("pillar_id").notNull(),
+  indicatorNumber: integer("indicator_number").notNull(), // 1-35
+  name: text("name").notNull(),
+  description: text("description"),
+  riskLevel: text("risk_level").notNull(), // high, medium, low
+  weight: integer("weight").notNull(), // 3 for high, 2 for medium, 1 for low
+  displayOrder: integer("display_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type InstitutionalInspectionIndicator = typeof institutionalInspectionIndicators.$inferSelect;
+
+/**
+ * Institutional Inspection Configuration - Risk thresholds and settings.
+ * 
+ * WHY: Admin-configurable scoring rules and thresholds.
+ * SETTINGS INCLUDE:
+ * - Low/Medium/High risk score thresholds
+ * - High-risk indicator threshold (auto-classify as High Risk)
+ * - Version tracking for historical audits
+ */
+export const institutionalInspectionConfig = pgTable("institutional_inspection_config", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  configKey: text("config_key").notNull().unique(),
+  configValue: text("config_value").notNull(),
+  configType: text("config_type").notNull(), // number, boolean, json
+  description: text("description"),
+  version: integer("version").notNull().default(1),
+  updatedBy: varchar("updated_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type InstitutionalInspectionConfig = typeof institutionalInspectionConfig.$inferSelect;
+
+/**
+ * Institutional Inspections - Main inspection records.
+ * 
+ * WHY: Captures full institutional inspection with all required data.
+ * IMMUTABILITY: Submitted inspections cannot be modified (court admissibility).
+ * DATA INCLUDES:
+ * - Institution details (type, name, address, GPS)
+ * - Responsible persons (head, warden, contractor)
+ * - Risk classification outcome
+ * - Snapshot of indicators/weights at time of inspection
+ */
+export const institutionalInspections = pgTable("institutional_inspections", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  
+  // Inspection Reference
+  inspectionCode: text("inspection_code").notNull().unique(), // Generated code
+  
+  // Institution Details
+  institutionTypeId: varchar("institution_type_id").notNull(),
+  institutionName: text("institution_name").notNull(),
+  institutionAddress: text("institution_address").notNull(),
+  districtId: varchar("district_id").notNull(),
+  jurisdictionId: varchar("jurisdiction_id"),
+  latitude: text("latitude"),
+  longitude: text("longitude"),
+  
+  // Inspection Context
+  inspectionDate: timestamp("inspection_date").notNull(),
+  officerId: varchar("officer_id").notNull(),
+  
+  // Responsible Persons (JSONB for flexibility)
+  headOfInstitution: jsonb("head_of_institution"), // name, parentName, age, mobile
+  inchargeWarden: jsonb("incharge_warden"), // name, parentName, age, mobile
+  contractorCookServiceProvider: jsonb("contractor_cook_service_provider"), // name, mobile, fssaiLicense
+  
+  // Risk Assessment Results
+  totalScore: integer("total_score").default(0),
+  highRiskCount: integer("high_risk_count").default(0),
+  mediumRiskCount: integer("medium_risk_count").default(0),
+  lowRiskCount: integer("low_risk_count").default(0),
+  riskClassification: text("risk_classification"), // low, medium, high
+  
+  // Deviations and Recommendations
+  deviations: jsonb("deviations"), // Array of non-compliant indicators
+  recommendations: jsonb("recommendations"), // Array of improvement actions
+  
+  // Snapshot of config at inspection time (for audit reproducibility)
+  configSnapshot: jsonb("config_snapshot"), // Thresholds, weights used
+  
+  // Status
+  status: text("status").notNull().default("draft"), // draft, submitted, approved
+  submittedAt: timestamp("submitted_at"),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: varchar("approved_by"),
+  
+  // PDF Report
+  reportGenerated: boolean("report_generated").default(false),
+  reportUrl: text("report_url"),
+  
+  // Audit
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type InstitutionalInspection = typeof institutionalInspections.$inferSelect;
+
+/**
+ * Institutional Inspection Responses - Individual indicator responses.
+ * 
+ * WHY: Records Yes/No/NA response for each indicator per inspection.
+ * SCORING: Non-compliant (No) adds weight to risk score.
+ * IMMUTABILITY: Locked after inspection submission.
+ */
+export const institutionalInspectionResponses = pgTable("institutional_inspection_responses", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  inspectionId: varchar("inspection_id").notNull(),
+  indicatorId: varchar("indicator_id").notNull(),
+  
+  // Response
+  response: text("response").notNull(), // yes, no, na (not applicable)
+  remarks: text("remarks"),
+  
+  // Snapshot at time of response (for audit)
+  indicatorName: text("indicator_name").notNull(),
+  pillarName: text("pillar_name").notNull(),
+  riskLevel: text("risk_level").notNull(),
+  weight: integer("weight").notNull(),
+  
+  // Score contribution (0 if compliant or NA, weight if non-compliant)
+  scoreContribution: integer("score_contribution").notNull().default(0),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type InstitutionalInspectionResponse = typeof institutionalInspectionResponses.$inferSelect;
+
+/**
+ * Institutional Surveillance Samples - Samples collected during inspection.
+ * 
+ * WHY: Surveillance (not enforcement) samples for institutional food safety.
+ * RULES:
+ * - Only surveillance samples allowed for institutions
+ * - Must capture witness details
+ * - Photos required
+ * - Immutable after collection
+ */
+export const institutionalSurveillanceSamples = pgTable("institutional_surveillance_samples", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  inspectionId: varchar("inspection_id").notNull(),
+  
+  // Sample Details
+  sampleName: text("sample_name").notNull(),
+  sampleCode: text("sample_code").notNull(),
+  placeOfCollection: text("place_of_collection").notNull(),
+  packingType: text("packing_type").notNull(), // packed, loose
+  collectionDateTime: timestamp("collection_date_time").notNull(),
+  
+  // Witness Details
+  witnessName: text("witness_name").notNull(),
+  witnessAddress: text("witness_address").notNull(),
+  witnessMobile: text("witness_mobile").notNull(),
+  
+  // Photos
+  photos: jsonb("photos"), // Array of photo URLs
+  
+  // Status
+  status: text("status").notNull().default("collected"), // collected, dispatched, tested
+  
+  // Lab Details (if applicable)
+  labName: text("lab_name"),
+  labDispatchDate: timestamp("lab_dispatch_date"),
+  labResult: text("lab_result"),
+  labReportDate: timestamp("lab_report_date"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type InstitutionalSurveillanceSample = typeof institutionalSurveillanceSamples.$inferSelect;
+
+/**
+ * Institutional Inspection Photos - Geo-tagged photos with watermarks.
+ * 
+ * WHY: Photographic evidence of institutional conditions.
+ * WATERMARK: Department name, date/time, GPS, institution name, inspection type.
+ * CATEGORIES: kitchen, storage, cooking_area, serving_area, water_source, waste_disposal
+ */
+export const institutionalInspectionPhotos = pgTable("institutional_inspection_photos", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  inspectionId: varchar("inspection_id").notNull(),
+  
+  // Photo Details
+  filename: text("filename").notNull(),
+  originalName: text("original_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  category: text("category").notNull(), // kitchen, storage, cooking_area, serving_area, water_source, waste_disposal
+  
+  // GPS Data
+  latitude: text("latitude"),
+  longitude: text("longitude"),
+  captureTimestamp: timestamp("capture_timestamp"),
+  
+  // Watermark Applied
+  watermarkApplied: boolean("watermark_applied").default(false),
+  watermarkDetails: jsonb("watermark_details"), // GPS, timestamp, department, etc.
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type InstitutionalInspectionPhoto = typeof institutionalInspectionPhotos.$inferSelect;
+
+/**
+ * Institutional Inspection History - Audit trail for all changes.
+ * 
+ * WHY: Legal requirement - all changes must be logged.
+ * RULES:
+ * - Records are APPEND-ONLY
+ * - Never delete or modify history
+ */
+export const institutionalInspectionHistory = pgTable("institutional_inspection_history", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  inspectionId: varchar("inspection_id").notNull(),
+  
+  // Change Details
+  action: text("action").notNull(), // created, submitted, approved, photo_added, sample_added
+  details: jsonb("details"),
+  
+  // Actor
+  performedBy: varchar("performed_by").notNull(),
+  performedByName: text("performed_by_name"),
+  
+  // Audit
+  performedAt: timestamp("performed_at").defaultNow(),
+  ipAddress: text("ip_address"),
+});
+
+export type InstitutionalInspectionHistoryEntry = typeof institutionalInspectionHistory.$inferSelect;
