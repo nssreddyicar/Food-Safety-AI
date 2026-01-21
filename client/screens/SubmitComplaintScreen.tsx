@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -6,11 +6,11 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { ThemedText } from "@/components/ThemedText";
@@ -21,11 +21,15 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
+import type { ComplaintsStackParamList } from "@/navigation/ComplaintsStackNavigator";
 
-function generateComplaintId() {
-  const year = new Date().getFullYear();
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `COMP-${year}-${random}`;
+type SubmitComplaintRouteProp = RouteProp<ComplaintsStackParamList, "SubmitComplaint">;
+
+interface SharedLinkInfo {
+  token: string;
+  districtId?: string;
+  districtAbbreviation?: string;
+  sharedByOfficerName?: string;
 }
 
 export default function SubmitComplaintScreen() {
@@ -33,11 +37,16 @@ export default function SubmitComplaintScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const navigation = useNavigation();
+  const route = useRoute<SubmitComplaintRouteProp>();
   
   // Estimate tab bar height (safe area bottom + typical tab bar)
   const tabBarHeight = insets.bottom + 60;
 
-  const [complaintId, setComplaintId] = useState(() => generateComplaintId());
+  // Shared link state
+  const [sharedLinkInfo, setSharedLinkInfo] = useState<SharedLinkInfo | null>(null);
+  const [isValidatingLink, setIsValidatingLink] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
@@ -50,6 +59,44 @@ export default function SubmitComplaintScreen() {
     longitude: string;
     accuracy: string;
   } | null>(null);
+
+  // Validate shared link token if provided
+  useEffect(() => {
+    const validateToken = async () => {
+      const token = route.params?.token;
+      if (!token) return;
+
+      setIsValidatingLink(true);
+      setLinkError(null);
+
+      try {
+        const apiUrl = getApiUrl();
+        const response = await fetch(`${apiUrl}/api/complaints/share-link/${token}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          setLinkError(data.error || "Invalid link");
+          if (data.code === "LINK_USED" && data.complaintCode) {
+            setLinkError(`This link has already been used. Complaint ID: ${data.complaintCode}`);
+          }
+          return;
+        }
+
+        setSharedLinkInfo({
+          token: data.token,
+          districtId: data.districtId,
+          districtAbbreviation: data.districtAbbreviation,
+          sharedByOfficerName: data.sharedByOfficerName,
+        });
+      } catch (error) {
+        setLinkError("Failed to validate link. Please try again.");
+      } finally {
+        setIsValidatingLink(false);
+      }
+    };
+
+    validateToken();
+  }, [route.params?.token]);
 
   const handleGetLocation = async () => {
     setIsGettingLocation(true);
@@ -113,7 +160,8 @@ export default function SubmitComplaintScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          proposedComplaintCode: complaintId,
+          sharedLinkToken: sharedLinkInfo?.token,
+          districtId: sharedLinkInfo?.districtId || route.params?.districtId,
           complainantName: name.trim(),
           complainantMobile: mobile.trim(),
           complainantEmail: email.trim() || undefined,
@@ -158,6 +206,36 @@ export default function SubmitComplaintScreen() {
     }
   };
 
+  // Show loading state while validating link
+  if (isValidatingLink) {
+    return (
+      <ThemedView style={styles.centerContent}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <ThemedText style={{ marginTop: Spacing.md }}>Validating link...</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  // Show error state if link is invalid
+  if (linkError && route.params?.token) {
+    return (
+      <ThemedView style={styles.centerContent}>
+        <Card style={styles.errorCard}>
+          <Feather name="alert-circle" size={48} color="#dc3545" style={{ marginBottom: Spacing.md }} />
+          <ThemedText type="h4" style={{ textAlign: "center", marginBottom: Spacing.sm }}>
+            Link Error
+          </ThemedText>
+          <ThemedText style={{ textAlign: "center", opacity: 0.7 }}>
+            {linkError}
+          </ThemedText>
+          <Button onPress={() => navigation.goBack()} style={{ marginTop: Spacing.lg }}>
+            Go Back
+          </Button>
+        </Card>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView
@@ -172,23 +250,36 @@ export default function SubmitComplaintScreen() {
           ]}
           keyboardShouldPersistTaps="handled"
         >
-          <Card style={styles.complaintIdCard}>
-            <View style={styles.complaintIdHeader}>
-              <ThemedText style={styles.complaintIdLabel}>COMPLAINT ID</ThemedText>
-              <Pressable
-                onPress={() => setComplaintId(generateComplaintId())}
-                style={[styles.refreshButton, { backgroundColor: theme.backgroundSecondary }]}
-              >
-                <Feather name="refresh-cw" size={16} color={theme.primary} />
-              </Pressable>
-            </View>
-            <ThemedText type="h2" style={[styles.complaintIdValue, { color: theme.primary }]}>
-              {complaintId}
-            </ThemedText>
-            <ThemedText style={styles.complaintIdHint}>
-              Save this ID to track your complaint status
-            </ThemedText>
-          </Card>
+          {sharedLinkInfo ? (
+            <Card style={styles.complaintIdCard}>
+              <View style={[styles.sharedLinkBadge, { backgroundColor: theme.primary + "20" }]}>
+                <Feather name="link" size={14} color={theme.primary} />
+                <ThemedText style={[styles.sharedLinkText, { color: theme.primary }]}>
+                  Verified Link
+                </ThemedText>
+              </View>
+              {sharedLinkInfo.districtAbbreviation ? (
+                <ThemedText style={styles.complaintIdHint}>
+                  District: {sharedLinkInfo.districtAbbreviation}
+                </ThemedText>
+              ) : null}
+              {sharedLinkInfo.sharedByOfficerName ? (
+                <ThemedText style={styles.complaintIdHint}>
+                  Shared by: {sharedLinkInfo.sharedByOfficerName}
+                </ThemedText>
+              ) : null}
+              <ThemedText style={[styles.complaintIdHint, { marginTop: Spacing.sm }]}>
+                Your Complaint ID will be assigned after submission
+              </ThemedText>
+            </Card>
+          ) : (
+            <Card style={styles.complaintIdCard}>
+              <Feather name="file-text" size={24} color={theme.primary} style={{ marginBottom: Spacing.xs }} />
+              <ThemedText style={styles.complaintIdHint}>
+                Your Complaint ID will be assigned after submission
+              </ThemedText>
+            </Card>
+          )}
 
           <Card style={styles.infoCard}>
             <Feather name="info" size={20} color={theme.primary} />
@@ -294,6 +385,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  centerContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.lg,
+  },
+  errorCard: {
+    padding: Spacing.xl,
+    alignItems: "center",
+    maxWidth: 320,
+  },
   flex: {
     flex: 1,
   },
@@ -332,6 +434,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.6,
     marginTop: Spacing.xs,
+    textAlign: "center",
+  },
+  sharedLinkBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    marginBottom: Spacing.sm,
+  },
+  sharedLinkText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   infoCard: {
     flexDirection: "row",

@@ -8,7 +8,7 @@ import { useScreenOptions } from "@/hooks/useScreenOptions";
 export type ComplaintsStackParamList = {
   Complaints: undefined;
   ComplaintDetails: { complaintId: string };
-  SubmitComplaint: undefined;
+  SubmitComplaint: { token?: string; districtId?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<ComplaintsStackParamList>();
