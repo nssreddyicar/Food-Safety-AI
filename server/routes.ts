@@ -5750,6 +5750,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reset pillars and indicators to FSSAI defaults (admin)
+  app.post("/api/admin/institutional-inspection/reset-defaults", async (req: Request, res: Response) => {
+    try {
+      // Default FSSAI 7 Pillars
+      const pillarsData = [
+        { pillarNumber: 1, name: "Food Procurement & Supply", description: "Indicators related to raw material sourcing, freshness, and water safety", displayOrder: 1 },
+        { pillarNumber: 2, name: "Storage & Temperature Control", description: "Indicators for proper storage, refrigeration, and pest control", displayOrder: 2 },
+        { pillarNumber: 3, name: "Food Preparation & Cooking", description: "Indicators for cooking temperatures, cross-contamination prevention, and utensil hygiene", displayOrder: 3 },
+        { pillarNumber: 4, name: "Personal Hygiene & Health", description: "Indicators for food handler health, protective clothing, and handwashing", displayOrder: 4 },
+        { pillarNumber: 5, name: "Cleanliness & Sanitation", description: "Indicators for kitchen environment, waste disposal, and cleaning schedules", displayOrder: 5 },
+        { pillarNumber: 6, name: "Serving & Distribution", description: "Indicators for hygienic serving, utensil cleanliness, and food transportation", displayOrder: 6 },
+        { pillarNumber: 7, name: "Management & Awareness", description: "Indicators for training, record-keeping, and food safety supervision", displayOrder: 7 },
+      ];
+
+      // Default FSSAI 35 Indicators
+      const indicatorsData = [
+        { pillarNumber: 1, indicatorNumber: 1, name: "Approved and safe raw material sources", riskLevel: "high", weight: 3 },
+        { pillarNumber: 1, indicatorNumber: 2, name: "Freshness of raw materials", riskLevel: "high", weight: 3 },
+        { pillarNumber: 1, indicatorNumber: 3, name: "No use of expired / damaged food", riskLevel: "high", weight: 3 },
+        { pillarNumber: 1, indicatorNumber: 4, name: "Proper vendor records", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 1, indicatorNumber: 5, name: "Safe water used for food preparation", riskLevel: "high", weight: 3 },
+        { pillarNumber: 2, indicatorNumber: 6, name: "Dry storage cleanliness", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 2, indicatorNumber: 7, name: "Separation of raw & cooked food", riskLevel: "high", weight: 3 },
+        { pillarNumber: 2, indicatorNumber: 8, name: "Adequate refrigeration", riskLevel: "high", weight: 3 },
+        { pillarNumber: 2, indicatorNumber: 9, name: "Proper labeling & FIFO followed", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 2, indicatorNumber: 10, name: "Pest-free storage area", riskLevel: "high", weight: 3 },
+        { pillarNumber: 3, indicatorNumber: 11, name: "Proper cooking temperatures achieved", riskLevel: "high", weight: 3 },
+        { pillarNumber: 3, indicatorNumber: 12, name: "Cross-contamination prevention", riskLevel: "high", weight: 3 },
+        { pillarNumber: 3, indicatorNumber: 13, name: "Clean utensils & equipment", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 3, indicatorNumber: 14, name: "Use of potable water for cooking", riskLevel: "high", weight: 3 },
+        { pillarNumber: 3, indicatorNumber: 15, name: "Safe reheating practices", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 4, indicatorNumber: 16, name: "Food handlers medically examined", riskLevel: "high", weight: 3 },
+        { pillarNumber: 4, indicatorNumber: 17, name: "Use of clean protective clothing", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 4, indicatorNumber: 18, name: "Handwashing facilities available", riskLevel: "high", weight: 3 },
+        { pillarNumber: 4, indicatorNumber: 19, name: "No ill person handling food", riskLevel: "high", weight: 3 },
+        { pillarNumber: 4, indicatorNumber: 20, name: "Personal hygiene awareness", riskLevel: "low", weight: 1 },
+        { pillarNumber: 5, indicatorNumber: 21, name: "Clean kitchen environment", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 5, indicatorNumber: 22, name: "Safe waste disposal system", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 5, indicatorNumber: 23, name: "Clean water source maintained", riskLevel: "high", weight: 3 },
+        { pillarNumber: 5, indicatorNumber: 24, name: "Regular cleaning schedule followed", riskLevel: "low", weight: 1 },
+        { pillarNumber: 5, indicatorNumber: 25, name: "No accumulation of waste", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 6, indicatorNumber: 26, name: "Hygienic serving practices", riskLevel: "high", weight: 3 },
+        { pillarNumber: 6, indicatorNumber: 27, name: "Clean serving utensils", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 6, indicatorNumber: 28, name: "Protection from environmental contamination", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 6, indicatorNumber: 29, name: "Safe transportation of food", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 6, indicatorNumber: 30, name: "Timely consumption after preparation", riskLevel: "high", weight: 3 },
+        { pillarNumber: 7, indicatorNumber: 31, name: "Food safety training conducted", riskLevel: "low", weight: 1 },
+        { pillarNumber: 7, indicatorNumber: 32, name: "Display of hygiene instructions", riskLevel: "low", weight: 1 },
+        { pillarNumber: 7, indicatorNumber: 33, name: "Record keeping & monitoring", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 7, indicatorNumber: 34, name: "Emergency food safety response readiness", riskLevel: "medium", weight: 2 },
+        { pillarNumber: 7, indicatorNumber: 35, name: "Overall food safety supervision", riskLevel: "high", weight: 3 },
+      ];
+
+      // Delete all existing indicators and pillars
+      await db.delete(institutionalInspectionIndicators);
+      await db.delete(institutionalInspectionPillars);
+
+      // Insert pillars and map to IDs
+      const pillarIdMap: Record<number, string> = {};
+      for (const pillar of pillarsData) {
+        const [inserted] = await db.insert(institutionalInspectionPillars).values(pillar).returning();
+        pillarIdMap[pillar.pillarNumber] = inserted.id;
+      }
+
+      // Insert indicators with pillar IDs
+      for (const ind of indicatorsData) {
+        await db.insert(institutionalInspectionIndicators).values({
+          pillarId: pillarIdMap[ind.pillarNumber],
+          indicatorNumber: ind.indicatorNumber,
+          name: ind.name,
+          riskLevel: ind.riskLevel,
+          weight: ind.weight,
+          displayOrder: ind.indicatorNumber,
+        });
+      }
+
+      res.json({ success: true, message: "Reset to 7 pillars and 35 indicators successfully" });
+    } catch (error) {
+      console.error("Error resetting to defaults:", error);
+      res.status(500).json({ error: "Failed to reset to defaults" });
+    }
+  });
+
   // Get all config (admin)
   app.get("/api/admin/institutional-inspection/config", async (req: Request, res: Response) => {
     try {

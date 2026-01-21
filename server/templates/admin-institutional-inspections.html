@@ -134,12 +134,18 @@
       <div class="card">
         <div class="card-header">
           <h2 class="card-title">Assessment Pillars & Indicators</h2>
-          <button class="btn btn-primary" onclick="openAddPillarModal()">
-            <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-            Add Pillar
-          </button>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn" onclick="resetToDefaults()" style="background: #fef3c7; color: #92400e; border: 1px solid #fcd34d;">
+              <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/></svg>
+              Reset to Defaults
+            </button>
+            <button class="btn btn-primary" onclick="openAddPillarModal()">
+              <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              Add Pillar
+            </button>
+          </div>
         </div>
-        <p style="color: #6b7280; margin-bottom: 20px;">Configure assessment pillars and their indicators. Click a pillar to expand and manage its indicators.</p>
+        <p style="color: #6b7280; margin-bottom: 20px;">Configure assessment pillars and their indicators. Click a pillar to expand and manage its indicators. Use "Reset to Defaults" to restore the standard FSSAI 7 pillars and 35 indicators.</p>
         <div id="pillarsContainer"></div>
       </div>
     </div>
@@ -578,6 +584,25 @@
         alert('Configuration updated');
       } catch (e) {
         alert('Failed to update configuration');
+      }
+    }
+
+    // Reset to Defaults
+    async function resetToDefaults() {
+      const confirmed = confirm(
+        'WARNING: This will delete ALL current pillars and indicators and restore the standard FSSAI framework with 7 pillars and 35 indicators.\n\n' +
+        'Any custom pillars or indicators you have added will be permanently deleted.\n\n' +
+        'Are you sure you want to reset to defaults?'
+      );
+      if (!confirmed) return;
+
+      try {
+        const res = await fetch('/api/admin/institutional-inspection/reset-defaults', { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to reset');
+        alert('Successfully reset to 7 FSSAI pillars and 35 indicators');
+        await Promise.all([loadPillars(), loadIndicators()]);
+      } catch (e) {
+        alert('Failed to reset: ' + e.message);
       }
     }
 
