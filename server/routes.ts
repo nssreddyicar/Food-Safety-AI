@@ -5452,7 +5452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new institutional inspection (draft)
-  app.post("/api/institutional-inspections", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/institutional-inspections", async (req: Request, res: Response) => {
     try {
       const {
         institutionTypeId,
@@ -5535,7 +5535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Submit indicator responses
-  app.post("/api/institutional-inspections/:id/responses", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/institutional-inspections/:id/responses", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { responses } = req.body;
@@ -5571,7 +5571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Submit inspection (makes it immutable)
-  app.post("/api/institutional-inspections/:id/submit", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/institutional-inspections/:id/submit", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { recommendations } = req.body;
