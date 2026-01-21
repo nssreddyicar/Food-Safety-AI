@@ -10,6 +10,7 @@ import {
   Modal,
   TextInput as RNTextInput,
 } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -115,6 +116,13 @@ interface AddedPerson {
   data: Record<string, string>;
 }
 
+interface InstitutionType {
+  id: string;
+  typeName: string;
+  typeCode: string;
+  description: string;
+}
+
 interface IndicatorResponse {
   indicatorId: string;
   response: 'yes' | 'no' | 'na';
@@ -160,6 +168,8 @@ export default function SafetyAssessmentScreen() {
 
   const [pillars, setPillars] = useState<Pillar[]>([]);
   const [personTypes, setPersonTypes] = useState<PersonType[]>([]);
+  const [institutionTypes, setInstitutionTypes] = useState<InstitutionType[]>([]);
+  const [selectedInstitutionTypeId, setSelectedInstitutionTypeId] = useState<string>("");
   const [addedPersons, setAddedPersons] = useState<AddedPerson[]>([]);
   const [responses, setResponses] = useState<Record<string, IndicatorResponse>>({});
   const [indicatorImages, setIndicatorImages] = useState<IndicatorImageData>({});
@@ -226,6 +236,11 @@ export default function SafetyAssessmentScreen() {
       if (response.ok) {
         const data = await response.json();
         setPillars(data.pillars);
+        
+        if (data.institutionTypes && data.institutionTypes.length > 0) {
+          setInstitutionTypes(data.institutionTypes);
+          setSelectedInstitutionTypeId(data.institutionTypes[0].id);
+        }
         
         const initialResponses: Record<string, IndicatorResponse> = {};
         data.pillars.forEach((pillar: Pillar) => {
@@ -437,6 +452,10 @@ export default function SafetyAssessmentScreen() {
   };
 
   const handleSubmit = async () => {
+    if (!selectedInstitutionTypeId) {
+      Alert.alert("Required", "Please select institution type");
+      return;
+    }
     if (!institutionName.trim()) {
       Alert.alert("Required", "Please enter institution name");
       return;
@@ -461,6 +480,7 @@ export default function SafetyAssessmentScreen() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            institutionTypeId: selectedInstitutionTypeId,
             institutionName,
             institutionAddress,
             jurisdictionId: user?.jurisdiction?.unitId,
@@ -626,6 +646,26 @@ export default function SafetyAssessmentScreen() {
       >
         <Card style={styles.institutionCard}>
           <ThemedText style={styles.sectionTitle}>Institution Details</ThemedText>
+          
+          <View style={styles.formField}>
+            <ThemedText style={styles.fieldLabel}>Institution Type *</ThemedText>
+            <View style={[styles.pickerContainer, { borderColor: theme.border }]}>
+              <Picker
+                selectedValue={selectedInstitutionTypeId}
+                onValueChange={(value) => setSelectedInstitutionTypeId(value)}
+                style={[styles.picker, { color: theme.text }]}
+              >
+                {institutionTypes.map((type) => (
+                  <Picker.Item 
+                    key={type.id} 
+                    label={type.typeName} 
+                    value={type.id} 
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+          
           <Input
             label="Institution Name *"
             placeholder="Enter institution name"
@@ -998,4 +1038,6 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: FontSize.sm, fontWeight: '500', marginBottom: Spacing.xs },
   fieldInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, fontSize: FontSize.md },
   savePersonBtn: { marginTop: Spacing.md },
+  pickerContainer: { borderWidth: 1, borderRadius: 8, marginBottom: Spacing.sm, overflow: 'hidden' },
+  picker: { height: 50 },
 });
