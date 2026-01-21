@@ -1,297 +1,50 @@
 # Food Safety Inspector - Mobile Application
 
 ## Overview
-A government-grade mobile application for Food Safety Officers (FSO) to manage inspections, sampling, and prosecution workflows. Built with React Native (Expo) and Express.js backend.
+This project is a government-grade mobile application designed for Food Safety Officers (FSOs) to efficiently manage their daily tasks, including inspections, sample collection, and prosecution workflows. The application aims to streamline regulatory enforcement, enhance data integrity, and provide FSOs with robust tools for their field operations. Its core purpose is to improve public health outcomes by ensuring food safety compliance.
 
-## Current State
-MVP implementation with core features:
-- User authentication (invite-only login with database)
-- Dashboard with key metrics and urgent actions
-- Inspection management (create, view, search, filter)
-- Sample tracking with 14-day lab report countdown
-- Officer profile management
-- Multi-jurisdiction support with jurisdiction switching
-- Jurisdiction-bound data (inspections/samples linked to jurisdictions, not officers)
-- Document templates with dynamic placeholders and PDF generation
-- Admin panel access control (per-officer configuration)
-- QR/barcode scanner with notes management (scan, save, view, share)
+The application's vision is to become the leading digital platform for food safety enforcement, offering a comprehensive and intuitive solution that empowers officers, reduces administrative burden, and provides transparent oversight of food safety regulations.
 
-## Project Architecture
+## User Preferences
+I prefer detailed explanations.
+I want iterative development.
+Ask before making major changes.
+Do not make changes to the folder `server/templates`.
 
-### Frontend (Expo React Native)
-```
-client/
-├── App.tsx                    # Root component with providers
-├── components/                # Reusable UI components
-│   ├── Button.tsx             # Primary button component
-│   ├── Card.tsx               # Card container with elevation
-│   ├── EmptyState.tsx         # Empty state with illustration
-│   ├── FAB.tsx                # Floating action button
-│   ├── FilterChips.tsx        # Horizontal filter chips
-│   ├── HeaderTitle.tsx        # Custom header with app icon
-│   ├── Input.tsx              # Form input component
-│   ├── InspectionCard.tsx     # Inspection list item
-│   ├── SampleCard.tsx         # Sample list item
-│   ├── SkeletonLoader.tsx     # Loading skeletons
-│   ├── StatCard.tsx           # Dashboard stat card
-│   ├── StatusBadge.tsx        # Status indicator badges
-│   └── UrgentActionCard.tsx   # Urgent action item
-├── constants/theme.ts         # Colors, spacing, typography
-├── context/AuthContext.tsx    # Authentication context
-├── hooks/                     # Custom hooks
-│   ├── useAuth.ts             # Authentication hook
-│   ├── useScreenOptions.ts    # Navigation screen options
-│   └── useTheme.ts            # Theme hook
-├── lib/                       # Utilities
-│   ├── query-client.ts        # React Query setup
-│   └── storage.ts             # AsyncStorage operations
-├── navigation/                # React Navigation setup
-│   ├── DashboardStackNavigator.tsx
-│   ├── InspectionsStackNavigator.tsx
-│   ├── MainTabNavigator.tsx   # Bottom tab navigator
-│   ├── ProfileStackNavigator.tsx
-│   ├── RootStackNavigator.tsx # Root with auth flow
-│   ├── SamplesStackNavigator.tsx
-│   └── ScannerStackNavigator.tsx # Scanner navigation stack
-├── screens/                   # App screens
-│   ├── ActionDashboardScreen.tsx # Action tracking with category cards
-│   ├── DashboardScreen.tsx
-│   ├── InspectionDetailsScreen.tsx
-│   ├── InspectionsScreen.tsx
-│   ├── LoginScreen.tsx
-│   ├── NewInspectionScreen.tsx
-│   ├── NoteDetailScreen.tsx   # View individual scanned note
-│   ├── ProfileScreen.tsx
-│   ├── SampleDetailsScreen.tsx
-│   ├── SamplesScreen.tsx
-│   ├── ScannedNotesScreen.tsx # List of saved scanned notes
-│   ├── ScannerScreen.tsx      # QR/barcode scanner with camera
-│   └── TemplatesScreen.tsx    # Document templates with PDF download
-└── types/index.ts             # TypeScript types
-```
+## System Architecture
 
-### Backend (Express.js)
-```
-server/
-├── index.ts                   # Server entry point
-├── routes.ts                  # API routes
-└── templates/landing-page.html # Landing page
-```
+### Frontend
+The mobile application is built using Expo React Native, ensuring cross-platform compatibility. It follows a modular architecture with dedicated folders for components, hooks, utilities, and screens. Key UI/UX decisions include a clear, actionable dashboard, intuitive navigation via React Navigation (including bottom tabs and stack navigators), and a consistent design system defined in `constants/theme.ts`. The primary color scheme uses a deep authoritative blue (#1E40AF) with an urgent red accent (#DC2626) for critical indicators.
 
-## User Roles
-- **FSO (Food Safety Officer)**: Primary mobile app user - creates inspections, lifts samples
-- **DO (Designated Officer)**: Reviews inspections, issues notices
-- **Commissioner**: Prosecution orders for unsafe samples
-- **Super Admin**: System configuration (web panel - future)
+**Core Features and Technical Implementations:**
+- **Authentication**: Invite-only system with session persistence using AsyncStorage.
+- **Dashboard**: Displays key metrics, urgent actions, and quick access to a comprehensive Action Dashboard.
+- **Action Dashboard System**: A configurable system for tracking various FSO actions (e.g., Legal & Court, Inspection & Enforcement, Sampling & Laboratory, Administrative, Protocol & Duties). It features role-based categories, SLA tracking, priority indicators, and drill-down capabilities.
+- **Report Generation**: Supports professional PDF and Excel report generation from Action Dashboard data, with time period selection and platform-aware output (file creation on mobile, direct download on web).
+- **Inspection Management**: Allows creation of new inspections with dynamic forms, tracking deviations, actions taken (including image uploads), and sample lifting (Enforcement/Surveillance types).
+- **Sample Details & Tracking**: Comprehensive sample information capture, 14-day lab report countdown with visual urgency indicators, and filtering by status.
+- **Dynamic Sample Workflow System**: An admin-configurable workflow engine for managing the sample lifecycle with nodes (action, decision, end), conditional transitions, and dynamic input fields (text, date, select, image). Default workflows are provided and can be customized.
+- **Prosecution Case Management**: A complete system for tracking court cases, including case list, detailed view with hearing history, and new case creation. Features include search, filtering, and urgency indicators for upcoming hearings.
+- **QR/Barcode Scanner**: Real-time camera-based scanning (supporting multiple formats) with flash toggle, haptic feedback, and a notes management system for saving, viewing, copying, sharing, and deleting scanned data. Data is stored locally using AsyncStorage.
 
-## Key Features
+### Backend
+The backend is developed with Express.js, primarily serving API routes for the mobile application.
 
-### Authentication
-- Invite-only system (no self-registration)
-- Demo mode: Any email + 6+ character password logs in
-- Session persisted with AsyncStorage
+**Technical Implementations:**
+- **API Routes**: Defined in `server/routes.ts`, incorporating a security model and categorized endpoints.
+- **Data Schema**: Managed in `shared/schema.ts`, reflecting the database structure with FSSAI regulatory context.
 
-### Dashboard
-- Pending inspections count
-- Overdue lab reports
-- Samples in transit
-- Completed this month
-- Urgent actions list with countdown timers
-- Quick access to Action Dashboard
+### Data Persistence
+- **Mobile Local Storage**: AsyncStorage is used for local data persistence on the mobile client, particularly for offline support and scanned notes.
+- **Backend Database**: PostgreSQL is used for central data storage, managing officer and administrative data.
+- **Jurisdiction-Bound Data**: Inspections and samples are bound to specific jurisdictions via `jurisdictionId`, ensuring data continuity regardless of officer transfers.
 
-### Action Dashboard System
-Comprehensive action and reminder tracking system with role-based action categories:
-
-**Mobile Dashboard Features:**
-- Summary cards showing: Overdue, Due Today, This Week, Total counts
-- Grouped action categories:
-  - **Legal & Court**: Court cases, adjudication files, penalty recovery
-  - **Inspection & Enforcement**: Pending inspections, follow-ups, seized articles, improvement notices
-  - **Sampling & Laboratory**: Pending samples, lab reports, unsafe/substandard samples
-  - **Administrative**: Special drives, workshops, grievances, license applications
-  - **Protocol & Duties**: VVIP duties
-- Priority indicators (critical/high/normal) with visual badges
-- SLA tracking with overdue highlighting
-- Drill-down navigation to detailed lists
-
-**Admin Configuration (at `/admin/action-dashboard`):**
-- Configure 21+ action categories with enable/disable toggles
-- SLA settings (days) per category
-- Priority levels (critical, high, normal)
-- Show/hide on mobile dashboard
-- Load default categories button
-- Mobile preview panel
-
-**API Endpoints:**
-- `GET /api/action-dashboard` - Aggregated dashboard data with category counts
-- `GET /api/action-categories` - List all action categories
-- `POST /api/action-categories/seed-defaults` - Load default 21 categories
-- `PUT /api/action-categories/:id` - Update category settings
-
-### Report Generation (PDF & Excel)
-Professional report generation for action dashboard data with time period selection:
-
-**Features:**
-- Time period selection with 4 categories: Month, Quarter, Year, Financial Year (Indian April-March format)
-- Report includes: Action Dashboard Summary, Action Categories Breakdown, Statistics Overview, Financial Summary
-- Two export formats:
-  - **PDF Report**: Professional HTML template with gradient styling, color-coded sections, and multi-page layout
-  - **Excel Report**: CSV format that can be opened in Excel/Google Sheets with structured data tables
-- Platform-aware generation:
-  - **Mobile (Expo Go)**: Creates actual files with Share functionality
-  - **Web**: Direct download for both formats
-
-**Files:**
-- `client/screens/GenerateReportScreen.tsx` - Report generation screen with dual format buttons
-- `client/lib/report-template.ts` - HTML template for PDF generation
-- `client/lib/excel-template.ts` - CSV template for Excel generation
-- `client/components/TimeFilter.tsx` - Time period selection component
-
-**Navigation:**
-- Access via file icon button next to time filter on Action Dashboard
-- Route: `GenerateReport` with `timeSelection` params
-
-### Inspections
-- Create new inspections with dynamic form
-- Inspection types: Routine, Special Drive, Complaint Based, VVIP, Initiatives
-- FBO and Proprietor details
-- Deviations tracking with severity levels
-- Actions taken with:
-  - Dropdown selection (Warning, Improvement Notice, Seizure Order, Prohibition Order, Prosecution, License actions)
-  - Text description input
-  - Image upload support (up to 5 images per action)
-  - Countdown/due date tracking
-- Sample lifting with two sample types:
-  - **Enforcement Sample** - For regulatory enforcement
-  - **Surveillance Sample** - For monitoring purposes
-- Witness details with Aadhaar and signature capture
-- Save as draft or submit
-
-### Sample Details (Enhanced)
-Each sample captures comprehensive information:
-- Sample name, code (auto-generated), collection place
-- Date and officer details (auto-filled)
-- Sample cost and quantity in grams
-- Preservative information (yes/no with type selection)
-- Packing type (Packed/Loose)
-- For packed samples:
-  - Manufacturer details (name, address, license)
-  - Distributor details (optional)
-  - Repacker details (optional)
-  - Relabeller details (optional)
-  - Manufacturing date, expiry date
-  - Lot/batch number
-
-### Sample Tracking
-- 14-day countdown from dispatch to lab report deadline
-- Dynamic workflow-based timeline (admin-configurable)
-- Visual urgency indicators (red for overdue, amber for < 3 days)
-- Filter by status
-- Sample type badges (ENF/SRV)
-
-### Dynamic Sample Workflow System
-Admin-configurable workflow engine for sample lifecycle management:
-- **Workflow Nodes**: Define each step in the sample process (e.g., Sample Lifted, Dispatched, Lab Report, Prosecution)
-- **Node Types**: action, decision, end - with conditional branching
-- **Transitions**: Define movement between nodes with conditions (always, lab_result, field_value)
-- **Conditional Logic**: Branch to different paths based on lab results (safe → closed, unsafe → prosecution, substandard → notice)
-- **Input Fields**: Custom data collection fields per node (JSON-defined)
-  - Field types: `text`, `date` (calendar picker with DD-MM-YYYY format), `select`, `textarea`, `number`, `image` (camera/gallery upload)
-- **Template Linking**: Associate document templates with specific workflow nodes (shown on mobile timeline)
-- Mobile app timeline dynamically adapts to admin configuration
-- Interactive workflow nodes - tap any node to open modal with dynamic input fields
-- Image upload support with camera and gallery options
-
-#### Default Workflow
-The system seeds with a default 6-node workflow with comprehensive input fields:
-1. **Sample Lifted** (Start): Date, place, image upload, remarks
-2. **Dispatched to Lab**: Date, mode, courier name, tracking number, image, remarks
-3. **Lab Report Received** (Decision): Report date, report number, covering letter details, analyst name/opinion, result, image
-   - If Safe → Sample Closed (End)
-   - If Unsafe → Initiate Prosecution
-   - If Substandard → Issue Improvement Notice
-
-#### Admin Panel
-Access at `/admin/workflow` to configure workflow nodes, transitions, input fields, and template assignments
-- Use "Load Default Workflow" button to seed/reset the default workflow with enhanced fields
-
-### Prosecution Case Management
-Complete court case tracking system accessible from Profile > Court Cases:
-- **Case List Screen** (CourtCasesScreen.tsx):
-  - Search by case number, respondent, complainant, or court name
-  - Filter by status (Pending, Ongoing, Convicted, Acquitted, Closed)
-  - Visual urgency indicators for upcoming hearings (≤7 days = warning, past due = red)
-  - FAB button to create new cases
-- **Case Details Screen** (CaseDetailsScreen.tsx):
-  - Case information: case number, court, respondent/complainant details
-  - Key dates: registration, first hearing, next hearing, last hearing
-  - Offence details and sections charged
-  - Hearing history with date, notes, images, and status tracking
-  - Add hearing modal with form validation
-- **New Case Screen** (NewCaseScreen.tsx):
-  - Comprehensive form with all case fields
-  - Date pickers for registration and hearing dates
-  - Status dropdown (pending, ongoing, convicted, acquitted, closed)
-  - Link to inspection/sample (optional)
-
-### Court Hearing Tracking
-Each hearing records:
-- Hearing date (required)
-- Status: scheduled, completed, adjourned, cancelled
-- Notes/remarks
-- Image attachments (for orders, documents)
-- Next hearing date (updates case's nextHearingDate)
-
-### QR/Barcode Scanner
-Camera-based scanner with notes management system:
-
-**Scanner Features:**
-- Real-time camera scanning using expo-camera
-- Supported formats: QR, EAN-13, EAN-8, UPC-A, UPC-E, Code39, Code93, Code128, Codabar, ITF14, PDF417, Aztec, DataMatrix
-- Flash/torch toggle for low-light scanning
-- Scan frame overlay with visual guides
-- Haptic feedback on successful scan
-
-**Notes Management:**
-- Save scanned data with custom heading/title
-- Timestamp automatically recorded
-- View all saved notes in list format
-- Detail view with full data display
-- Copy to clipboard functionality
-- Share via device share sheet
-- Delete individual notes
-- Pull-to-refresh for list updates
-
-**Screens:**
-- `ScannerScreen.tsx` - Camera view with barcode detection
-- `ScannedNotesScreen.tsx` - List of saved scan notes
-- `NoteDetailScreen.tsx` - Individual note with actions (copy, share, delete)
-
-**Data Storage:**
-- AsyncStorage with key `@scanned_notes`
-- Each note: `{ id, data, type, heading, scannedAt }`
-
-## Design System
-- **Primary Color**: #1E40AF (Deep authoritative blue)
-- **Accent Color**: #DC2626 (Urgent red)
-- **Success**: #059669 (Green for compliant)
-- **Warning**: #D97706 (Amber for attention)
-- See `design_guidelines.md` for complete specifications
-
-## Running the App
-1. Frontend: `npm run expo:dev` (port 8081)
-2. Backend: `npm run server:dev` (port 5000)
-3. Scan QR code with Expo Go to test on device
-
-## Data Persistence
-- AsyncStorage for local data persistence on mobile
-- PostgreSQL database for officer/admin data
-- Inspections and samples are bound to jurisdictions (via jurisdictionId), not individual officers
-- When officers change, historical data remains tied to the jurisdiction for continuity
-
-## Future Enhancements
-- Backend database integration (PostgreSQL)
-- Document generation (PDF)
-- Web admin panel
-- Multi-device sync
-- Push notifications for deadlines
+## External Dependencies
+- **React Native (Expo)**: Frontend framework for mobile application development.
+- **Express.js**: Backend framework for building RESTful APIs.
+- **PostgreSQL**: Relational database for persistent data storage.
+- **React Navigation**: For managing navigation flows within the mobile application.
+- **React Query**: For data fetching, caching, and state management in the frontend.
+- **AsyncStorage**: For local data persistence on the mobile device.
+- **expo-camera**: For camera-based QR/barcode scanning functionality.
+- **JSDoc**: For code documentation standards.
