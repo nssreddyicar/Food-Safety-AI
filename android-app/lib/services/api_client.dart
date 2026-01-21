@@ -3,119 +3,83 @@
 /// PURPOSE: HTTP client for backend API communication
 /// =============================================================================
 /// 
-/// Provides type-safe API calls to the backend server.
-/// Handles authentication tokens, error responses, and retries.
+/// DEPRECATED: Use NetworkService instead for production-grade networking.
 /// 
-/// RULES:
-/// - All API calls go through this client
-/// - Tokens are stored securely
-/// - Network errors are handled gracefully
+/// This file is kept for backwards compatibility but will be removed.
+/// NetworkService provides:
+/// - Exponential backoff retry
+/// - Offline queue for mutations
+/// - Connectivity monitoring
+/// - Automatic token refresh
 /// =============================================================================
 
-import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../config/env.dart';
+import 'network_service.dart';
 
-/// API client singleton for backend communication.
+/// API client - wrapper around NetworkService for backwards compatibility.
+/// @deprecated Use NetworkService directly for new code.
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   factory ApiClient() => _instance;
   
-  late final Dio _dio;
-  final _storage = const FlutterSecureStorage();
-  
-  static const String _tokenKey = 'auth_token';
+  final _networkService = NetworkService();
 
-  ApiClient._internal() {
-    _dio = Dio(BaseOptions(
-      baseUrl: Env.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    ));
-    
-    // Add interceptors
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await _storage.read(key: _tokenKey);
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        return handler.next(options);
-      },
-      onError: (error, handler) async {
-        if (error.response?.statusCode == 401) {
-          // Token expired - clear and redirect to login
-          await _storage.delete(key: _tokenKey);
-          // TODO: Navigate to login
-        }
-        return handler.next(error);
-      },
-    ));
-  }
+  ApiClient._internal();
 
   /// Store authentication token.
   Future<void> setToken(String token) async {
-    await _storage.write(key: _tokenKey, value: token);
+    await _networkService.setTokens(accessToken: token, refreshToken: '');
   }
 
   /// Clear authentication token.
   Future<void> clearToken() async {
-    await _storage.delete(key: _tokenKey);
+    await _networkService.clearTokens();
   }
 
   /// Check if user is authenticated.
   Future<bool> isAuthenticated() async {
-    final token = await _storage.read(key: _tokenKey);
-    return token != null;
+    return _networkService.hasValidTokens();
   }
 
   /// GET request.
-  Future<Response<T>> get<T>(
+  Future<dynamic> get<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    return _dio.get<T>(path, queryParameters: queryParameters);
+    return _networkService.get<T>(path, queryParameters: queryParameters);
   }
 
   /// POST request.
-  Future<Response<T>> post<T>(
+  Future<dynamic> post<T>(
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
   }) async {
-    return _dio.post<T>(path, data: data, queryParameters: queryParameters);
+    return _networkService.post<T>(path, data: data, queryParameters: queryParameters);
   }
 
   /// PUT request.
-  Future<Response<T>> put<T>(
+  Future<dynamic> put<T>(
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
   }) async {
-    return _dio.put<T>(path, data: data, queryParameters: queryParameters);
+    return _networkService.put<T>(path, data: data, queryParameters: queryParameters);
   }
 
   /// DELETE request.
-  Future<Response<T>> delete<T>(
+  Future<dynamic> delete<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    return _dio.delete<T>(path, queryParameters: queryParameters);
+    return _networkService.delete<T>(path, queryParameters: queryParameters);
   }
 
   /// Upload file.
-  Future<Response<T>> uploadFile<T>(
+  Future<dynamic> uploadFile<T>(
     String path,
     String filePath,
     String fieldName,
   ) async {
-    final formData = FormData.fromMap({
-      fieldName: await MultipartFile.fromFile(filePath),
-    });
-    return _dio.post<T>(path, data: formData);
+    return _networkService.uploadFile<T>(path, filePath, fieldName);
   }
 }

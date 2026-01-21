@@ -8,16 +8,21 @@
 /// - Theme configuration
 /// - Navigation
 /// - Environment-based API configuration
+/// - Crash reporting
+/// - Connectivity monitoring
 /// 
 /// PRODUCTION APP: This is the Flutter app for Play Store deployment.
 /// For development/testing on Replit, use the Expo React Native app.
 /// =============================================================================
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/login_screen.dart';
 import 'navigation/app_navigator.dart';
 import 'services/auth_service.dart';
+import 'services/crash_reporter.dart';
+import 'services/connectivity_service.dart';
 import 'config/theme.dart';
 import 'config/env.dart';
 
@@ -26,10 +31,17 @@ void main() async {
   
   await Env.initialize();
   
-  runApp(
-    const ProviderScope(
-      child: FoodSafetyApp(),
+  // Initialize crash reporter
+  await crashReporter.initialize();
+  
+  // Run app with error capture
+  runZonedGuarded(
+    () => runApp(
+      const ProviderScope(
+        child: FoodSafetyApp(),
+      ),
     ),
+    (error, stack) => crashReporter.captureException(error, stackTrace: stack),
   );
 }
 
@@ -66,6 +78,11 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
   }
 
   Future<void> _checkAuth() async {
+    crashReporter.addBreadcrumb(
+      category: 'auth',
+      message: 'Checking authentication status',
+    );
+    
     await ref.read(authServiceProvider.notifier).checkAuth();
     if (mounted) {
       setState(() => _isLoading = false);
@@ -85,7 +102,10 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
     final authState = ref.watch(authServiceProvider);
     
     if (authState.isAuthenticated) {
-      return const AppNavigator();
+      // Wrap with connectivity banner for authenticated screens
+      return const ConnectivityWrapper(
+        child: AppNavigator(),
+      );
     }
     
     return const LoginScreen();
