@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
   ScrollView,
   Alert,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Button } from "@/components/Button";
@@ -38,7 +38,6 @@ interface Indicator {
 interface IndicatorResponse {
   indicatorId: string;
   response: 'yes' | 'no' | 'na';
-  remarks?: string;
 }
 
 type RouteParams = {
@@ -46,9 +45,9 @@ type RouteParams = {
 };
 
 const RISK_COLORS = {
-  high: { bg: '#FEE2E2', text: '#DC2626', border: '#F87171' },
-  medium: { bg: '#FEF3C7', text: '#D97706', border: '#FBBF24' },
-  low: { bg: '#D1FAE5', text: '#059669', border: '#34D399' },
+  high: { bg: '#FEE2E2', text: '#DC2626' },
+  medium: { bg: '#FEF3C7', text: '#D97706' },
+  low: { bg: '#D1FAE5', text: '#059669' },
 };
 
 export default function InstitutionalInspectionAssessmentScreen() {
@@ -62,13 +61,11 @@ export default function InstitutionalInspectionAssessmentScreen() {
 
   const [pillars, setPillars] = useState<Pillar[]>([]);
   const [responses, setResponses] = useState<Record<string, IndicatorResponse>>({});
-  const [expandedPillar, setExpandedPillar] = useState<number | null>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scorePreview, setScorePreview] = useState<{
     totalScore: number;
     riskClassification: string;
-    highRiskCount: number;
   } | null>(null);
 
   useEffect(() => {
@@ -121,7 +118,6 @@ export default function InstitutionalInspectionAssessmentScreen() {
         setScorePreview({
           totalScore: data.totalScore,
           riskClassification: data.riskClassification,
-          highRiskCount: data.highRiskCount,
         });
       }
     } catch (error) {
@@ -143,7 +139,6 @@ export default function InstitutionalInspectionAssessmentScreen() {
       await openBrowserAsync(reportUrl);
     } catch (error) {
       console.error("Download error:", error);
-      Alert.alert("Error", "Failed to download report");
     }
   };
 
@@ -157,9 +152,7 @@ export default function InstitutionalInspectionAssessmentScreen() {
         new URL(`/api/institutional-inspections/${inspectionId}/responses`, getApiUrl()).toString(),
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ responses: responsesArray, officerId: user?.id }),
         }
       );
@@ -173,9 +166,7 @@ export default function InstitutionalInspectionAssessmentScreen() {
         new URL(`/api/institutional-inspections/${inspectionId}/submit`, getApiUrl()).toString(),
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ officerId: user?.id }),
         }
       );
@@ -183,11 +174,14 @@ export default function InstitutionalInspectionAssessmentScreen() {
       if (submitResult.ok) {
         Alert.alert(
           "Assessment Complete",
-          `Risk Classification: ${scorePreview?.riskClassification?.toUpperCase()}\nTotal Score: ${scorePreview?.totalScore}`,
+          `Safety Classification: ${scorePreview?.riskClassification?.toUpperCase()}\nSafety Score: ${scorePreview?.totalScore}`,
           [
             {
-              text: "Download Report",
-              onPress: () => handleDownloadReport(),
+              text: "Download PDF Report",
+              onPress: () => {
+                handleDownloadReport();
+                navigation.popToTop();
+              },
             },
             {
               text: "Done",
@@ -197,7 +191,7 @@ export default function InstitutionalInspectionAssessmentScreen() {
         );
       } else {
         const error = await submitResult.json();
-        Alert.alert("Error", error.error || "Failed to submit inspection");
+        Alert.alert("Error", error.error || "Failed to submit");
       }
     } catch (error: any) {
       console.error("Submit error:", error);
@@ -207,97 +201,37 @@ export default function InstitutionalInspectionAssessmentScreen() {
     }
   };
 
-  const getCompletionStatus = () => {
-    const total = pillars.reduce((sum, p) => sum + p.indicators.length, 0);
-    const answered = Object.keys(responses).length;
-    return { answered, total };
-  };
-
-  const renderIndicator = (indicator: Indicator, pillarId: string) => {
-    const currentResponse = responses[indicator.id]?.response || 'yes';
-    const colors = RISK_COLORS[indicator.riskLevel];
-
-    return (
-      <View key={indicator.id} style={styles.indicatorRow}>
-        <View style={styles.indicatorInfo}>
-          <View style={styles.indicatorHeader}>
-            <ThemedText style={styles.indicatorNumber}>
-              {indicator.indicatorNumber}.
-            </ThemedText>
-            <View style={[styles.riskBadge, { backgroundColor: colors.bg }]}>
-              <ThemedText style={[styles.riskBadgeText, { color: colors.text }]}>
-                {indicator.riskLevel.toUpperCase()} ({indicator.weight})
-              </ThemedText>
-            </View>
-          </View>
-          <ThemedText style={styles.indicatorName}>{indicator.name}</ThemedText>
-        </View>
-
-        <View style={styles.responseButtons}>
-          {(['yes', 'no', 'na'] as const).map((value) => (
-            <Pressable
-              key={value}
-              style={[
-                styles.responseBtn,
-                currentResponse === value && styles.responseBtnActive,
-                currentResponse === value && value === 'yes' && { backgroundColor: '#D1FAE5', borderColor: '#059669' },
-                currentResponse === value && value === 'no' && { backgroundColor: '#FEE2E2', borderColor: '#DC2626' },
-                currentResponse === value && value === 'na' && { backgroundColor: '#E5E7EB', borderColor: '#6B7280' },
-              ]}
-              onPress={() => handleResponseChange(indicator.id, value)}
-            >
-              <ThemedText style={[
-                styles.responseBtnText,
-                currentResponse === value && value === 'yes' && { color: '#059669' },
-                currentResponse === value && value === 'no' && { color: '#DC2626' },
-                currentResponse === value && value === 'na' && { color: '#6B7280' },
-              ]}>
-                {value.toUpperCase()}
-              </ThemedText>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-    );
-  };
-
-  const { answered, total } = getCompletionStatus();
-
   if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
-        <ThemedText>Loading safety assessment...</ThemedText>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <ThemedText style={{ marginTop: Spacing.md }}>Loading safety assessment...</ThemedText>
       </ThemedView>
     );
   }
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <View style={styles.scorePreview}>
-          <ThemedText style={styles.scoreLabel}>Safety Score</ThemedText>
+      <View style={[styles.scoreHeader, { backgroundColor: theme.backgroundSecondary, borderBottomColor: theme.border }]}>
+        <View style={styles.scoreRow}>
+          <ThemedText style={styles.scoreLabel}>Safety Score:</ThemedText>
           <ThemedText style={[styles.scoreValue, { color: theme.primary }]}>
             {scorePreview?.totalScore ?? 0}
           </ThemedText>
         </View>
         <View style={[
-          styles.riskClassification,
-          scorePreview?.riskClassification && { 
+          styles.classificationBadge,
+          scorePreview?.riskClassification ? { 
             backgroundColor: RISK_COLORS[scorePreview.riskClassification as keyof typeof RISK_COLORS]?.bg 
-          }
+          } : { backgroundColor: '#E5E7EB' }
         ]}>
           <ThemedText style={[
-            styles.riskText,
-            scorePreview?.riskClassification && {
+            styles.classificationText,
+            scorePreview?.riskClassification ? {
               color: RISK_COLORS[scorePreview.riskClassification as keyof typeof RISK_COLORS]?.text
-            }
+            } : { color: '#6B7280' }
           ]}>
             {scorePreview?.riskClassification?.toUpperCase() || 'PENDING'}
-          </ThemedText>
-        </View>
-        <View style={styles.progress}>
-          <ThemedText style={[styles.progressText, { color: theme.textSecondary }]}>
-            {answered}/{total} answered
           </ThemedText>
         </View>
       </View>
@@ -308,48 +242,76 @@ export default function InstitutionalInspectionAssessmentScreen() {
           styles.scrollContent,
           { paddingBottom: tabBarHeight + insets.bottom + 100 },
         ]}
+        showsVerticalScrollIndicator={false}
       >
-        {pillars.map((pillar, index) => (
-          <Animated.View
-            key={pillar.id}
-            entering={FadeInDown.delay(index * 50).duration(300)}
-          >
-            <Card style={styles.pillarCard}>
-              <Pressable
-                style={styles.pillarHeader}
-                onPress={() => setExpandedPillar(expandedPillar === index ? null : index)}
-              >
-                <View>
-                  <ThemedText style={[styles.pillarNumber, { color: theme.primary }]}>
-                    Pillar {pillar.pillarNumber}
-                  </ThemedText>
-                  <ThemedText style={styles.pillarName}>{pillar.name}</ThemedText>
-                </View>
-                <Feather
-                  name={expandedPillar === index ? "chevron-up" : "chevron-down"}
-                  size={24}
-                  color={theme.textSecondary}
-                />
-              </Pressable>
+        {pillars.map((pillar) => (
+          <View key={pillar.id} style={styles.pillarSection}>
+            <View style={[styles.pillarHeader, { backgroundColor: theme.primary }]}>
+              <ThemedText style={styles.pillarNumber}>{pillar.pillarNumber}</ThemedText>
+              <ThemedText style={styles.pillarName}>{pillar.name}</ThemedText>
+            </View>
 
-              {expandedPillar === index && (
-                <View style={styles.indicatorsList}>
-                  {pillar.indicators.map((ind) => renderIndicator(ind, pillar.id))}
-                </View>
-              )}
-            </Card>
-          </Animated.View>
+            {pillar.indicators.map((indicator) => {
+              const currentResponse = responses[indicator.id]?.response || 'yes';
+              const riskColors = RISK_COLORS[indicator.riskLevel];
+
+              return (
+                <Card key={indicator.id} style={styles.indicatorCard}>
+                  <View style={styles.indicatorHeader}>
+                    <ThemedText style={styles.indicatorNumber}>
+                      {pillar.pillarNumber}.{indicator.indicatorNumber}
+                    </ThemedText>
+                    <View style={[styles.riskBadge, { backgroundColor: riskColors.bg }]}>
+                      <ThemedText style={[styles.riskBadgeText, { color: riskColors.text }]}>
+                        {indicator.riskLevel.toUpperCase()} ({indicator.weight})
+                      </ThemedText>
+                    </View>
+                  </View>
+
+                  <ThemedText style={styles.indicatorName}>{indicator.name}</ThemedText>
+
+                  <View style={styles.responseButtons}>
+                    {(['yes', 'no', 'na'] as const).map((value) => {
+                      const isSelected = currentResponse === value;
+                      const btnStyle = isSelected ? (
+                        value === 'yes' ? styles.yesSelected :
+                        value === 'no' ? styles.noSelected :
+                        styles.naSelected
+                      ) : styles.responseBtn;
+
+                      return (
+                        <Pressable
+                          key={value}
+                          style={[styles.responseBtn, isSelected && btnStyle]}
+                          onPress={() => handleResponseChange(indicator.id, value)}
+                        >
+                          <ThemedText style={[
+                            styles.responseBtnText,
+                            isSelected && value === 'yes' && { color: '#059669' },
+                            isSelected && value === 'no' && { color: '#DC2626' },
+                            isSelected && value === 'na' && { color: '#6B7280' },
+                          ]}>
+                            {value.toUpperCase()}
+                          </ThemedText>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </Card>
+              );
+            })}
+          </View>
         ))}
-      </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: tabBarHeight + insets.bottom + Spacing.md }]}>
-        <Button
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Submitting..." : "Submit Assessment"}
-        </Button>
-      </View>
+        <View style={styles.submitSection}>
+          <Button
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Submitting..." : "Submit Assessment & Generate PDF"}
+          </Button>
+        </View>
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -360,41 +322,38 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-  },
-  header: {
-    flexDirection: 'row',
     alignItems: 'center',
+  },
+  scoreHeader: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: Spacing.md,
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     borderBottomWidth: 1,
   },
-  scorePreview: {
+  scoreRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: Spacing.sm,
   },
   scoreLabel: {
-    fontSize: FontSize.xs,
-    color: '#6B7280',
+    fontSize: FontSize.md,
+    fontWeight: '500',
   },
   scoreValue: {
-    fontSize: 24,
+    fontSize: FontSize.xl,
     fontWeight: '700',
   },
-  riskClassification: {
+  classificationBadge: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
     borderRadius: 20,
-    backgroundColor: '#E5E7EB',
   },
-  riskText: {
+  classificationText: {
     fontSize: FontSize.sm,
     fontWeight: '700',
-    color: '#6B7280',
-  },
-  progress: {},
-  progressText: {
-    fontSize: FontSize.sm,
   },
   scrollView: {
     flex: 1,
@@ -402,51 +361,54 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: Spacing.md,
   },
-  pillarCard: {
-    marginBottom: Spacing.md,
-    overflow: 'hidden',
+  pillarSection: {
+    marginBottom: Spacing.lg,
   },
   pillarHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: 8,
+    marginBottom: Spacing.sm,
+    gap: Spacing.sm,
   },
   pillarNumber: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    marginBottom: 2,
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    width: 28,
+    height: 28,
+    textAlign: 'center',
+    lineHeight: 28,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 14,
   },
   pillarName: {
     fontSize: FontSize.md,
     fontWeight: '600',
+    color: '#FFFFFF',
+    flex: 1,
   },
-  indicatorsList: {
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.md,
-  },
-  indicatorRow: {
-    paddingVertical: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  indicatorInfo: {
+  indicatorCard: {
     marginBottom: Spacing.sm,
+    padding: Spacing.md,
   },
   indicatorHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: 4,
+    marginBottom: Spacing.xs,
   },
   indicatorNumber: {
     fontSize: FontSize.sm,
     fontWeight: '600',
+    color: '#6B7280',
   },
   riskBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 10,
   },
   riskBadgeText: {
     fontSize: 10,
@@ -454,6 +416,7 @@ const styles = StyleSheet.create({
   },
   indicatorName: {
     fontSize: FontSize.sm,
+    marginBottom: Spacing.sm,
     lineHeight: 20,
   },
   responseButtons: {
@@ -462,22 +425,33 @@ const styles = StyleSheet.create({
   },
   responseBtn: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: Spacing.sm,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     alignItems: 'center',
+    backgroundColor: '#F9FAFB',
   },
-  responseBtnActive: {
-    borderWidth: 2,
+  yesSelected: {
+    backgroundColor: '#D1FAE5',
+    borderColor: '#059669',
+  },
+  noSelected: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#DC2626',
+  },
+  naSelected: {
+    backgroundColor: '#E5E7EB',
+    borderColor: '#6B7280',
   },
   responseBtnText: {
     fontSize: FontSize.sm,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#6B7280',
   },
-  footer: {
-    padding: Spacing.md,
+  submitSection: {
+    marginTop: Spacing.xl,
+    paddingTop: Spacing.lg,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
