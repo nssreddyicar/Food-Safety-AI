@@ -108,11 +108,40 @@ Express.js with strict layered architecture:
 - `DELETE /api/files/:filename` - Delete file
 - `GET /api/files?category=inspection` - List files by category
 
+### Complaint Management API
+Dynamic, location-aware complaint system with admin-configurable forms:
+
+- `GET /api/complaints/form-config` - Get form configuration (public)
+- `POST /api/complaints/submit` - Submit new complaint with GPS/evidence (public)
+- `GET /api/complaints/track/:code` - Track complaint by public code (public)
+- `GET /api/complaints` - List complaints with filters (officer)
+- `GET /api/complaints/:id` - Get complaint details (officer)
+- `PUT /api/complaints/:id/status` - Update complaint status (officer)
+- `PUT /api/complaints/:id/assign` - Assign complaint to officer (admin)
+- `POST /api/complaints/:id/evidence` - Add evidence with EXIF metadata
+
+Domain files:
+- `server/domain/complaint/complaint.service.ts` - Business rules
+- `server/data/repositories/complaint.repository.ts` - Data access
+- `shared/types/complaint.types.ts` - TypeScript interfaces
+
+Key features:
+- GPS location capture with immutability (legal requirement)
+- Admin-configurable dynamic form fields
+- Evidence uploads with EXIF metadata preservation
+- Jurisdiction auto-mapping from coordinates
+- Public tracking via generated codes (PII protected)
+
 ## Credentials
 - **Super Admin**: superadmin / Admin@123
 - **Test Officer**: officer@test.com / Officer@123
 
 ## Recent Changes
+- Added Dynamic Complaint Management System with 9 API endpoints
+- Complaint features: GPS location capture, evidence uploads, admin-configurable forms, public tracking codes
+- Added complaint domain service with legal compliance rules (location immutability)
+- Added complaint repository for data access layer
+- Added shared TypeScript types for complaints
 - Added comprehensive architecture documentation (docs/ARCHITECTURE.md)
 - Added layer README files with responsibilities
 - Added Expo file storage service (client/lib/file-storage.ts)
