@@ -90,6 +90,10 @@ import {
   institutionalInspectionPersonTypes,
   institutionalInspectionPillars,
   institutionalInspectionIndicators,
+  fboInspectionTypes,
+  fboDeviationCategories,
+  fboActionTypes,
+  fboInspectionConfig,
 } from "../shared/schema";
 import { desc, asc, count, sql, eq } from "drizzle-orm";
 
@@ -5949,6 +5953,266 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.sendFile(templatePath);
     }
     res.status(404).send("Admin institutional inspections page not found");
+  });
+
+  // ==================== FBO INSPECTION ADMIN API ====================
+
+  // Admin page for FBO inspection config
+  app.get("/admin/fbo-inspections", (req: Request, res: Response) => {
+    const sessionToken = getSessionToken(req);
+    if (!sessionToken || !isValidSession(sessionToken)) {
+      return res.redirect("/admin");
+    }
+    const templatePath = path.resolve(
+      process.cwd(),
+      "server",
+      "templates",
+      "admin-fbo-inspections.html",
+    );
+    if (fs.existsSync(templatePath)) {
+      return res.sendFile(templatePath);
+    }
+    res.status(404).send("Admin FBO inspections page not found");
+  });
+
+  // FBO Inspection Types CRUD
+  app.get("/api/admin/fbo-inspection/types", async (req: Request, res: Response) => {
+    try {
+      const types = await db.select().from(fboInspectionTypes).orderBy(asc(fboInspectionTypes.displayOrder));
+      res.json(types);
+    } catch (error) {
+      console.error("Error fetching FBO inspection types:", error);
+      res.status(500).json({ error: "Failed to fetch inspection types" });
+    }
+  });
+
+  app.post("/api/admin/fbo-inspection/types", async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(fboInspectionTypes).values(req.body).returning();
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating FBO inspection type:", error);
+      res.status(500).json({ error: "Failed to create inspection type" });
+    }
+  });
+
+  app.put("/api/admin/fbo-inspection/types/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const [updated] = await db.update(fboInspectionTypes)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(fboInspectionTypes.id, id))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating FBO inspection type:", error);
+      res.status(500).json({ error: "Failed to update inspection type" });
+    }
+  });
+
+  app.delete("/api/admin/fbo-inspection/types/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(fboInspectionTypes).where(eq(fboInspectionTypes.id, id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting FBO inspection type:", error);
+      res.status(500).json({ error: "Failed to delete inspection type" });
+    }
+  });
+
+  // Reset FBO inspection types to defaults
+  app.post("/api/admin/fbo-inspection/types/reset", async (req: Request, res: Response) => {
+    try {
+      await db.delete(fboInspectionTypes);
+      const defaultTypes = [
+        { name: "Routine Inspection", code: "ROUTINE", description: "Regular scheduled inspection of FBO premises", requiresSample: false, requiresFollowup: false, displayOrder: 1, color: "#3B82F6" },
+        { name: "Follow-up Inspection", code: "FOLLOWUP", description: "Follow-up on previous inspection findings", requiresSample: false, requiresFollowup: false, displayOrder: 2, color: "#10B981" },
+        { name: "Surveillance Inspection", code: "SURVEILLANCE", description: "Random surveillance inspection", requiresSample: true, requiresFollowup: false, displayOrder: 3, color: "#8B5CF6" },
+        { name: "Complaint-Based", code: "COMPLAINT", description: "Inspection triggered by consumer complaint", requiresSample: true, requiresFollowup: true, followupDays: 7, displayOrder: 4, color: "#EF4444" },
+        { name: "Special Drive", code: "SPECIAL_DRIVE", description: "Part of special enforcement drive", requiresSample: true, requiresFollowup: false, displayOrder: 5, color: "#F59E0B" },
+        { name: "License Verification", code: "LICENSE_VERIFY", description: "Verification of FSSAI license compliance", requiresSample: false, requiresFollowup: false, displayOrder: 6, color: "#06B6D4" },
+        { name: "Pre-License Inspection", code: "PRE_LICENSE", description: "Inspection before license issuance/renewal", requiresSample: false, requiresFollowup: false, displayOrder: 7, color: "#84CC16" },
+      ];
+      await db.insert(fboInspectionTypes).values(defaultTypes);
+      res.json({ success: true, message: "Reset to 7 default inspection types" });
+    } catch (error) {
+      console.error("Error resetting FBO inspection types:", error);
+      res.status(500).json({ error: "Failed to reset inspection types" });
+    }
+  });
+
+  // FBO Deviation Categories CRUD
+  app.get("/api/admin/fbo-inspection/deviations", async (req: Request, res: Response) => {
+    try {
+      const categories = await db.select().from(fboDeviationCategories).orderBy(asc(fboDeviationCategories.displayOrder));
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching deviation categories:", error);
+      res.status(500).json({ error: "Failed to fetch deviation categories" });
+    }
+  });
+
+  app.post("/api/admin/fbo-inspection/deviations", async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(fboDeviationCategories).values(req.body).returning();
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating deviation category:", error);
+      res.status(500).json({ error: "Failed to create deviation category" });
+    }
+  });
+
+  app.put("/api/admin/fbo-inspection/deviations/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const [updated] = await db.update(fboDeviationCategories)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(fboDeviationCategories.id, id))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating deviation category:", error);
+      res.status(500).json({ error: "Failed to update deviation category" });
+    }
+  });
+
+  app.delete("/api/admin/fbo-inspection/deviations/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(fboDeviationCategories).where(eq(fboDeviationCategories.id, id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting deviation category:", error);
+      res.status(500).json({ error: "Failed to delete deviation category" });
+    }
+  });
+
+  // Reset FBO deviation categories to defaults
+  app.post("/api/admin/fbo-inspection/deviations/reset", async (req: Request, res: Response) => {
+    try {
+      await db.delete(fboDeviationCategories);
+      const defaultCategories = [
+        { name: "Hygiene & Sanitation", code: "HYGIENE", description: "Poor hygiene, unclean premises, contamination risks", severity: "high", legalReference: "FSS Act 2006, Schedule 4", penaltyRange: "Rs. 1,00,000 - Rs. 5,00,000", displayOrder: 1 },
+        { name: "Licensing Violation", code: "LICENSE", description: "Operating without valid FSSAI license or expired license", severity: "critical", legalReference: "FSS Act 2006, Section 31", penaltyRange: "Rs. 5,00,000 + imprisonment", displayOrder: 2 },
+        { name: "Labeling Non-compliance", code: "LABELING", description: "Incorrect/misleading labels, missing mandatory information", severity: "medium", legalReference: "FSS (Labeling & Display) Regulations 2020", penaltyRange: "Rs. 25,000 - Rs. 3,00,000", displayOrder: 3 },
+        { name: "Adulteration", code: "ADULTERATION", description: "Food adulteration or use of prohibited substances", severity: "critical", legalReference: "FSS Act 2006, Section 26", penaltyRange: "Rs. 10,00,000 + imprisonment", displayOrder: 4 },
+        { name: "Storage Violation", code: "STORAGE", description: "Improper storage conditions, temperature abuse", severity: "high", legalReference: "FSS (Food Safety Management) Regulations", penaltyRange: "Rs. 1,00,000 - Rs. 3,00,000", displayOrder: 5 },
+        { name: "Pest Infestation", code: "PEST", description: "Evidence of pest activity or infestation", severity: "high", legalReference: "FSS Act 2006, Schedule 4", penaltyRange: "Rs. 1,00,000 - Rs. 5,00,000", displayOrder: 6 },
+        { name: "Expired Products", code: "EXPIRED", description: "Sale of expired or beyond use-by date products", severity: "high", legalReference: "FSS Act 2006, Section 50", penaltyRange: "Rs. 1,00,000 - Rs. 5,00,000", displayOrder: 7 },
+        { name: "Food Handler Hygiene", code: "HANDLER_HYGIENE", description: "Food handlers without health certificates or protective gear", severity: "medium", legalReference: "FSS (Food Safety Training) Regulations", penaltyRange: "Rs. 25,000 - Rs. 1,00,000", displayOrder: 8 },
+        { name: "Water Quality", code: "WATER", description: "Use of non-potable or contaminated water", severity: "high", legalReference: "FSS Act 2006, Schedule 4", penaltyRange: "Rs. 1,00,000 - Rs. 5,00,000", displayOrder: 9 },
+        { name: "Misleading Advertisement", code: "MISLEADING_AD", description: "False claims or misleading advertising", severity: "medium", legalReference: "FSS Act 2006, Section 53", penaltyRange: "Rs. 10,00,000", displayOrder: 10 },
+      ];
+      await db.insert(fboDeviationCategories).values(defaultCategories);
+      res.json({ success: true, message: "Reset to 10 default deviation categories" });
+    } catch (error) {
+      console.error("Error resetting deviation categories:", error);
+      res.status(500).json({ error: "Failed to reset deviation categories" });
+    }
+  });
+
+  // FBO Action Types CRUD
+  app.get("/api/admin/fbo-inspection/actions", async (req: Request, res: Response) => {
+    try {
+      const actions = await db.select().from(fboActionTypes).orderBy(asc(fboActionTypes.displayOrder));
+      res.json(actions);
+    } catch (error) {
+      console.error("Error fetching action types:", error);
+      res.status(500).json({ error: "Failed to fetch action types" });
+    }
+  });
+
+  app.post("/api/admin/fbo-inspection/actions", async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(fboActionTypes).values(req.body).returning();
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating action type:", error);
+      res.status(500).json({ error: "Failed to create action type" });
+    }
+  });
+
+  app.put("/api/admin/fbo-inspection/actions/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const [updated] = await db.update(fboActionTypes)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(fboActionTypes.id, id))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating action type:", error);
+      res.status(500).json({ error: "Failed to update action type" });
+    }
+  });
+
+  app.delete("/api/admin/fbo-inspection/actions/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(fboActionTypes).where(eq(fboActionTypes.id, id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting action type:", error);
+      res.status(500).json({ error: "Failed to delete action type" });
+    }
+  });
+
+  // Reset FBO action types to defaults
+  app.post("/api/admin/fbo-inspection/actions/reset", async (req: Request, res: Response) => {
+    try {
+      await db.delete(fboActionTypes);
+      const defaultActions = [
+        { name: "Verbal Warning", code: "VERBAL_WARNING", description: "Verbal warning issued for minor violations", severity: "info", requiresFollowup: false, legalBasis: "FSS Act 2006", displayOrder: 1, color: "#6B7280" },
+        { name: "Written Warning", code: "WRITTEN_WARNING", description: "Formal written warning notice", severity: "warning", requiresFollowup: true, followupDays: 15, legalBasis: "FSS Act 2006, Section 32", displayOrder: 2, color: "#F59E0B" },
+        { name: "Improvement Notice", code: "IMPROVEMENT_NOTICE", description: "Notice requiring improvement within specified time", severity: "warning", requiresFollowup: true, followupDays: 30, legalBasis: "FSS Act 2006, Section 32", displayOrder: 3, color: "#EAB308" },
+        { name: "Sample Collection", code: "SAMPLE_COLLECTION", description: "Food sample collected for laboratory testing", severity: "enforcement", requiresFollowup: true, followupDays: 21, legalBasis: "FSS Act 2006, Section 38", displayOrder: 4, color: "#3B82F6" },
+        { name: "Seizure of Articles", code: "SEIZURE", description: "Seizure of adulterated/misbranded food articles", severity: "enforcement", requiresFollowup: true, followupDays: 7, legalBasis: "FSS Act 2006, Section 38(1)", displayOrder: 5, color: "#EF4444" },
+        { name: "Suspension Notice", code: "SUSPENSION", description: "License suspension notice issued", severity: "legal", requiresFollowup: true, followupDays: 7, legalBasis: "FSS Act 2006, Section 32(2)", displayOrder: 6, color: "#DC2626" },
+        { name: "Cancellation Recommendation", code: "CANCELLATION", description: "Recommendation for license cancellation", severity: "legal", requiresFollowup: false, legalBasis: "FSS Act 2006, Section 32(3)", displayOrder: 7, color: "#7F1D1D" },
+        { name: "Prosecution Initiated", code: "PROSECUTION", description: "Legal prosecution case filed", severity: "legal", requiresFollowup: true, followupDays: 30, legalBasis: "FSS Act 2006, Section 42", displayOrder: 8, color: "#991B1B" },
+        { name: "Emergency Prohibition", code: "EMERGENCY_PROHIBITION", description: "Immediate closure order for public safety", severity: "legal", requiresFollowup: true, followupDays: 3, legalBasis: "FSS Act 2006, Section 34", displayOrder: 9, color: "#7F1D1D" },
+        { name: "Compliance Verified", code: "COMPLIANCE_VERIFIED", description: "Previous violations corrected and verified", severity: "info", requiresFollowup: false, legalBasis: "FSS Act 2006", displayOrder: 10, color: "#10B981" },
+      ];
+      await db.insert(fboActionTypes).values(defaultActions);
+      res.json({ success: true, message: "Reset to 10 default action types" });
+    } catch (error) {
+      console.error("Error resetting action types:", error);
+      res.status(500).json({ error: "Failed to reset action types" });
+    }
+  });
+
+  // FBO Inspection Config CRUD
+  app.get("/api/admin/fbo-inspection/config", async (req: Request, res: Response) => {
+    try {
+      const configs = await db.select().from(fboInspectionConfig);
+      res.json(configs);
+    } catch (error) {
+      console.error("Error fetching FBO config:", error);
+      res.status(500).json({ error: "Failed to fetch configuration" });
+    }
+  });
+
+  app.put("/api/admin/fbo-inspection/config", async (req: Request, res: Response) => {
+    try {
+      const { configs } = req.body;
+      for (const cfg of configs) {
+        const existing = await db.select().from(fboInspectionConfig)
+          .where(eq(fboInspectionConfig.configKey, cfg.configKey)).limit(1);
+        
+        if (existing.length > 0) {
+          await db.update(fboInspectionConfig)
+            .set({ configValue: cfg.configValue, updatedAt: new Date() })
+            .where(eq(fboInspectionConfig.configKey, cfg.configKey));
+        } else {
+          await db.insert(fboInspectionConfig).values(cfg);
+        }
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating FBO config:", error);
+      res.status(500).json({ error: "Failed to update configuration" });
+    }
   });
 
   const httpServer = createServer(app);
