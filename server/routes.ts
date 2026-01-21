@@ -5625,6 +5625,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate PDF report for institutional inspection
+  app.get("/api/institutional-inspections/:id/report", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { institutionalInspectionPdfService } = await import('./services/institutional-inspection-pdf.service');
+      const pdfBuffer = await institutionalInspectionPdfService.generateReport(id);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="inspection-report-${id}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error("Error generating PDF:", error);
+      res.status(500).json({ error: error.message || "Failed to generate report" });
+    }
+  });
+
   // ============ ADMIN ROUTES FOR INSTITUTIONAL INSPECTION CONFIG ============
 
   // Get all pillars (admin)

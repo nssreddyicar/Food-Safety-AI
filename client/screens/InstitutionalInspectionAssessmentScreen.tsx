@@ -136,6 +136,17 @@ export default function InstitutionalInspectionAssessmentScreen() {
     }));
   };
 
+  const handleDownloadReport = async () => {
+    try {
+      const reportUrl = new URL(`/api/institutional-inspections/${inspectionId}/report`, getApiUrl()).toString();
+      const { openBrowserAsync } = await import('expo-web-browser');
+      await openBrowserAsync(reportUrl);
+    } catch (error) {
+      console.error("Download error:", error);
+      Alert.alert("Error", "Failed to download report");
+    }
+  };
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
 
@@ -174,6 +185,10 @@ export default function InstitutionalInspectionAssessmentScreen() {
           "Assessment Complete",
           `Risk Classification: ${scorePreview?.riskClassification?.toUpperCase()}\nTotal Score: ${scorePreview?.totalScore}`,
           [
+            {
+              text: "Download Report",
+              onPress: () => handleDownloadReport(),
+            },
             {
               text: "Done",
               onPress: () => navigation.popToTop(),
