@@ -89,6 +89,24 @@ export class InstitutionalInspectionRepository {
       .returning();
     return result;
   }
+
+  async createPillar(data: {
+    pillarNumber: number;
+    name: string;
+    description?: string;
+    displayOrder?: number;
+  }): Promise<InstitutionalInspectionPillar> {
+    const [result] = await db.insert(institutionalInspectionPillars).values({
+      ...data,
+      displayOrder: data.displayOrder || data.pillarNumber,
+    }).returning();
+    return result;
+  }
+
+  async deletePillar(id: string): Promise<void> {
+    await db.delete(institutionalInspectionIndicators).where(eq(institutionalInspectionIndicators.pillarId, id));
+    await db.delete(institutionalInspectionPillars).where(eq(institutionalInspectionPillars.id, id));
+  }
   
   // ========== Indicators ==========
   
@@ -140,6 +158,10 @@ export class InstitutionalInspectionRepository {
   }): Promise<InstitutionalInspectionIndicator> {
     const [result] = await db.insert(institutionalInspectionIndicators).values(data).returning();
     return result;
+  }
+
+  async deleteIndicator(id: string): Promise<void> {
+    await db.delete(institutionalInspectionIndicators).where(eq(institutionalInspectionIndicators.id, id));
   }
   
   // ========== Configuration ==========

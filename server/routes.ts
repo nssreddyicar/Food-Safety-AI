@@ -5669,6 +5669,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create pillar (admin)
+  app.post("/api/admin/institutional-inspection/pillars", async (req: Request, res: Response) => {
+    try {
+      const pillar = await institutionalInspectionRepository.createPillar(req.body);
+      res.status(201).json(pillar);
+    } catch (error) {
+      console.error("Error creating pillar:", error);
+      res.status(500).json({ error: "Failed to create pillar" });
+    }
+  });
+
   // Update pillar (admin)
   app.put("/api/admin/institutional-inspection/pillars/:id", async (req: Request, res: Response) => {
     try {
@@ -5678,6 +5689,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating pillar:", error);
       res.status(500).json({ error: "Failed to update pillar" });
+    }
+  });
+
+  // Delete pillar (admin)
+  app.delete("/api/admin/institutional-inspection/pillars/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await institutionalInspectionRepository.deletePillar(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting pillar:", error);
+      res.status(500).json({ error: "Failed to delete pillar" });
     }
   });
 
@@ -5712,6 +5735,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating indicator:", error);
       res.status(500).json({ error: "Failed to create indicator" });
+    }
+  });
+
+  // Delete indicator (admin)
+  app.delete("/api/admin/institutional-inspection/indicators/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await institutionalInspectionRepository.deleteIndicator(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting indicator:", error);
+      res.status(500).json({ error: "Failed to delete indicator" });
     }
   });
 

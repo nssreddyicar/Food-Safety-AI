@@ -134,8 +134,12 @@
       <div class="card">
         <div class="card-header">
           <h2 class="card-title">Assessment Pillars & Indicators</h2>
+          <button class="btn btn-primary" onclick="openAddPillarModal()">
+            <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Add Pillar
+          </button>
         </div>
-        <p style="color: #6b7280; margin-bottom: 20px;">7 pillars with 35 FSSAI-aligned indicators. Click a pillar to view and edit its indicators.</p>
+        <p style="color: #6b7280; margin-bottom: 20px;">Configure assessment pillars and their indicators. Click a pillar to expand and manage its indicators.</p>
         <div id="pillarsContainer"></div>
       </div>
     </div>
@@ -201,32 +205,68 @@
     </div>
   </div>
 
+  <div class="modal" id="pillarModal">
+    <div class="modal-content">
+      <h2 class="modal-title" id="pillarModalTitle">Add Pillar</h2>
+      <input type="hidden" id="editPillarId">
+      <div style="display: grid; grid-template-columns: 80px 1fr; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label">Number</label>
+          <input type="number" class="form-input" id="pillarNumber" min="1" max="20">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pillar Name *</label>
+          <input type="text" class="form-input" id="pillarName" placeholder="e.g., Hygiene & Sanitation">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-input" id="pillarDescription" rows="2" placeholder="Brief description of this pillar"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closePillarModal()">Cancel</button>
+        <button class="btn btn-danger" id="deletePillarBtn" style="display: none;" onclick="deletePillar()">Delete</button>
+        <button class="btn btn-primary" onclick="savePillar()">Save</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal" id="indicatorModal">
     <div class="modal-content">
       <h2 class="modal-title" id="indicatorModalTitle">Edit Indicator</h2>
       <input type="hidden" id="editIndicatorId">
-      <div class="form-group">
-        <label class="form-label">Indicator Name</label>
-        <input type="text" class="form-input" id="indicatorName">
+      <input type="hidden" id="indicatorPillarId">
+      <div style="display: grid; grid-template-columns: 80px 1fr; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label">Number</label>
+          <input type="number" class="form-input" id="indicatorNumber" min="1" max="20">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Indicator Name *</label>
+          <input type="text" class="form-input" id="indicatorName" placeholder="e.g., Hand washing facilities available">
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Risk Level</label>
-        <select class="form-select" id="indicatorRiskLevel" onchange="updateWeightFromRisk()">
-          <option value="high">High (Weight: 3)</option>
-          <option value="medium">Medium (Weight: 2)</option>
-          <option value="low">Low (Weight: 1)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Weight</label>
-        <input type="number" class="form-input" id="indicatorWeight" min="1" max="5">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label">Risk Level</label>
+          <select class="form-select" id="indicatorRiskLevel" onchange="updateWeightFromRisk()">
+            <option value="high">High (Weight: 3)</option>
+            <option value="medium">Medium (Weight: 2)</option>
+            <option value="low">Low (Weight: 1)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Weight</label>
+          <input type="number" class="form-input" id="indicatorWeight" min="1" max="5">
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Description</label>
-        <textarea class="form-input" id="indicatorDescription" rows="3"></textarea>
+        <textarea class="form-input" id="indicatorDescription" rows="2" placeholder="Detailed description of what to check"></textarea>
       </div>
       <div class="modal-actions">
         <button class="btn" onclick="closeIndicatorModal()">Cancel</button>
+        <button class="btn btn-danger" id="deleteIndicatorBtn" style="display: none;" onclick="deleteIndicator()">Delete</button>
         <button class="btn btn-primary" onclick="saveIndicator()">Save</button>
       </div>
     </div>
@@ -412,7 +452,7 @@
     function renderPillars() {
       const container = document.getElementById('pillarsContainer');
       if (!pillars.length) {
-        container.innerHTML = '<div class="empty-state">No pillars configured</div>';
+        container.innerHTML = '<div class="empty-state"><h3>No pillars configured</h3><p>Click "Add Pillar" to create assessment pillars</p></div>';
         return;
       }
 
@@ -420,17 +460,20 @@
         const pillarIndicators = indicators.filter(i => i.pillarId === pillar.id);
         return `
           <div class="pillar-card">
-            <div class="pillar-header" onclick="togglePillar(${idx})">
-              <div>
+            <div class="pillar-header">
+              <div onclick="togglePillar(${idx})" style="flex: 1; cursor: pointer;">
                 <span class="pillar-title">Pillar ${pillar.pillarNumber}: ${pillar.name}</span>
                 <span style="color: #6b7280; margin-left: 10px;">(${pillarIndicators.length} indicators)</span>
               </div>
-              <svg class="pillar-toggle" id="toggle-${idx}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button class="btn" style="padding: 4px 10px; font-size: 12px;" onclick="event.stopPropagation(); editPillar('${pillar.id}')">Edit</button>
+                <svg class="pillar-toggle" id="toggle-${idx}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" onclick="togglePillar(${idx})" style="cursor: pointer;">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
             </div>
             <div class="pillar-indicators" id="indicators-${idx}">
-              ${pillarIndicators.map(ind => `
+              ${pillarIndicators.length === 0 ? '<div style="text-align: center; color: #9ca3af; padding: 12px;">No indicators in this pillar</div>' : pillarIndicators.map(ind => `
                 <div class="indicator-row">
                   <div>
                     <span>${ind.indicatorNumber}. ${ind.name}</span>
@@ -441,6 +484,9 @@
                   </div>
                 </div>
               `).join('')}
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e5e7eb;">
+                <button class="btn btn-primary" style="width: 100%; padding: 8px; font-size: 13px;" onclick="openAddIndicatorModal('${pillar.id}', ${pillarIndicators.length + 1})">+ Add Indicator to This Pillar</button>
+              </div>
             </div>
           </div>
         `;
@@ -535,16 +581,114 @@
       }
     }
 
+    // Pillar Management
+    function openAddPillarModal() {
+      document.getElementById('editPillarId').value = '';
+      document.getElementById('pillarNumber').value = pillars.length + 1;
+      document.getElementById('pillarName').value = '';
+      document.getElementById('pillarDescription').value = '';
+      document.getElementById('pillarModalTitle').textContent = 'Add New Pillar';
+      document.getElementById('deletePillarBtn').style.display = 'none';
+      document.getElementById('pillarModal').classList.add('show');
+    }
+
+    function editPillar(id) {
+      const pillar = pillars.find(p => p.id === id);
+      if (!pillar) return;
+
+      document.getElementById('editPillarId').value = id;
+      document.getElementById('pillarNumber').value = pillar.pillarNumber;
+      document.getElementById('pillarName').value = pillar.name;
+      document.getElementById('pillarDescription').value = pillar.description || '';
+      document.getElementById('pillarModalTitle').textContent = 'Edit Pillar';
+      document.getElementById('deletePillarBtn').style.display = 'inline-flex';
+      document.getElementById('pillarModal').classList.add('show');
+    }
+
+    function closePillarModal() {
+      document.getElementById('pillarModal').classList.remove('show');
+    }
+
+    async function savePillar() {
+      const id = document.getElementById('editPillarId').value;
+      const data = {
+        pillarNumber: parseInt(document.getElementById('pillarNumber').value),
+        name: document.getElementById('pillarName').value,
+        description: document.getElementById('pillarDescription').value
+      };
+
+      if (!data.name) {
+        alert('Pillar name is required');
+        return;
+      }
+
+      const url = id 
+        ? `/api/admin/institutional-inspection/pillars/${id}`
+        : '/api/admin/institutional-inspection/pillars';
+
+      try {
+        const res = await fetch(url, {
+          method: id ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error('Failed to save');
+        closePillarModal();
+        await loadPillars();
+        alert(id ? 'Pillar updated' : 'Pillar created');
+      } catch (e) {
+        alert('Failed to save pillar: ' + e.message);
+      }
+    }
+
+    async function deletePillar() {
+      const id = document.getElementById('editPillarId').value;
+      if (!id) return;
+
+      const pillarIndicators = indicators.filter(i => i.pillarId === id);
+      const msg = pillarIndicators.length > 0 
+        ? `This pillar has ${pillarIndicators.length} indicators that will also be deleted. Are you sure?`
+        : 'Are you sure you want to delete this pillar?';
+      
+      if (!confirm(msg)) return;
+
+      try {
+        await fetch(`/api/admin/institutional-inspection/pillars/${id}`, { method: 'DELETE' });
+        closePillarModal();
+        await Promise.all([loadPillars(), loadIndicators()]);
+        alert('Pillar deleted');
+      } catch (e) {
+        alert('Failed to delete pillar');
+      }
+    }
+
+    // Indicator Management
+    function openAddIndicatorModal(pillarId, indicatorNum) {
+      document.getElementById('editIndicatorId').value = '';
+      document.getElementById('indicatorPillarId').value = pillarId;
+      document.getElementById('indicatorNumber').value = indicatorNum;
+      document.getElementById('indicatorName').value = '';
+      document.getElementById('indicatorRiskLevel').value = 'medium';
+      document.getElementById('indicatorWeight').value = 2;
+      document.getElementById('indicatorDescription').value = '';
+      document.getElementById('indicatorModalTitle').textContent = 'Add New Indicator';
+      document.getElementById('deleteIndicatorBtn').style.display = 'none';
+      document.getElementById('indicatorModal').classList.add('show');
+    }
+
     function editIndicator(id) {
       const ind = indicators.find(i => i.id === id);
       if (!ind) return;
 
       document.getElementById('editIndicatorId').value = id;
+      document.getElementById('indicatorPillarId').value = ind.pillarId;
+      document.getElementById('indicatorNumber').value = ind.indicatorNumber;
       document.getElementById('indicatorName').value = ind.name;
       document.getElementById('indicatorRiskLevel').value = ind.riskLevel;
       document.getElementById('indicatorWeight').value = ind.weight;
       document.getElementById('indicatorDescription').value = ind.description || '';
       document.getElementById('indicatorModalTitle').textContent = 'Edit Indicator';
+      document.getElementById('deleteIndicatorBtn').style.display = 'inline-flex';
       document.getElementById('indicatorModal').classList.add('show');
     }
 
@@ -560,24 +704,53 @@
 
     async function saveIndicator() {
       const id = document.getElementById('editIndicatorId').value;
+      const pillarId = document.getElementById('indicatorPillarId').value;
       const data = {
+        pillarId: pillarId,
+        indicatorNumber: parseInt(document.getElementById('indicatorNumber').value),
         name: document.getElementById('indicatorName').value,
         riskLevel: document.getElementById('indicatorRiskLevel').value,
         weight: parseInt(document.getElementById('indicatorWeight').value),
         description: document.getElementById('indicatorDescription').value
       };
 
+      if (!data.name) {
+        alert('Indicator name is required');
+        return;
+      }
+
+      const url = id 
+        ? `/api/admin/institutional-inspection/indicators/${id}`
+        : '/api/admin/institutional-inspection/indicators';
+
       try {
-        await fetch(`/api/admin/institutional-inspection/indicators/${id}`, {
-          method: 'PUT',
+        const res = await fetch(url, {
+          method: id ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         });
+        if (!res.ok) throw new Error('Failed to save');
         closeIndicatorModal();
         await loadIndicators();
-        alert('Indicator updated');
+        alert(id ? 'Indicator updated' : 'Indicator created');
       } catch (e) {
-        alert('Failed to update indicator');
+        alert('Failed to save indicator: ' + e.message);
+      }
+    }
+
+    async function deleteIndicator() {
+      const id = document.getElementById('editIndicatorId').value;
+      if (!id) return;
+
+      if (!confirm('Are you sure you want to delete this indicator?')) return;
+
+      try {
+        await fetch(`/api/admin/institutional-inspection/indicators/${id}`, { method: 'DELETE' });
+        closeIndicatorModal();
+        await loadIndicators();
+        alert('Indicator deleted');
+      } catch (e) {
+        alert('Failed to delete indicator');
       }
     }
 
