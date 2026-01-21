@@ -76,6 +76,7 @@
       <div class="tab" onclick="showTab('inspection-types')">Inspection Types</div>
       <div class="tab" onclick="showTab('deviation-categories')">Deviation Categories</div>
       <div class="tab" onclick="showTab('action-types')">Action Types</div>
+      <div class="tab" onclick="showTab('form-fields')">Form Fields</div>
       <div class="tab" onclick="showTab('config')">Configuration</div>
     </div>
 
@@ -213,6 +214,46 @@
           </thead>
           <tbody id="actionTypesTable"></tbody>
         </table>
+      </div>
+    </div>
+
+    <div id="form-fields" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Inspection Form Fields</h2>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-danger" onclick="resetFormFields()">Reset to Defaults</button>
+            <button class="btn btn-primary" onclick="openFormFieldModal()">+ Add Field</button>
+          </div>
+        </div>
+        
+        <div id="formFieldsContainer">
+          <div id="fbo_details_fields" class="field-group">
+            <h3 style="margin: 20px 0 10px; color: #1e40af; border-bottom: 2px solid #1e40af; padding-bottom: 5px;">FBO Details</h3>
+            <table><thead><tr><th>Field Label</th><th>Type</th><th>Required</th><th>System</th><th>Actions</th></tr></thead><tbody id="fboDetailsTable"></tbody></table>
+          </div>
+          <div id="inspection_details_fields" class="field-group">
+            <h3 style="margin: 20px 0 10px; color: #059669; border-bottom: 2px solid #059669; padding-bottom: 5px;">Inspection Details</h3>
+            <table><thead><tr><th>Field Label</th><th>Type</th><th>Required</th><th>System</th><th>Actions</th></tr></thead><tbody id="inspectionDetailsTable"></tbody></table>
+          </div>
+          <div id="findings_fields" class="field-group">
+            <h3 style="margin: 20px 0 10px; color: #d97706; border-bottom: 2px solid #d97706; padding-bottom: 5px;">Findings</h3>
+            <table><thead><tr><th>Field Label</th><th>Type</th><th>Required</th><th>System</th><th>Actions</th></tr></thead><tbody id="findingsTable"></tbody></table>
+          </div>
+          <div id="actions_fields" class="field-group">
+            <h3 style="margin: 20px 0 10px; color: #dc2626; border-bottom: 2px solid #dc2626; padding-bottom: 5px;">Actions Taken</h3>
+            <table><thead><tr><th>Field Label</th><th>Type</th><th>Required</th><th>System</th><th>Actions</th></tr></thead><tbody id="actionsTable"></tbody></table>
+          </div>
+          <div id="evidence_fields" class="field-group">
+            <h3 style="margin: 20px 0 10px; color: #7c3aed; border-bottom: 2px solid #7c3aed; padding-bottom: 5px;">Evidence & Documentation</h3>
+            <table><thead><tr><th>Field Label</th><th>Type</th><th>Required</th><th>System</th><th>Actions</th></tr></thead><tbody id="evidenceTable"></tbody></table>
+          </div>
+        </div>
+        
+        <div class="empty-state" id="noFormFields" style="display: none;">
+          <h3>No Form Fields Configured</h3>
+          <p>Click "Reset to Defaults" to load the standard FSSAI inspection form fields.</p>
+        </div>
       </div>
     </div>
 
@@ -413,10 +454,105 @@
     </div>
   </div>
 
+  <!-- Form Field Modal -->
+  <div id="formFieldModal" class="modal">
+    <div class="modal-content" style="max-width: 650px;">
+      <h2 class="modal-title" id="formFieldModalTitle">Add Form Field</h2>
+      <input type="hidden" id="editFormFieldId">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Field Label *</label>
+          <input type="text" id="formFieldLabel" placeholder="e.g., FBO Name">
+        </div>
+        <div class="form-group">
+          <label>Field Name *</label>
+          <input type="text" id="formFieldName" placeholder="e.g., fbo_name">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Field Type *</label>
+          <select id="formFieldType" onchange="toggleFieldTypeOptions()">
+            <option value="text">Text</option>
+            <option value="textarea">Text Area</option>
+            <option value="number">Number</option>
+            <option value="date">Date</option>
+            <option value="time">Time</option>
+            <option value="phone">Phone</option>
+            <option value="dropdown">Dropdown</option>
+            <option value="checkbox">Checkbox</option>
+            <option value="file">File Upload</option>
+            <option value="location">GPS Location</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Field Group *</label>
+          <select id="formFieldGroup">
+            <option value="fbo_details">FBO Details</option>
+            <option value="inspection_details">Inspection Details</option>
+            <option value="findings">Findings</option>
+            <option value="actions">Actions Taken</option>
+            <option value="evidence">Evidence & Documentation</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Display Order</label>
+          <input type="number" id="formFieldOrder" min="1" value="1">
+        </div>
+        <div class="form-group checkbox-row" style="margin-top: 30px;">
+          <input type="checkbox" id="formFieldRequired">
+          <label for="formFieldRequired" style="margin: 0;">Required Field</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Placeholder</label>
+        <input type="text" id="formFieldPlaceholder" placeholder="e.g., Enter FBO name">
+      </div>
+      <div class="form-group">
+        <label>Help Text</label>
+        <input type="text" id="formFieldHelpText" placeholder="e.g., Enter the registered business name">
+      </div>
+      <div class="form-group" id="dropdownOptionsGroup" style="display: none;">
+        <label>Dropdown Options (JSON array)</label>
+        <textarea id="formFieldDropdownOptions" rows="3" placeholder='[{"value": "option1", "label": "Option 1"}]'></textarea>
+      </div>
+      <div id="fileSettingsGroup" style="display: none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Max Files</label>
+            <input type="number" id="formFieldMaxFiles" min="1" max="20" value="5">
+          </div>
+          <div class="form-group">
+            <label>Max Size (MB)</label>
+            <input type="number" id="formFieldMaxSize" min="1" max="50" value="5">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group checkbox-row">
+            <input type="checkbox" id="formFieldWatermarkEnabled" checked>
+            <label for="formFieldWatermarkEnabled" style="margin: 0;">Enable Watermark</label>
+          </div>
+          <div class="form-group checkbox-row">
+            <input type="checkbox" id="formFieldWatermarkGps" checked>
+            <label for="formFieldWatermarkGps" style="margin: 0;">Show GPS</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeFormFieldModal()">Cancel</button>
+        <button class="btn btn-danger" id="deleteFormFieldBtn" style="display: none;" onclick="deleteFormField()">Delete</button>
+        <button class="btn btn-primary" onclick="saveFormField()">Save</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let inspectionTypes = [];
     let deviationCategories = [];
     let actionTypes = [];
+    let formFields = [];
     let config = {};
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -452,6 +588,7 @@
         loadInspectionTypes(),
         loadDeviationCategories(),
         loadActionTypes(),
+        loadFormFields(),
         loadConfig()
       ]);
     }
@@ -864,6 +1001,207 @@
         await fetch('/api/admin/fbo-inspection/actions/reset', { method: 'POST' });
         await loadActionTypes();
         alert('Action types reset to defaults');
+      } catch (e) {
+        alert('Failed to reset');
+      }
+    }
+
+    // Form Fields
+    async function loadFormFields() {
+      try {
+        const res = await fetch('/api/admin/fbo-inspection/form-fields');
+        formFields = await res.json();
+        renderFormFields();
+      } catch (e) {
+        console.error('Failed to load form fields:', e);
+      }
+    }
+
+    function renderFormFields() {
+      const groups = {
+        fbo_details: document.getElementById('fboDetailsTable'),
+        inspection_details: document.getElementById('inspectionDetailsTable'),
+        findings: document.getElementById('findingsTable'),
+        actions: document.getElementById('actionsTable'),
+        evidence: document.getElementById('evidenceTable')
+      };
+      
+      Object.values(groups).forEach(table => { if (table) table.innerHTML = ''; });
+      
+      if (formFields.length === 0) {
+        document.getElementById('noFormFields').style.display = 'block';
+        document.getElementById('formFieldsContainer').style.display = 'none';
+        return;
+      }
+      
+      document.getElementById('noFormFields').style.display = 'none';
+      document.getElementById('formFieldsContainer').style.display = 'block';
+      
+      formFields.forEach(field => {
+        const table = groups[field.fieldGroup];
+        if (!table) return;
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><strong>${field.fieldLabel}</strong><br><small style="color:#6b7280">${field.fieldName}</small></td>
+          <td><span class="badge" style="background:#e0e7ff;color:#3730a3">${field.fieldType}</span></td>
+          <td>${field.isRequired ? '<span class="badge badge-active">Yes</span>' : '<span style="color:#9ca3af">No</span>'}</td>
+          <td>${field.isSystemField ? '<span class="badge" style="background:#fef3c7;color:#92400e">System</span>' : '-'}</td>
+          <td>
+            <button class="btn" style="padding:5px 10px;font-size:12px" onclick="editFormField('${field.id}')">Edit</button>
+            ${!field.isSystemField ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:12px;margin-left:5px" onclick="confirmDeleteFormField('${field.id}')">Delete</button>` : ''}
+          </td>
+        `;
+        table.appendChild(row);
+      });
+    }
+
+    function openFormFieldModal() {
+      document.getElementById('formFieldModalTitle').textContent = 'Add Form Field';
+      document.getElementById('editFormFieldId').value = '';
+      document.getElementById('formFieldLabel').value = '';
+      document.getElementById('formFieldName').value = '';
+      document.getElementById('formFieldType').value = 'text';
+      document.getElementById('formFieldGroup').value = 'fbo_details';
+      document.getElementById('formFieldOrder').value = '1';
+      document.getElementById('formFieldRequired').checked = false;
+      document.getElementById('formFieldPlaceholder').value = '';
+      document.getElementById('formFieldHelpText').value = '';
+      document.getElementById('formFieldDropdownOptions').value = '';
+      document.getElementById('formFieldMaxFiles').value = '5';
+      document.getElementById('formFieldMaxSize').value = '5';
+      document.getElementById('formFieldWatermarkEnabled').checked = true;
+      document.getElementById('formFieldWatermarkGps').checked = true;
+      document.getElementById('deleteFormFieldBtn').style.display = 'none';
+      toggleFieldTypeOptions();
+      document.getElementById('formFieldModal').classList.add('show');
+    }
+
+    function editFormField(id) {
+      const field = formFields.find(f => f.id === id);
+      if (!field) return;
+      
+      document.getElementById('formFieldModalTitle').textContent = 'Edit Form Field';
+      document.getElementById('editFormFieldId').value = field.id;
+      document.getElementById('formFieldLabel').value = field.fieldLabel || '';
+      document.getElementById('formFieldName').value = field.fieldName || '';
+      document.getElementById('formFieldType').value = field.fieldType || 'text';
+      document.getElementById('formFieldGroup').value = field.fieldGroup || 'fbo_details';
+      document.getElementById('formFieldOrder').value = field.displayOrder || 1;
+      document.getElementById('formFieldRequired').checked = field.isRequired || false;
+      document.getElementById('formFieldPlaceholder').value = field.placeholder || '';
+      document.getElementById('formFieldHelpText').value = field.helpText || '';
+      document.getElementById('formFieldDropdownOptions').value = field.dropdownOptions ? JSON.stringify(field.dropdownOptions, null, 2) : '';
+      
+      const fileSettings = field.fileSettings || {};
+      document.getElementById('formFieldMaxFiles').value = fileSettings.maxFiles || 5;
+      document.getElementById('formFieldMaxSize').value = fileSettings.maxSizeMB || 5;
+      
+      const watermarkSettings = field.watermarkSettings || {};
+      document.getElementById('formFieldWatermarkEnabled').checked = watermarkSettings.enabled !== false;
+      document.getElementById('formFieldWatermarkGps').checked = watermarkSettings.showGps !== false;
+      
+      document.getElementById('deleteFormFieldBtn').style.display = field.isSystemField ? 'none' : 'inline-block';
+      toggleFieldTypeOptions();
+      document.getElementById('formFieldModal').classList.add('show');
+    }
+
+    function closeFormFieldModal() {
+      document.getElementById('formFieldModal').classList.remove('show');
+    }
+
+    function toggleFieldTypeOptions() {
+      const type = document.getElementById('formFieldType').value;
+      document.getElementById('dropdownOptionsGroup').style.display = type === 'dropdown' ? 'block' : 'none';
+      document.getElementById('fileSettingsGroup').style.display = type === 'file' ? 'block' : 'none';
+    }
+
+    async function saveFormField() {
+      const id = document.getElementById('editFormFieldId').value;
+      const fieldType = document.getElementById('formFieldType').value;
+      
+      const data = {
+        fieldLabel: document.getElementById('formFieldLabel').value,
+        fieldName: document.getElementById('formFieldName').value,
+        fieldType: fieldType,
+        fieldGroup: document.getElementById('formFieldGroup').value,
+        displayOrder: parseInt(document.getElementById('formFieldOrder').value) || 1,
+        isRequired: document.getElementById('formFieldRequired').checked,
+        placeholder: document.getElementById('formFieldPlaceholder').value || null,
+        helpText: document.getElementById('formFieldHelpText').value || null
+      };
+      
+      if (fieldType === 'dropdown') {
+        try {
+          data.dropdownOptions = JSON.parse(document.getElementById('formFieldDropdownOptions').value || '[]');
+        } catch (e) {
+          alert('Invalid JSON for dropdown options');
+          return;
+        }
+      }
+      
+      if (fieldType === 'file') {
+        data.fileSettings = {
+          maxFiles: parseInt(document.getElementById('formFieldMaxFiles').value) || 5,
+          maxSizeMB: parseInt(document.getElementById('formFieldMaxSize').value) || 5,
+          allowedTypes: ['image/jpeg', 'image/png']
+        };
+        data.watermarkSettings = {
+          enabled: document.getElementById('formFieldWatermarkEnabled').checked,
+          showGps: document.getElementById('formFieldWatermarkGps').checked,
+          showTimestamp: true,
+          position: 'bottom-right',
+          opacity: 0.8
+        };
+      }
+      
+      if (!data.fieldLabel || !data.fieldName) {
+        alert('Field label and name are required');
+        return;
+      }
+      
+      try {
+        const url = id ? `/api/admin/fbo-inspection/form-fields/${id}` : '/api/admin/fbo-inspection/form-fields';
+        const method = id ? 'PUT' : 'POST';
+        await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        closeFormFieldModal();
+        await loadFormFields();
+        alert(id ? 'Form field updated' : 'Form field created');
+      } catch (e) {
+        alert('Failed to save form field');
+      }
+    }
+
+    async function deleteFormField() {
+      const id = document.getElementById('editFormFieldId').value;
+      if (!confirm('Are you sure you want to delete this form field?')) return;
+      try {
+        await fetch(`/api/admin/fbo-inspection/form-fields/${id}`, { method: 'DELETE' });
+        closeFormFieldModal();
+        await loadFormFields();
+        alert('Form field deleted');
+      } catch (e) {
+        alert('Failed to delete');
+      }
+    }
+
+    function confirmDeleteFormField(id) {
+      if (!confirm('Are you sure you want to delete this form field?')) return;
+      fetch(`/api/admin/fbo-inspection/form-fields/${id}`, { method: 'DELETE' })
+        .then(() => loadFormFields())
+        .catch(() => alert('Failed to delete'));
+    }
+
+    async function resetFormFields() {
+      if (!confirm('This will reset all form fields to the 27 default FSSAI inspection fields. Continue?')) return;
+      try {
+        await fetch('/api/admin/fbo-inspection/form-fields/reset', { method: 'POST' });
+        await loadFormFields();
+        alert('Form fields reset to defaults');
       } catch (e) {
         alert('Failed to reset');
       }
