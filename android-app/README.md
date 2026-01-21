@@ -1,55 +1,100 @@
-# Android App (Flutter)
+# Android App (Flutter) - Production Build
 
 ## Purpose
-Android mobile application for Food Safety Officers and authorities.
-Built with Flutter for Play Store deployment.
+This is the **production Flutter app** for Food Safety Officers.
+Deploy to Google Play Store for Android devices.
 
-## What This Folder MUST Contain
-- Flutter project structure
-- UI screens and widgets
-- State management
-- API service clients
-- Local storage handling
+**For development/testing on Replit**: Use the Expo React Native app in `/client`
 
-## What This Folder MUST NOT Contain
-- Backend business logic
-- Direct database access
-- Workflow rule enforcement
-- Server-side authentication logic
+## Features (Matching Expo App)
+- Login/Authentication
+- Dashboard with key metrics and urgent actions
+- Inspection management (list, create, edit, close)
+- Sample tracking with lab report deadlines
+- QR/Barcode scanner
+- Court case management
+- Officer profile
 
-## Structure
+## Project Structure
 ```
 android-app/
 ├── lib/
-│   ├── main.dart           # App entry point
-│   ├── screens/            # UI screens
-│   ├── widgets/            # Reusable widgets
-│   ├── state/              # State management (Provider/Riverpod/Bloc)
-│   ├── services/           # API clients
-│   └── models/             # Data models (from shared/)
-├── android/                # Android-specific config
-├── assets/                 # Images, fonts, etc.
-├── test/                   # Unit and widget tests
-└── pubspec.yaml            # Dependencies
+│   ├── main.dart              # App entry point
+│   ├── config/
+│   │   ├── theme.dart         # Colors, spacing, theme
+│   │   └── env.dart           # API environment config
+│   ├── navigation/
+│   │   └── app_navigator.dart # Bottom tabs + stack nav
+│   ├── screens/
+│   │   ├── login_screen.dart
+│   │   ├── dashboard_screen.dart
+│   │   ├── inspections_screen.dart
+│   │   ├── samples_screen.dart
+│   │   ├── scanner_screen.dart
+│   │   ├── court_cases_screen.dart
+│   │   └── profile_screen.dart
+│   ├── widgets/
+│   │   ├── primary_button.dart
+│   │   ├── text_input.dart
+│   │   ├── stat_card.dart
+│   │   └── urgent_action_card.dart
+│   ├── models/
+│   │   ├── officer.dart
+│   │   ├── inspection.dart
+│   │   └── sample.dart
+│   └── services/
+│       ├── api_client.dart
+│       └── auth_service.dart
+└── pubspec.yaml
 ```
 
-## Build & Deploy
+## Build Instructions
+
+### Prerequisites
+- Flutter SDK 3.10+
+- Android SDK
+- Android Studio or VS Code with Flutter extension
+
+### Development
 ```bash
-# Development
+cd android-app
+flutter pub get
 flutter run
+```
 
-# Build APK
+### Production Build (APK)
+```bash
 flutter build apk --release
+```
 
-# Build App Bundle (Play Store)
+### Production Build (App Bundle for Play Store)
+```bash
 flutter build appbundle --release
 ```
 
-## Environment Configuration
-- `lib/config/env_dev.dart` - Development API endpoints
-- `lib/config/env_prod.dart` - Production API endpoints
+## API Configuration
+
+The app connects to the same backend API as the Expo app.
+
+**Development** (default):
+```dart
+// lib/config/env.dart
+_apiBaseUrl = 'http://localhost:5000';
+```
+
+**Production** (set via build):
+```bash
+flutter build apk --release --dart-define=API_BASE_URL=https://your-api.com
+```
+
+## Backend API
+Both Flutter and Expo apps use the same Express.js backend:
+- Base URL: Configured in `lib/config/env.dart`
+- Authentication: JWT tokens
+- Endpoints: Same as Expo app
 
 ## Notes
-- Flutter SDK required (not available on Replit)
-- Build locally or via CI/CD (GitHub Actions, Codemagic)
-- All business logic comes from backend API
+- Flutter app must be built externally (not on Replit)
+- Expo app can be used for development/preview on Replit
+- Both apps share the same backend API
+- Domain rules (immutability, jurisdictions) enforced by backend
