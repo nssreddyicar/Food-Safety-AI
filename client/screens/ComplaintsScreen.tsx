@@ -272,28 +272,38 @@ export default function ComplaintsScreen() {
         ]}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Pressable
-              style={[styles.shareFormButton, { backgroundColor: theme.primary }]}
-              onPress={async () => {
-                const formLink = `https://food-safety-complaint.example.com/submit`;
-                const message = `Submit your food safety complaint online:\n\n${formLink}\n\nReport any food safety violations including expired products, unsanitary conditions, or adulteration.`;
-                
-                try {
-                  await Share.share({
-                    message,
-                    title: "Food Safety Complaint Form",
-                  });
-                } catch (error) {
-                  await Clipboard.setStringAsync(formLink);
-                  Alert.alert("Link Copied", "Complaint form link copied to clipboard");
-                }
-              }}
-            >
-              <Feather name="share-2" size={18} color="#fff" />
-              <ThemedText style={styles.shareFormButtonText}>
-                Share Complaint Form Link
-              </ThemedText>
-            </Pressable>
+            <View style={styles.shareFormRow}>
+              <Pressable
+                style={[styles.previewButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                onPress={() => {
+                  navigation.navigate("SubmitComplaint");
+                }}
+              >
+                <Feather name="eye" size={18} color={theme.primary} />
+              </Pressable>
+              <Pressable
+                style={[styles.shareFormButton, { backgroundColor: theme.primary }]}
+                onPress={async () => {
+                  const formLink = `https://food-safety-complaint.example.com/submit`;
+                  const message = `Submit your food safety complaint online:\n\n${formLink}\n\nReport any food safety violations including expired products, unsanitary conditions, or adulteration.`;
+                  
+                  try {
+                    await Share.share({
+                      message,
+                      title: "Food Safety Complaint Form",
+                    });
+                  } catch (error) {
+                    await Clipboard.setStringAsync(formLink);
+                    Alert.alert("Link Copied", "Complaint form link copied to clipboard");
+                  }
+                }}
+              >
+                <Feather name="share-2" size={18} color="#fff" />
+                <ThemedText style={styles.shareFormButtonText}>
+                  Share Complaint Form Link
+                </ThemedText>
+              </Pressable>
+            </View>
             
             <Input
               placeholder="Search complaints..."
@@ -341,7 +351,21 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: Spacing.md,
   },
+  shareFormRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  previewButton: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   shareFormButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -349,7 +373,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
     borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
   },
   shareFormButtonText: {
     color: "#fff",
