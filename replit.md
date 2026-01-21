@@ -1,163 +1,115 @@
-# Food Safety Inspector - Government-Grade Regulatory System
+# Food Safety Inspector - Mobile Application
 
 ## Overview
-This project is a government-grade mobile and web application designed for Food Safety Officers (FSOs) to efficiently manage their daily tasks, including inspections, sample collection, and prosecution workflows. The application aims to streamline regulatory enforcement, enhance data integrity, and provide FSOs with robust tools for their field operations.
+This project is a government-grade mobile application designed for Food Safety Officers (FSOs) to efficiently manage their daily tasks, including inspections, sample collection, and prosecution workflows. The application aims to streamline regulatory enforcement, enhance data integrity, and provide FSOs with robust tools for their field operations. Its core purpose is to improve public health outcomes by ensuring food safety compliance.
 
 The application's vision is to become the leading digital platform for food safety enforcement, offering a comprehensive and intuitive solution that empowers officers, reduces administrative burden, and provides transparent oversight of food safety regulations.
 
 ## User Preferences
-- I prefer detailed explanations.
-- I want iterative development.
-- Ask before making major changes.
-- Do not make changes to the folder `server/templates`.
-
-## Project Structure (Production-Ready)
-
-```
-/
-├── android-app/        # Expo React Native mobile app (Play Store ready)
-├── web-app/            # Web Admin & Authority Panel (browser deployable)
-├── backend/            # Business logic & domain services
-├── server/             # API, routing, authentication
-├── database/           # Schema, migrations, data access
-├── shared/             # Shared domain models & types
-├── infra/              # Deployment & infrastructure
-├── docs/               # Architecture & workflow documentation
-├── client/             # (Legacy) Original Expo client code
-└── README.md           # Project overview
-```
-
-Each folder is independently buildable and deployable.
+I prefer detailed explanations.
+I want iterative development.
+Ask before making major changes.
+Do not make changes to the folder `server/templates`.
 
 ## System Architecture
 
-### Android App (`android-app/`)
-Expo React Native mobile application for cross-platform deployment (Android, iOS, Web).
+### Frontend
+The mobile application is built using Expo React Native, ensuring cross-platform compatibility. It follows a modular architecture with dedicated folders for components, hooks, utilities, and screens. Key UI/UX decisions include a clear, actionable dashboard, intuitive navigation via React Navigation (including bottom tabs and stack navigators), and a consistent design system defined in `constants/theme.ts`. The primary color scheme uses a deep authoritative blue (#1E40AF) with an urgent red accent (#DC2626) for critical indicators.
 
-**Contents:**
-- `screens/` - All application screens
-- `components/` - Reusable UI components
-- `navigation/` - React Navigation configuration
-- `hooks/` - Custom React hooks
-- `context/` - React Context providers
-- `lib/` - Utility libraries
-- `constants/` - Theme and configuration
+**Core Features and Technical Implementations:**
+- **Authentication**: Invite-only system with session persistence using AsyncStorage.
+- **Dashboard**: Displays key metrics, urgent actions, and quick access to a comprehensive Action Dashboard.
+- **Action Dashboard System**: A configurable system for tracking various FSO actions (e.g., Legal & Court, Inspection & Enforcement, Sampling & Laboratory, Administrative, Protocol & Duties). It features role-based categories, SLA tracking, priority indicators, and drill-down capabilities.
+- **Report Generation**: Supports professional PDF and Excel report generation from Action Dashboard data, with time period selection and platform-aware output (file creation on mobile, direct download on web).
+- **Inspection Management**: Allows creation of new inspections with dynamic forms, tracking deviations, actions taken (including image uploads), and sample lifting (Enforcement/Surveillance types).
+- **Sample Details & Tracking**: Comprehensive sample information capture, 14-day lab report countdown with visual urgency indicators, and filtering by status.
+- **Dynamic Sample Workflow System**: An admin-configurable workflow engine for managing the sample lifecycle with nodes (action, decision, end), conditional transitions, and dynamic input fields (text, date, select, image). Default workflows are provided and can be customized.
+- **Prosecution Case Management**: A complete system for tracking court cases, including case list, detailed view with hearing history, and new case creation. Features include search, filtering, and urgency indicators for upcoming hearings.
+- **QR/Barcode Scanner**: Real-time camera-based scanning (supporting multiple formats) with flash toggle, haptic feedback, and a notes management system for saving, viewing, copying, sharing, and deleting scanned data. Data is stored locally using AsyncStorage.
 
-**Rules:**
-- NO backend business logic
-- UI renders based on API responses
-- All workflow rules come from backend
+### Backend
+The backend is developed with Express.js following a strict layered architecture for maintainability, testability, and regulatory compliance.
 
-### Web App (`web-app/`)
-Browser-based administration panel for Super Admins, District Officers, and Commissioners.
+**Layered Architecture:**
 
-**Contents:**
-- Admin panel HTML/CSS
-- Landing page
-- Setup wizard
+1. **Data Access Layer (`server/data/repositories/`)**: 
+   - Pure database operations via Drizzle ORM
+   - Repository pattern: `officer.repository.ts`, `inspection.repository.ts`, `sample.repository.ts`, `jurisdiction.repository.ts`
+   - No business logic - only CRUD operations and queries
+   - All operations are jurisdiction-aware
 
-### Backend (`backend/`)
-Core domain logic and business rules enforcement.
+2. **Domain/Business Logic Layer (`server/domain/`)**: 
+   - Services enforcing domain rules: `officerService`, `inspectionService`, `sampleService`, `jurisdictionService`
+   - Workflow state machines for inspections and samples
+   - Immutability rules: Closed inspections and dispatched samples cannot be modified (legal requirement)
+   - Authority checks: Officers can only access data within their jurisdiction hierarchy
 
-**Contents:**
-- `inspections/` - Inspection workflow and rules
-- `samples/` - Sample chain-of-custody
-- `jurisdictions/` - Hierarchy management
-- `services/` - Cross-cutting services (officers)
-- `workflows/` - Configurable workflow definitions
+3. **API Layer (`server/routes.ts`)**: 
+   - HTTP endpoint handlers
+   - Request validation and authorization
+   - Calls domain services for business operations
 
-**Domain Rules Enforced:**
-1. Closed inspections are IMMUTABLE (court admissibility)
-2. Dispatched samples are IMMUTABLE (chain-of-custody)
-3. Data bound to jurisdictions, not officers
-4. All roles/capacities are admin-configurable
+4. **Configuration Layer (`server/config/`)**: 
+   - Environment-based settings
+   - Configurable values (lab report deadlines, edit freeze hours)
+   - All settings that might change are configurable, not hardcoded
 
-**Rules:**
-- NO HTTP logic
-- NO UI logic
-- NO direct SQL
+**Domain Rules:**
+- Inspections and samples are bound to JURISDICTIONS, not officers (ensures data continuity when officers transfer)
+- Closed inspections are IMMUTABLE for court admissibility
+- Dispatched samples are IMMUTABLE for chain-of-custody compliance
+- Officer roles, capacities, and jurisdiction levels are admin-configurable
 
-### Server (`server/`)
-HTTP API server handling authentication, request routing, and validation.
+**Technical Implementations:**
+- **API Routes**: Defined in `server/routes.ts`, incorporating a security model and categorized endpoints.
+- **Data Schema**: Managed in `shared/schema.ts`, reflecting the database structure with FSSAI regulatory context.
 
-**Contents:**
-- `routes.ts` - API endpoint definitions
-- `index.ts` - Express server setup
-- `db.ts` - Database connection
-- `config/` - Server configuration
-- `templates/` - Admin panel HTML
-- `domain/` - (Legacy) Domain services
-- `data/` - (Legacy) Repositories
-
-**Rules:**
-- Controllers must be thin
-- Only orchestrate backend services
-- No business rules in routes
-
-### Database (`database/`)
-Data access layer with repository pattern.
-
-**Contents:**
-- `models/` - Drizzle ORM schema definitions
-- `repositories/` - Repository pattern implementations
-- `migrations/` - Database migration files
-- `seeds/` - Initial data seeding scripts
-
-**Rules:**
-- NO business logic
-- Historical data must never be overwritten
-- Append-only where legally required
-
-### Shared (`shared/`)
-Shared type definitions and domain vocabulary.
-
-**Contents:**
-- `types/` - TypeScript interfaces
-- `enums/` - Domain enumerations
-- `schemas/` - Schema definitions
-
-**Rules:**
-- NO logic
-- NO side effects
+### Data Persistence
+- **Mobile Local Storage**: AsyncStorage is used for local data persistence on the mobile client, particularly for offline support and scanned notes.
+- **Backend Database**: PostgreSQL is used for central data storage, managing officer and administrative data.
+- **Jurisdiction-Bound Data**: Inspections and samples are bound to specific jurisdictions via `jurisdictionId`, ensuring data continuity regardless of officer transfers.
 
 ## External Dependencies
-- **React Native (Expo)**: Frontend framework
-- **Express.js**: Backend framework
-- **PostgreSQL**: Database
-- **Drizzle ORM**: Type-safe database operations
-- **React Navigation**: Mobile navigation
-- **React Query**: Data fetching
-- **AsyncStorage**: Local persistence
-- **expo-camera**: QR/barcode scanning
+- **React Native (Expo)**: Frontend framework for mobile application development.
+- **Express.js**: Backend framework for building RESTful APIs.
+- **PostgreSQL**: Relational database for persistent data storage.
+- **Drizzle ORM**: Type-safe database operations and schema management.
+- **React Navigation**: For managing navigation flows within the mobile application.
+- **React Query**: For data fetching, caching, and state management in the frontend.
+- **AsyncStorage**: For local data persistence on the mobile device.
+- **expo-camera**: For camera-based QR/barcode scanning functionality.
+- **JSDoc**: For code documentation standards.
 
 ## Important Files
 
-### Backend Services
-- `backend/inspections/inspection.service.ts` - Inspection workflow
-- `backend/samples/sample.service.ts` - Chain-of-custody
-- `backend/jurisdictions/jurisdiction.service.ts` - Hierarchy
-- `backend/services/officer.service.ts` - Officer management
+### Backend Architecture Files
+- `server/data/repositories/` - Data access layer with repository pattern
+  - `base.repository.ts` - Database connection and shared types
+  - `officer.repository.ts` - Officer CRUD operations
+  - `inspection.repository.ts` - Inspection data operations
+  - `sample.repository.ts` - Sample data operations
+  - `jurisdiction.repository.ts` - Jurisdiction hierarchy operations
+  - `index.ts` - Central exports for all repositories
 
-### Database Repositories
-- `database/repositories/officer.repository.ts`
-- `database/repositories/inspection.repository.ts`
-- `database/repositories/sample.repository.ts`
-- `database/repositories/jurisdiction.repository.ts`
+- `server/domain/` - Business logic layer with domain services
+  - `officer/officer.service.ts` - Authentication, officer management
+  - `inspection/inspection.service.ts` - Inspection workflow, immutability rules
+  - `sample/sample.service.ts` - Chain-of-custody, lab report deadlines
+  - `jurisdiction/jurisdiction.service.ts` - Hierarchy, authority checks
+  - `index.ts` - Central exports for all services
 
-### Server API
-- `server/routes.ts` - HTTP endpoints
-- `server/config/index.ts` - Configuration
-- `server/db.ts` - Database connection
+- `server/config/index.ts` - Centralized configuration
 
-### Shared Types
-- `shared/schemas/schema.ts` - Database schema
-- `shared/types/index.ts` - TypeScript types
-- `shared/enums/index.ts` - Domain enumerations
+### Schema and Types
+- `shared/schema.ts` - Database schema definitions (Drizzle ORM)
+
+### API
+- `server/routes.ts` - HTTP endpoint handlers
 
 ## Recent Changes
-- Restructured project into production-ready folder layout
-- Created separate android-app, web-app, backend, server, database folders
-- Added shared types and enums
-- Created README.md for each folder
-- Preserved all existing functionality during restructure
-- Updated import paths for new folder structure
+- Implemented strict layered backend architecture (Data Access → Domain → API → Configuration)
+- Created repository pattern for all data operations
+- Added domain services with business rules enforcement
+- Implemented immutability rules for closed inspections and dispatched samples
+- Added jurisdiction authority checks
+- Created centralized configuration layer
