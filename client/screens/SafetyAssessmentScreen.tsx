@@ -45,9 +45,48 @@ interface Indicator {
   id: string;
   indicatorNumber: number;
   name: string;
+  description?: string;
   riskLevel: 'high' | 'medium' | 'low';
   weight: number;
 }
+
+const INDICATOR_EXPLANATIONS: Record<string, string> = {
+  "Cleanliness of Kitchen Area": "Evaluate overall hygiene of food preparation zones. Check for grease buildup, debris, and regular cleaning schedules.",
+  "Food Storage Practices": "Assess proper storage of raw and cooked food. Verify temperature control, labeling, and first-in-first-out practices.",
+  "Personnel Hygiene": "Check if food handlers follow hygiene protocols. Look for handwashing, clean uniforms, and health certificates.",
+  "Water Quality & Supply": "Verify potable water source and testing. Check storage tanks, filtration systems, and water testing records.",
+  "Pest Control Measures": "Evaluate pest prevention and control systems. Check for evidence of pests, treatment records, and structural barriers.",
+  "Waste Disposal System": "Assess garbage collection and disposal methods. Verify segregation, covered bins, and timely removal.",
+  "Ventilation & Lighting": "Check adequate ventilation and lighting in kitchen. Ensure exhaust systems work and lighting is sufficient.",
+  "Food Preparation Practices": "Observe cooking and handling techniques. Check for cross-contamination prevention and proper cooking temperatures.",
+  "Raw Material Quality": "Verify quality of incoming ingredients. Check supplier records, freshness, and rejection procedures.",
+  "Temperature Maintenance": "Check cold chain and hot holding compliance. Verify refrigerator/freezer temps and hot food storage.",
+  "Equipment Condition": "Assess condition of cooking and storage equipment. Check for rust, damage, and regular maintenance.",
+  "Food Handlers Training": "Verify staff have received food safety training. Check training records and FoSTaC certification.",
+  "Medical Fitness Records": "Check if food handlers have valid health certificates. Verify annual medical examinations are conducted.",
+  "Protective Clothing Usage": "Observe use of aprons, caps, and gloves. Check if clean uniforms are worn properly.",
+  "Hand Washing Facilities": "Verify soap, sanitizer, and hand drying available. Check if facilities are accessible and functional.",
+  "Cross-Contamination Prevention": "Assess separation of raw and cooked foods. Check for color-coded cutting boards and utensils.",
+  "Cooking Temperature Control": "Verify food is cooked to safe temperatures. Check thermometer use and cooking records.",
+  "Reheating Practices": "Evaluate reheating procedures and temperatures. Ensure food reaches 74°C core temperature.",
+  "Leftover Food Handling": "Check policies for handling leftover food. Verify cooling, storage, and discard procedures.",
+  "Display & Service Hygiene": "Assess food display and serving practices. Check for covers, sneeze guards, and clean utensils.",
+  "Menu Nutritional Balance": "Evaluate nutritional adequacy of menu. Check for variety, portion sizes, and dietary guidelines.",
+  "Special Diet Provisions": "Verify accommodation for allergies and special diets. Check labeling and separate preparation.",
+  "Serving Portion Standards": "Check if portions meet age-appropriate standards. Verify serving sizes are consistent.",
+  "Food Tasting Protocol": "Verify official food tasting before serving. Check tasting records and designated tasters.",
+  "Record Keeping Practices": "Assess documentation of food safety activities. Check logs, checklists, and audit trails.",
+  "License & Registration Display": "Verify FSSAI license is valid and displayed. Check license category and expiry date.",
+  "Self-Inspection Practices": "Check if internal audits are conducted. Review self-inspection records and corrective actions.",
+  "Complaint Handling System": "Assess procedure for food complaints. Check if complaints are logged and resolved.",
+  "Emergency Preparedness": "Evaluate food safety emergency plans. Check fire safety, first aid, and evacuation procedures.",
+  "Supplier Quality Verification": "Assess vendor selection and monitoring. Check approved supplier list and quality audits.",
+  "Traceability System": "Verify batch tracking and recall capability. Check if ingredients can be traced back to source.",
+  "Allergen Management": "Evaluate allergen identification and control. Check labeling, segregation, and staff awareness.",
+  "Oil & Fat Quality Control": "Assess frying oil quality monitoring. Check TPC testing, oil change frequency, and records.",
+  "Microbiological Testing": "Verify regular food and water testing. Check lab reports, frequency, and corrective actions.",
+  "HACCP Implementation": "Assess HACCP plan documentation and execution. Check CCPs, monitoring, and verification records.",
+};
 
 interface PersonTypeField {
   key: string;
@@ -652,78 +691,119 @@ export default function SafetyAssessmentScreen() {
           )}
         </Card>
 
+        <Card style={styles.assessmentTitleCard}>
+          <View style={styles.assessmentTitleRow}>
+            <Feather name="clipboard" size={24} color={theme.primary} />
+            <View style={styles.assessmentTitleContent}>
+              <ThemedText style={styles.assessmentTitle}>Food Safety Risk Assessment</ThemedText>
+              <ThemedText style={styles.assessmentSubtitle}>
+                7 Pillars with 35 FSSAI-Aligned Indicators
+              </ThemedText>
+            </View>
+          </View>
+          <ThemedText style={styles.assessmentDesc}>
+            Evaluate each indicator below. Green = Compliant, Red = Non-Compliant, Gray = Not Applicable.
+          </ThemedText>
+        </Card>
+
         {pillars.map((pillar) => (
           <View key={pillar.id} style={styles.pillarSection}>
             <View style={[styles.pillarHeader, { backgroundColor: theme.primary }]}>
-              <ThemedText style={styles.pillarNumber}>{pillar.pillarNumber}</ThemedText>
+              <View style={styles.pillarNumberBadge}>
+                <ThemedText style={styles.pillarNumber}>{pillar.pillarNumber}</ThemedText>
+              </View>
               <ThemedText style={styles.pillarName}>{pillar.name}</ThemedText>
+              <ThemedText style={styles.pillarIndicatorCount}>
+                {pillar.indicators.length} indicators
+              </ThemedText>
             </View>
 
             {pillar.indicators.map((indicator) => {
               const currentResponse = responses[indicator.id]?.response || 'yes';
               const riskColors = RISK_COLORS[indicator.riskLevel];
               const images = indicatorImages[indicator.id] || [];
+              const explanation = indicator.description || INDICATOR_EXPLANATIONS[indicator.name] || "";
 
               return (
-                <Card key={indicator.id} style={styles.indicatorCard}>
-                  <View style={styles.indicatorHeader}>
-                    <ThemedText style={styles.indicatorNumber}>
-                      {pillar.pillarNumber}.{indicator.indicatorNumber}
-                    </ThemedText>
-                    <View style={[styles.riskBadge, { backgroundColor: riskColors.bg }]}>
-                      <ThemedText style={[styles.riskBadgeText, { color: riskColors.text }]}>
-                        {indicator.riskLevel.toUpperCase()} ({indicator.weight})
+                <View key={indicator.id} style={styles.compactIndicator}>
+                  <View style={styles.indicatorTopRow}>
+                    <View style={styles.indicatorLeftSection}>
+                      <View style={styles.indicatorNumberContainer}>
+                        <ThemedText style={styles.indicatorNumberCompact}>
+                          {pillar.pillarNumber}.{indicator.indicatorNumber}
+                        </ThemedText>
+                      </View>
+                      <View style={[styles.riskDot, { backgroundColor: riskColors.text }]} />
+                    </View>
+                    
+                    <View style={styles.indicatorMiddleSection}>
+                      <ThemedText style={styles.indicatorNameCompact} numberOfLines={2}>
+                        {indicator.name}
                       </ThemedText>
+                      {explanation ? (
+                        <ThemedText style={styles.indicatorExplanation} numberOfLines={2}>
+                          {explanation}
+                        </ThemedText>
+                      ) : null}
+                    </View>
+
+                    <View style={styles.compactResponseButtons}>
+                      {(['yes', 'no', 'na'] as const).map((value) => {
+                        const isSelected = currentResponse === value;
+                        return (
+                          <Pressable
+                            key={value}
+                            style={[
+                              styles.compactResponseBtn,
+                              isSelected && value === 'yes' && styles.yesSelectedCompact,
+                              isSelected && value === 'no' && styles.noSelectedCompact,
+                              isSelected && value === 'na' && styles.naSelectedCompact,
+                            ]}
+                            onPress={() => handleResponseChange(indicator.id, value)}
+                          >
+                            <ThemedText style={[
+                              styles.compactResponseText,
+                              isSelected && value === 'yes' && { color: '#fff' },
+                              isSelected && value === 'no' && { color: '#fff' },
+                              isSelected && value === 'na' && { color: '#fff' },
+                            ]}>
+                              {value === 'yes' ? 'Y' : value === 'no' ? 'N' : 'NA'}
+                            </ThemedText>
+                          </Pressable>
+                        );
+                      })}
                     </View>
                   </View>
 
-                  <ThemedText style={styles.indicatorName}>{indicator.name}</ThemedText>
-
-                  <View style={styles.responseButtons}>
-                    {(['yes', 'no', 'na'] as const).map((value) => {
-                      const isSelected = currentResponse === value;
-                      const btnStyle = isSelected ? (
-                        value === 'yes' ? styles.yesSelected :
-                        value === 'no' ? styles.noSelected :
-                        styles.naSelected
-                      ) : styles.responseBtn;
-
-                      return (
-                        <Pressable
-                          key={value}
-                          style={[styles.responseBtn, isSelected && btnStyle]}
-                          onPress={() => handleResponseChange(indicator.id, value)}
-                        >
-                          <ThemedText style={[
-                            styles.responseBtnText,
-                            isSelected && value === 'yes' && { color: '#059669' },
-                            isSelected && value === 'no' && { color: '#DC2626' },
-                            isSelected && value === 'na' && { color: '#6B7280' },
-                          ]}>
-                            {value.toUpperCase()}
-                          </ThemedText>
-                        </Pressable>
-                      );
-                    })}
+                  <View style={styles.indicatorBottomRow}>
+                    {images.length > 0 ? (
+                      <View style={styles.compactImagesRow}>
+                        {images.map(img => (
+                          <View key={img.id} style={styles.compactImageWrapper}>
+                            <Image source={{ uri: img.uri }} style={styles.compactThumbnail} />
+                            <Pressable 
+                              style={styles.compactDeleteBtn}
+                              onPress={() => handleDeleteImage(indicator.id, img.id)}
+                            >
+                              <Feather name="x" size={10} color="#fff" />
+                            </Pressable>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+                    
+                    <Pressable
+                      style={styles.compactCameraBtn}
+                      onPress={() => handleCaptureImage(indicator.id)}
+                      disabled={images.length >= 3}
+                    >
+                      <Feather name="camera" size={14} color={theme.primary} />
+                      <ThemedText style={[styles.compactCameraText, { color: theme.primary }]}>
+                        {images.length > 0 ? `(${images.length}/3)` : "Photo"}
+                      </ThemedText>
+                    </Pressable>
                   </View>
-
-                  {images.length > 0 ? (
-                    <View style={styles.imagesRow}>
-                      {images.map(img => renderWatermarkedImage(img, indicator.id))}
-                    </View>
-                  ) : null}
-
-                  <Pressable
-                    style={[styles.cameraBtn, { borderColor: theme.primary }]}
-                    onPress={() => handleCaptureImage(indicator.id)}
-                    disabled={images.length >= 3}
-                  >
-                    <Feather name="camera" size={16} color={theme.primary} />
-                    <ThemedText style={[styles.cameraBtnText, { color: theme.primary }]}>
-                      {images.length > 0 ? `Add Photo (${images.length}/3)` : "Add Photo"}
-                    </ThemedText>
-                  </Pressable>
-                </Card>
+                </View>
               );
             })}
           </View>
@@ -846,10 +926,18 @@ const styles = StyleSheet.create({
   personMobile: { fontSize: FontSize.sm, color: '#6B7280' },
   personDesignation: { fontSize: FontSize.sm, color: '#6B7280', fontStyle: 'italic' },
   noPersonsText: { fontSize: FontSize.sm, color: '#9CA3AF', textAlign: 'center', paddingVertical: Spacing.md },
+  assessmentTitleCard: { padding: Spacing.md, marginBottom: Spacing.lg },
+  assessmentTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.sm },
+  assessmentTitleContent: { flex: 1 },
+  assessmentTitle: { fontSize: FontSize.lg, fontWeight: '700' },
+  assessmentSubtitle: { fontSize: FontSize.sm, color: '#6B7280' },
+  assessmentDesc: { fontSize: FontSize.xs, color: '#9CA3AF', lineHeight: 18 },
   pillarSection: { marginBottom: Spacing.lg },
-  pillarHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: 8, marginBottom: Spacing.sm, gap: Spacing.sm },
-  pillarNumber: { fontSize: FontSize.lg, fontWeight: '700', color: '#FFFFFF', width: 28, height: 28, textAlign: 'center', lineHeight: 28, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 14 },
-  pillarName: { fontSize: FontSize.md, fontWeight: '600', color: '#FFFFFF', flex: 1 },
+  pillarHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: 8, marginBottom: Spacing.xs, gap: Spacing.sm },
+  pillarNumberBadge: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center' },
+  pillarNumber: { fontSize: FontSize.md, fontWeight: '700', color: '#FFFFFF' },
+  pillarName: { fontSize: FontSize.sm, fontWeight: '600', color: '#FFFFFF', flex: 1 },
+  pillarIndicatorCount: { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.8)' },
   indicatorCard: { marginBottom: Spacing.sm, padding: Spacing.md },
   indicatorHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xs },
   indicatorNumber: { fontSize: FontSize.sm, fontWeight: '600', color: '#6B7280' },
@@ -862,6 +950,28 @@ const styles = StyleSheet.create({
   noSelected: { backgroundColor: '#FEE2E2', borderColor: '#DC2626' },
   naSelected: { backgroundColor: '#E5E7EB', borderColor: '#6B7280' },
   responseBtnText: { fontSize: FontSize.sm, fontWeight: '600', color: '#6B7280' },
+  compactIndicator: { backgroundColor: '#fff', marginBottom: 2, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  indicatorTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
+  indicatorLeftSection: { alignItems: 'center', width: 40 },
+  indicatorNumberContainer: { backgroundColor: '#F3F4F6', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  indicatorNumberCompact: { fontSize: 10, fontWeight: '600', color: '#6B7280' },
+  riskDot: { width: 8, height: 8, borderRadius: 4, marginTop: 4 },
+  indicatorMiddleSection: { flex: 1 },
+  indicatorNameCompact: { fontSize: FontSize.sm, fontWeight: '600', lineHeight: 18 },
+  indicatorExplanation: { fontSize: 11, color: '#6B7280', lineHeight: 15, marginTop: 2 },
+  compactResponseButtons: { flexDirection: 'row', gap: 4 },
+  compactResponseBtn: { width: 28, height: 28, borderRadius: 4, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' },
+  yesSelectedCompact: { backgroundColor: '#059669', borderColor: '#059669' },
+  noSelectedCompact: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
+  naSelectedCompact: { backgroundColor: '#6B7280', borderColor: '#6B7280' },
+  compactResponseText: { fontSize: 10, fontWeight: '700', color: '#6B7280' },
+  indicatorBottomRow: { flexDirection: 'row', alignItems: 'center', marginTop: Spacing.xs, marginLeft: 48 },
+  compactImagesRow: { flexDirection: 'row', gap: 4, flex: 1 },
+  compactImageWrapper: { width: 36, height: 36, borderRadius: 4, overflow: 'hidden', position: 'relative' },
+  compactThumbnail: { width: '100%', height: '100%' },
+  compactDeleteBtn: { position: 'absolute', top: 0, right: 0, width: 14, height: 14, borderRadius: 7, backgroundColor: '#DC2626', justifyContent: 'center', alignItems: 'center' },
+  compactCameraBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderStyle: 'dashed', borderColor: '#D1D5DB', borderRadius: 4 },
+  compactCameraText: { fontSize: 10, fontWeight: '500' },
   imagesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.sm },
   imageWrapper: { width: 100, height: 75, borderRadius: BorderRadius.sm, overflow: 'hidden', position: 'relative' },
   viewShot: { flex: 1, position: 'relative' },
