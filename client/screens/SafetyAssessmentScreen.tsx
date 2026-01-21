@@ -174,6 +174,11 @@ export default function SafetyAssessmentScreen() {
   const [indicatorImages, setIndicatorImages] = useState<IndicatorImageData>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittedInspection, setSubmittedInspection] = useState<{
+    id: string;
+    totalScore: number;
+    riskClassification: string;
+  } | null>(null);
   const [scorePreview, setScorePreview] = useState<{
     totalScore: number;
     riskClassification: string;
@@ -562,20 +567,11 @@ export default function SafetyAssessmentScreen() {
         }
       );
 
-      Alert.alert(
-        "Assessment Complete",
-        `Safety Classification: ${scorePreview?.riskClassification?.toUpperCase()}\nSafety Score: ${scorePreview?.totalScore}`,
-        [
-          {
-            text: "Download PDF Report",
-            onPress: () => handleDownloadReport(inspection.id),
-          },
-          {
-            text: "New Assessment",
-            onPress: () => resetForm(),
-          },
-        ]
-      );
+      setSubmittedInspection({
+        id: inspection.id,
+        totalScore: scorePreview?.totalScore || 0,
+        riskClassification: scorePreview?.riskClassification || 'Medium Risk',
+      });
     } catch (error: any) {
       console.error("Submit error:", error);
       Alert.alert("Error", error.message || "Failed to submit assessment");
@@ -585,6 +581,7 @@ export default function SafetyAssessmentScreen() {
   };
 
   const resetForm = () => {
+    setSubmittedInspection(null);
     setInstitutionName("");
     setInstitutionAddress("");
     setAddedPersons([]);
@@ -644,6 +641,62 @@ export default function SafetyAssessmentScreen() {
       <ThemedView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.primary} />
         <ThemedText style={{ marginTop: Spacing.md }}>Loading safety assessment...</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  if (submittedInspection) {
+    const riskKey = submittedInspection.riskClassification?.toLowerCase().replace(' risk', '') as keyof typeof RISK_COLORS;
+    const riskColors = RISK_COLORS[riskKey] || { bg: '#E5E7EB', text: '#6B7280' };
+    
+    return (
+      <ThemedView style={styles.container}>
+        <ScrollView 
+          contentContainerStyle={{ 
+            flexGrow: 1, 
+            justifyContent: 'center', 
+            paddingHorizontal: Spacing.lg, 
+            paddingTop: insets.top + Spacing.xl,
+            paddingBottom: tabBarHeight + Spacing.xl 
+          }}
+        >
+          <Card style={styles.successCard}>
+            <View style={styles.successIconContainer}>
+              <Feather name="check-circle" size={64} color="#059669" />
+            </View>
+            <ThemedText style={styles.successTitle}>Inspection Submitted</ThemedText>
+            <ThemedText style={styles.successSubtitle}>
+              Your assessment has been saved successfully
+            </ThemedText>
+            
+            <View style={styles.successScoreSection}>
+              <View style={[styles.totalScoreCircle, { borderColor: theme.primary }]}>
+                <ThemedText style={[styles.totalScoreValue, { color: theme.primary }]}>
+                  {submittedInspection.totalScore}
+                </ThemedText>
+                <ThemedText style={styles.totalScoreLabel}>Score</ThemedText>
+              </View>
+              <View style={[styles.riskBadgeLarge, { backgroundColor: riskColors.bg }]}>
+                <ThemedText style={[styles.riskBadgeLargeText, { color: riskColors.text }]}>
+                  {submittedInspection.riskClassification?.toUpperCase()}
+                </ThemedText>
+              </View>
+            </View>
+
+            <Button
+              onPress={() => handleDownloadReport(submittedInspection.id)}
+              style={styles.downloadButton}
+            >
+              Download PDF Report
+            </Button>
+            <Pressable
+              onPress={resetForm}
+              style={[styles.newAssessmentButton, { borderWidth: 1, borderColor: theme.border, borderRadius: BorderRadius.md, paddingVertical: Spacing.md, alignItems: 'center' }]}
+            >
+              <ThemedText style={{ fontWeight: '600' }}>Start New Assessment</ThemedText>
+            </Pressable>
+          </Card>
+        </ScrollView>
       </ThemedView>
     );
   }
@@ -1192,4 +1245,11 @@ const styles = StyleSheet.create({
   pillarProgressBar: { flex: 1, height: 8, backgroundColor: '#E5E7EB', borderRadius: 4, overflow: 'hidden' },
   pillarProgressFill: { height: '100%', borderRadius: 4 },
   pillarPercentage: { width: 40, fontSize: FontSize.xs, fontWeight: '600', textAlign: 'right' },
+  successCard: { padding: Spacing.xl, alignItems: 'center' },
+  successIconContainer: { marginBottom: Spacing.lg },
+  successTitle: { fontSize: 24, fontWeight: '700', marginBottom: Spacing.sm, textAlign: 'center' },
+  successSubtitle: { fontSize: FontSize.md, color: '#6B7280', marginBottom: Spacing.xl, textAlign: 'center' },
+  successScoreSection: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg, marginBottom: Spacing.xl },
+  downloadButton: { width: '100%', marginBottom: Spacing.md },
+  newAssessmentButton: { width: '100%' },
 });
