@@ -7,12 +7,14 @@ import DashboardStackNavigator from "@/navigation/DashboardStackNavigator";
 import InspectionsStackNavigator from "@/navigation/InspectionsStackNavigator";
 import SamplesStackNavigator from "@/navigation/SamplesStackNavigator";
 import ComplaintsStackNavigator from "@/navigation/ComplaintsStackNavigator";
+import InstitutionalInspectionsStackNavigator from "@/navigation/InstitutionalInspectionsStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
 
 export type MainTabParamList = {
   DashboardTab: undefined;
   InspectionsTab: undefined;
+  InstitutionalTab: undefined;
   SamplesTab: undefined;
   ComplaintsTab: undefined;
   ProfileTab: undefined;
@@ -64,9 +66,19 @@ export default function MainTabNavigator() {
         name="InspectionsTab"
         component={InspectionsStackNavigator}
         options={{
-          title: "Inspections",
+          title: "FBO",
           tabBarIcon: ({ color, size }) => (
             <Feather name="clipboard" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="InstitutionalTab"
+        component={InstitutionalInspectionsStackNavigator}
+        options={{
+          title: "Institutional",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="home" size={size} color={color} />
           ),
         }}
       />
