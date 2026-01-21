@@ -78,6 +78,10 @@
       .stat-label { font-size: 13px; color: #6b7280; margin-top: 4px; }
       .stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
       .stat-icon svg { width: 20px; height: 20px; }
+      .copy-btn { background: #1E40AF; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+      .copy-btn:hover { background: #1e3a8a; }
+      .copy-btn svg { width: 12px; height: 12px; fill: white; }
+      .link-text { font-family: monospace; font-size: 12px; color: #6b7280; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle; }
       .stat-icon.pink { background: #fce7f3; }
       .stat-icon.pink svg { fill: #be185d; }
       .stat-icon.blue { background: #dbeafe; }
@@ -147,6 +151,7 @@
         <button class="tab active" onclick="switchTab('complaints')">Complaints</button>
         <button class="tab" onclick="switchTab('formConfig')">Form Configuration</button>
         <button class="tab" onclick="switchTab('statusWorkflow')">Status Workflow</button>
+        <button class="tab" onclick="switchTab('sharedLinks')">Shared Links</button>
       </div>
 
       <div id="complaintsTab" class="tab-content active">
@@ -242,7 +247,52 @@
           </table>
         </div>
       </div>
+
+      <div id="sharedLinksTab" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Shared Complaint Links</div>
+            <button class="add-btn" onclick="openCreateLinkModal()">
+              <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              Create Link
+            </button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>District</th>
+                <th>Link</th>
+                <th>Expires</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sharedLinksTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
     </main>
+
+    <div class="modal" id="createLinkModal">
+      <div class="modal-content">
+        <h2 class="modal-title">Create Shared Link</h2>
+        <div class="form-group">
+          <label class="form-label">District</label>
+          <select class="form-select" id="linkDistrictId" required>
+            <option value="">Select district...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expires At (Optional)</label>
+          <input type="datetime-local" class="form-input" id="linkExpiresAt">
+        </div>
+        <div class="modal-actions">
+          <button class="cancel-btn" onclick="closeCreateLinkModal()">Cancel</button>
+          <button class="save-btn" onclick="createSharedLink()">Create Link</button>
+        </div>
+      </div>
+    </div>
 
     <div class="modal" id="formFieldModal">
       <div class="modal-content">
@@ -836,10 +886,140 @@
         document.getElementById('complaintDetailModal').classList.remove('show');
       }
 
+      // Shared Links Functions
+      let districts = [];
+      
+      async function loadDistricts() {
+        try {
+          const res = await fetch('/api/districts');
+          if (res.ok) {
+            districts = await res.json();
+            const select = document.getElementById('linkDistrictId');
+            select.innerHTML = '<option value="">Select district...</option>';
+            districts.forEach(d => {
+              const opt = document.createElement('option');
+              opt.value = d.id;
+              opt.textContent = d.name + (d.abbreviation ? ` (${d.abbreviation})` : '');
+              select.appendChild(opt);
+            });
+          }
+        } catch (e) {
+          console.error('Failed to load districts:', e);
+        }
+      }
+      
+      async function loadSharedLinks() {
+        try {
+          const res = await fetch('/api/admin/shared-complaint-links');
+          const links = await res.json();
+          const tbody = document.getElementById('sharedLinksTableBody');
+          
+          if (!links || links.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><h3>No shared links created</h3><p>Create a link to allow public complaint submissions</p></td></tr>';
+            return;
+          }
+          
+          const baseUrl = window.location.origin;
+          tbody.innerHTML = links.map(link => {
+            const fullUrl = `${baseUrl}/complaint?token=${link.token}`;
+            const district = districts.find(d => d.id === link.districtId);
+            const districtName = district ? district.name : (link.districtAbbreviation || 'Unknown');
+            const expiresText = link.expiresAt ? new Date(link.expiresAt).toLocaleDateString() : 'Never';
+            const isActive = link.status === 'active';
+            
+            return `
+              <tr>
+                <td>${districtName}</td>
+                <td>
+                  <span class="link-text" title="${fullUrl}">${fullUrl}</span>
+                  <button class="copy-btn" onclick="copyToClipboard('${fullUrl}', this)">
+                    <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                    Copy
+                  </button>
+                </td>
+                <td>${expiresText}</td>
+                <td><span class="status-badge ${isActive ? 'status-active' : 'status-inactive'}">${isActive ? 'Active' : link.status}</span></td>
+                <td class="action-btns">
+                  <button class="action-btn delete-btn" onclick="deleteSharedLink('${link.id}')">Delete</button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        } catch (e) {
+          console.error('Failed to load shared links:', e);
+        }
+      }
+      
+      function copyToClipboard(text, btn) {
+        navigator.clipboard.writeText(text).then(() => {
+          const originalText = btn.innerHTML;
+          btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Copied!';
+          setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+        }).catch(() => {
+          alert('Failed to copy');
+        });
+      }
+      
+      function openCreateLinkModal() {
+        document.getElementById('linkDistrictId').value = '';
+        document.getElementById('linkExpiresAt').value = '';
+        document.getElementById('createLinkModal').classList.add('show');
+      }
+      
+      function closeCreateLinkModal() {
+        document.getElementById('createLinkModal').classList.remove('show');
+      }
+      
+      async function createSharedLink() {
+        const districtId = document.getElementById('linkDistrictId').value;
+        if (!districtId) {
+          alert('Please select a district');
+          return;
+        }
+        
+        const data = {
+          districtId,
+          expiresAt: document.getElementById('linkExpiresAt').value || null
+        };
+        
+        try {
+          const res = await fetch('/api/admin/shared-complaint-links', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          
+          if (res.ok) {
+            closeCreateLinkModal();
+            loadSharedLinks();
+          } else {
+            const err = await res.json();
+            alert(err.error || 'Failed to create link');
+          }
+        } catch (e) {
+          alert('Error: ' + e.message);
+        }
+      }
+      
+      async function deleteSharedLink(id) {
+        if (!confirm('Delete this shared link?')) return;
+        try {
+          const res = await fetch(`/api/admin/shared-complaint-links/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            loadSharedLinks();
+          } else {
+            alert('Failed to delete');
+          }
+        } catch (e) {
+          alert('Error: ' + e.message);
+        }
+      }
+
       document.addEventListener('DOMContentLoaded', () => {
         loadFormFields();
         loadWorkflows();
         loadComplaints();
+        loadDistricts().then(() => loadSharedLinks());
       });
     </script>
   </body>

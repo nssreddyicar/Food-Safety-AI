@@ -497,6 +497,25 @@ export const complaintRepository = {
   },
 
   /**
+   * Get all shared links (admin).
+   */
+  async getAllSharedLinks(): Promise<SharedComplaintLink[]> {
+    return db
+      .select()
+      .from(sharedComplaintLinks)
+      .orderBy(desc(sharedComplaintLinks.createdAt));
+  },
+
+  /**
+   * Delete a shared link.
+   */
+  async deleteSharedLink(id: string): Promise<void> {
+    await db
+      .delete(sharedComplaintLinks)
+      .where(eq(sharedComplaintLinks.id, id));
+  },
+
+  /**
    * Get complaints count by status.
    */
   async getCountByStatus(jurisdictionId?: string): Promise<Record<string, number>> {

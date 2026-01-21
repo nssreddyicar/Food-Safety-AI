@@ -1254,6 +1254,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Get all shared links
+  app.get("/api/admin/shared-complaint-links", async (req: Request, res: Response) => {
+    try {
+      const links = await complaintRepository.getAllSharedLinks();
+      res.json(links);
+    } catch (error) {
+      console.error("Error getting all shared links:", error);
+      res.status(500).json({ error: "Failed to get shared links" });
+    }
+  });
+
+  // Admin: Create shared link
+  app.post("/api/admin/shared-complaint-links", async (req: Request, res: Response) => {
+    try {
+      const { districtId, expiresAt } = req.body;
+
+      if (!districtId) {
+        return res.status(400).json({ error: "District is required" });
+      }
+
+      const link = await complaintRepository.createSharedLink({
+        districtId,
+        expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+      });
+
+      res.status(201).json(link);
+    } catch (error) {
+      console.error("Error creating shared link:", error);
+      res.status(500).json({ error: "Failed to create shared link" });
+    }
+  });
+
+  // Admin: Delete shared link
+  app.delete("/api/admin/shared-complaint-links/:id", async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      await complaintRepository.deleteSharedLink(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting shared link:", error);
+      res.status(500).json({ error: "Failed to delete shared link" });
+    }
+  });
+
   // Get complaints list (officer)
   app.get("/api/complaints", async (req: Request, res: Response) => {
     try {
