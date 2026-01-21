@@ -85,6 +85,7 @@
       <div class="tab active" onclick="showTab('overview')">Overview</div>
       <div class="tab" onclick="showTab('pillars')">Pillars & Indicators</div>
       <div class="tab" onclick="showTab('institution-types')">Institution Types</div>
+      <div class="tab" onclick="showTab('person-types')">Person Types</div>
       <div class="tab" onclick="showTab('config')">Risk Thresholds</div>
     </div>
 
@@ -163,6 +164,32 @@
       </div>
     </div>
 
+    <div id="person-types" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Person Types Configuration</h2>
+          <button class="btn btn-primary" onclick="openAddPersonTypeModal()">
+            <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Add Person Type
+          </button>
+        </div>
+        <p style="color: #6b7280; margin-bottom: 20px;">Configure person types that officers can add during institutional inspections. Each type has customizable fields that appear in the mobile app and on photo watermarks.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Type Name</th>
+              <th>Code</th>
+              <th>Fields</th>
+              <th>Max Count</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="personTypesTable"></tbody>
+        </table>
+      </div>
+    </div>
+
     <div id="config" class="tab-content">
       <div class="card">
         <div class="card-header">
@@ -237,10 +264,67 @@
     </div>
   </div>
 
+  <div class="modal" id="personTypeModal">
+    <div class="modal-content" style="max-width: 700px;">
+      <h2 class="modal-title" id="personTypeModalTitle">Add Person Type</h2>
+      <input type="hidden" id="editPersonTypeId">
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label">Type Name *</label>
+          <input type="text" class="form-input" id="personTypeName" placeholder="e.g., Head of Institution">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type Code *</label>
+          <input type="text" class="form-input" id="personTypeCode" placeholder="e.g., head_of_institution">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <input type="text" class="form-input" id="personTypeDescription" placeholder="Brief description of this person type">
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label">Display Order</label>
+          <input type="number" class="form-input" id="personTypeDisplayOrder" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Max Count</label>
+          <input type="number" class="form-input" id="personTypeMaxCount" value="1" min="1" max="10">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="personTypeIsActive">
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <label class="form-label" style="margin: 0;">Custom Fields</label>
+          <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="addPersonTypeField()">+ Add Field</button>
+        </div>
+        <div id="personTypeFieldsContainer" style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background: #f9fafb;"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" onclick="closePersonTypeModal()">Cancel</button>
+        <button class="btn btn-danger" id="deletePersonTypeBtn" style="display: none;" onclick="deletePersonType()">Delete</button>
+        <button class="btn btn-primary" onclick="savePersonType()">Save</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let pillars = [];
     let indicators = [];
     let institutionTypes = [];
+    let personTypes = [];
+    let personTypeFields = [];
     let config = [];
 
     async function init() {
@@ -248,6 +332,7 @@
         loadPillars(),
         loadIndicators(),
         loadInstitutionTypes(),
+        loadPersonTypes(),
         loadConfig(),
         loadStats(),
         loadInspections()
@@ -554,6 +639,202 @@
       fetch('/api/admin/logout', { method: 'POST' }).then(() => {
         window.location.href = '/admin';
       });
+    }
+
+    // Person Types Management
+    async function loadPersonTypes() {
+      try {
+        const res = await fetch('/api/admin/institutional-inspection/person-types');
+        personTypes = await res.json();
+        renderPersonTypes();
+      } catch (e) {
+        console.error('Failed to load person types:', e);
+      }
+    }
+
+    function renderPersonTypes() {
+      const tbody = document.getElementById('personTypesTable');
+      if (!personTypes.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No person types configured. Add one to get started.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = personTypes.map(pt => {
+        const fieldCount = pt.fields ? pt.fields.length : 0;
+        const fieldNames = pt.fields ? pt.fields.map(f => f.label).slice(0, 3).join(', ') + (pt.fields.length > 3 ? '...' : '') : '-';
+        return `
+          <tr>
+            <td><strong>${pt.typeName}</strong><br><small style="color: #6b7280;">${pt.description || ''}</small></td>
+            <td><code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${pt.typeCode}</code></td>
+            <td>${fieldCount} fields<br><small style="color: #6b7280;">${fieldNames}</small></td>
+            <td>${pt.maxCount}</td>
+            <td><span class="badge ${pt.isActive ? 'badge-active' : 'badge-inactive'}">${pt.isActive ? 'Active' : 'Inactive'}</span></td>
+            <td>
+              <button class="btn" style="padding: 4px 8px; font-size: 12px;" onclick="editPersonType('${pt.id}')">Edit</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openAddPersonTypeModal() {
+      document.getElementById('editPersonTypeId').value = '';
+      document.getElementById('personTypeName').value = '';
+      document.getElementById('personTypeCode').value = '';
+      document.getElementById('personTypeDescription').value = '';
+      document.getElementById('personTypeDisplayOrder').value = personTypes.length + 1;
+      document.getElementById('personTypeMaxCount').value = 1;
+      document.getElementById('personTypeIsActive').value = 'true';
+      document.getElementById('personTypeModalTitle').textContent = 'Add Person Type';
+      document.getElementById('deletePersonTypeBtn').style.display = 'none';
+      
+      personTypeFields = [
+        { key: 'fullName', label: 'Full Name', type: 'text', required: true, showInWatermark: true }
+      ];
+      renderPersonTypeFields();
+      
+      document.getElementById('personTypeModal').classList.add('show');
+    }
+
+    function editPersonType(id) {
+      const pt = personTypes.find(x => x.id === id);
+      if (!pt) return;
+
+      document.getElementById('editPersonTypeId').value = id;
+      document.getElementById('personTypeName').value = pt.typeName;
+      document.getElementById('personTypeCode').value = pt.typeCode;
+      document.getElementById('personTypeDescription').value = pt.description || '';
+      document.getElementById('personTypeDisplayOrder').value = pt.displayOrder;
+      document.getElementById('personTypeMaxCount').value = pt.maxCount;
+      document.getElementById('personTypeIsActive').value = pt.isActive ? 'true' : 'false';
+      document.getElementById('personTypeModalTitle').textContent = 'Edit Person Type';
+      document.getElementById('deletePersonTypeBtn').style.display = 'inline-flex';
+      
+      personTypeFields = pt.fields ? [...pt.fields] : [];
+      renderPersonTypeFields();
+      
+      document.getElementById('personTypeModal').classList.add('show');
+    }
+
+    function closePersonTypeModal() {
+      document.getElementById('personTypeModal').classList.remove('show');
+    }
+
+    function renderPersonTypeFields() {
+      const container = document.getElementById('personTypeFieldsContainer');
+      if (!personTypeFields.length) {
+        container.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No fields configured. Click "Add Field" to create one.</div>';
+        return;
+      }
+
+      container.innerHTML = personTypeFields.map((field, idx) => `
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto auto auto auto; gap: 8px; align-items: center; padding: 10px; background: white; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e5e7eb;">
+          <input type="text" class="form-input" style="font-size: 13px; padding: 6px 10px;" value="${field.label}" placeholder="Label" onchange="updatePersonTypeField(${idx}, 'label', this.value)">
+          <input type="text" class="form-input" style="font-size: 13px; padding: 6px 10px;" value="${field.key}" placeholder="Key" onchange="updatePersonTypeField(${idx}, 'key', this.value)">
+          <select class="form-select" style="font-size: 13px; padding: 6px 10px;" onchange="updatePersonTypeField(${idx}, 'type', this.value)">
+            <option value="text" ${field.type === 'text' ? 'selected' : ''}>Text</option>
+            <option value="phone" ${field.type === 'phone' ? 'selected' : ''}>Phone</option>
+            <option value="email" ${field.type === 'email' ? 'selected' : ''}>Email</option>
+            <option value="date" ${field.type === 'date' ? 'selected' : ''}>Date</option>
+          </select>
+          <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap;">
+            <input type="checkbox" ${field.required ? 'checked' : ''} onchange="updatePersonTypeField(${idx}, 'required', this.checked)"> Req
+          </label>
+          <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap;" title="Show in photo watermark">
+            <input type="checkbox" ${field.showInWatermark ? 'checked' : ''} onchange="updatePersonTypeField(${idx}, 'showInWatermark', this.checked)"> WM
+          </label>
+          <button onclick="movePersonTypeField(${idx}, -1)" style="padding: 4px 8px; background: #f3f4f6; border: none; border-radius: 4px; cursor: pointer;" ${idx === 0 ? 'disabled' : ''}>↑</button>
+          <button onclick="removePersonTypeField(${idx})" style="padding: 4px 8px; background: #fee2e2; color: #dc2626; border: none; border-radius: 4px; cursor: pointer;">×</button>
+        </div>
+      `).join('');
+    }
+
+    function addPersonTypeField() {
+      const fieldNum = personTypeFields.length + 1;
+      personTypeFields.push({
+        key: `field${fieldNum}`,
+        label: `Field ${fieldNum}`,
+        type: 'text',
+        required: false,
+        showInWatermark: false
+      });
+      renderPersonTypeFields();
+    }
+
+    function updatePersonTypeField(idx, prop, value) {
+      if (personTypeFields[idx]) {
+        personTypeFields[idx][prop] = value;
+      }
+    }
+
+    function movePersonTypeField(idx, direction) {
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= personTypeFields.length) return;
+      const temp = personTypeFields[idx];
+      personTypeFields[idx] = personTypeFields[newIdx];
+      personTypeFields[newIdx] = temp;
+      renderPersonTypeFields();
+    }
+
+    function removePersonTypeField(idx) {
+      personTypeFields.splice(idx, 1);
+      renderPersonTypeFields();
+    }
+
+    async function savePersonType() {
+      const id = document.getElementById('editPersonTypeId').value;
+      const data = {
+        typeName: document.getElementById('personTypeName').value,
+        typeCode: document.getElementById('personTypeCode').value,
+        description: document.getElementById('personTypeDescription').value,
+        displayOrder: parseInt(document.getElementById('personTypeDisplayOrder').value),
+        maxCount: parseInt(document.getElementById('personTypeMaxCount').value),
+        isActive: document.getElementById('personTypeIsActive').value === 'true',
+        fields: personTypeFields
+      };
+
+      if (!data.typeName || !data.typeCode) {
+        alert('Type Name and Code are required');
+        return;
+      }
+
+      const url = id 
+        ? `/api/admin/institutional-inspection/person-types/${id}`
+        : '/api/admin/institutional-inspection/person-types';
+
+      try {
+        const res = await fetch(url, {
+          method: id ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        if (!res.ok) throw new Error('Failed to save');
+        
+        closePersonTypeModal();
+        await loadPersonTypes();
+        alert(id ? 'Person type updated' : 'Person type created');
+      } catch (e) {
+        alert('Failed to save person type: ' + e.message);
+      }
+    }
+
+    async function deletePersonType() {
+      const id = document.getElementById('editPersonTypeId').value;
+      if (!id) return;
+
+      if (!confirm('Are you sure you want to delete this person type? This cannot be undone.')) return;
+
+      try {
+        await fetch(`/api/admin/institutional-inspection/person-types/${id}`, {
+          method: 'DELETE'
+        });
+        closePersonTypeModal();
+        await loadPersonTypes();
+        alert('Person type deleted');
+      } catch (e) {
+        alert('Failed to delete person type');
+      }
     }
 
     init();
