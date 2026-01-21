@@ -200,8 +200,8 @@ export default function SubmitComplaintScreen() {
       }
 
       // Prepare acknowledgement data for PDF
-      const apiUrl = getApiUrl();
-      const trackingUrl = `${apiUrl}/track/${data.complaintCode}`;
+      const baseUrl = getApiUrl();
+      const trackingUrl = `${baseUrl}/track/${data.complaintCode}`;
       
       const ackData: ComplaintAcknowledgementData = {
         complaintCode: data.complaintCode,

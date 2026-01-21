@@ -143,6 +143,12 @@ Key features:
 - **Test Officer**: officer@test.com / Officer@123
 
 ## Recent Changes
+- **Complaint ID System Redesign**: District-based IDs (format: {DISTRICT_ABBR}{4-digit-seq}{MMYYYY}, e.g., DEL0001012026) with monthly sequence reset
+- **Shared Complaint Links**: Officers can create shareable links for pre-assigned district complaint forms with unique tokens
+- **PDF Acknowledgement**: Generates downloadable PDF receipts after complaint submission with tracking info
+- **Shared Link API**: Create, validate, and list shared links with token-based authentication
+- **New DB Tables**: shared_complaint_links, complaint_sequences for link management and ID generation
+- **District Abbreviations**: Added abbreviation field to districts table for ID generation
 - Added Dynamic Complaint Management System with 9 API endpoints
 - Complaint features: GPS location capture, evidence uploads, admin-configurable forms, public tracking codes
 - Added complaint domain service with legal compliance rules (location immutability)
