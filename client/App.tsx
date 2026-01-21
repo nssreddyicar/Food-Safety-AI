@@ -1,11 +1,13 @@
-import React, { useEffect } from "react";
-import { StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, View, ActivityIndicator } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
+import * as Font from "expo-font";
+import { Feather } from "@expo/vector-icons";
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
@@ -17,9 +19,30 @@ import { AuthProvider } from "@/context/AuthContext";
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+
   useEffect(() => {
-    SplashScreen.hideAsync();
+    async function loadFonts() {
+      try {
+        await Font.loadAsync(Feather.font);
+        setFontsLoaded(true);
+      } catch (e) {
+        console.error("Error loading fonts:", e);
+        setFontsLoaded(true);
+      } finally {
+        SplashScreen.hideAsync();
+      }
+    }
+    loadFonts();
   }, []);
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <ErrorBoundary>
@@ -44,5 +67,10 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  loading: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
