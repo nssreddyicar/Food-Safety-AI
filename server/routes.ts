@@ -1041,6 +1041,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== WEB COMPLAINT FORM ====================
+  // Public web form for submitting complaints via shared links
+  
+  app.get("/complaint", (req: Request, res: Response) => {
+    const templatePath = path.resolve(
+      process.cwd(),
+      "server",
+      "templates",
+      "complaint-form.html",
+    );
+    const html = fs.readFileSync(templatePath, "utf-8");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  });
+
   // ==================== COMPLAINT MANAGEMENT API ====================
   // Dynamic, location-aware, evidence-supported complaint system
 

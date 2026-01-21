@@ -143,6 +143,8 @@ Key features:
 - **Test Officer**: officer@test.com / Officer@123
 
 ## Recent Changes
+- **Web Complaint Form**: Public web form at `/complaint?token=xxx` for shared link submissions. Accessible without app installation, mobile-responsive design.
+- **Admin Complaint Management**: New admin panel section for managing complaints, form config, and status workflows at `/admin/complaints`
 - **Dynamic Complaint Form Configuration**: Complaint type and nature dropdowns now fetch from `/api/complaints/form-config` API, managed via admin panel. Seeded with default options (Food Safety, Hygiene Violation, etc.)
 - **Evidence Image Anti-Fraud Watermarking**: Camera-only image capture (max 3 images) with tamper-evident watermarks showing GPS coordinates, capture timestamp, and upload timestamp baked into images
 - **Complaint ID System Redesign**: District-based IDs (format: {DISTRICT_ABBR}{4-digit-seq}{MMYYYY}, e.g., DEL0001012026) with monthly sequence reset
