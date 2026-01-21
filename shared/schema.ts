@@ -1692,3 +1692,95 @@ export const fboInspectionFormFields = pgTable("fbo_inspection_form_fields", {
 });
 
 export type FboInspectionFormField = typeof fboInspectionFormFields.$inferSelect;
+
+/**
+ * =============================================================================
+ * AUDIT AND SECURITY TABLES
+ * =============================================================================
+ */
+
+/**
+ * Audit Logs - Immutable record of all system actions for legal compliance.
+ * 
+ * WHY: Court admissibility requires complete audit trail.
+ * RULES:
+ * - Records are append-only, never updated or deleted
+ * - Must capture before/after values for all data changes
+ * - Must record officer, IP, timestamp for all actions
+ */
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  action: text("action").notNull(), // CREATE, UPDATE, DELETE, READ, LOGIN, LOGOUT, EXPORT
+  entityType: text("entity_type").notNull(), // inspections, samples, complaints, etc.
+  entityId: text("entity_id"), // ID of affected record
+  officerId: text("officer_id"), // Officer who performed action
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  requestPath: text("request_path"),
+  requestMethod: text("request_method"),
+  oldValues: jsonb("old_values"), // Previous state (for updates)
+  newValues: jsonb("new_values"), // New state (for creates/updates)
+  metadata: jsonb("metadata"), // Additional context
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+
+/**
+ * Refresh Tokens - Stores refresh tokens for JWT authentication.
+ * 
+ * WHY: Secure token refresh without re-authentication.
+ * RULES:
+ * - Tokens must be hashed before storage
+ * - Expired tokens are automatically cleaned up
+ */
+export const refreshTokens = pgTable("refresh_tokens", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  officerId: varchar("officer_id").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+});
+
+export type RefreshToken = typeof refreshTokens.$inferSelect;
+
+/**
+ * Rate Limit Records - Tracks API usage for rate limiting.
+ * 
+ * WHY: Prevents abuse and ensures fair usage.
+ */
+export const rateLimitRecords = pgTable("rate_limit_records", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  identifier: text("identifier").notNull(), // IP address or user ID
+  endpoint: text("endpoint").notNull(),
+  requestCount: integer("request_count").default(0),
+  windowStart: timestamp("window_start").defaultNow(),
+  windowEnd: timestamp("window_end"),
+});
+
+export type RateLimitRecord = typeof rateLimitRecords.$inferSelect;
+
+/**
+ * System Health Metrics - Stores system health data for monitoring.
+ */
+export const systemHealthMetrics = pgTable("system_health_metrics", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  timestamp: timestamp("timestamp").defaultNow(),
+  metricType: text("metric_type").notNull(), // api_latency, db_connections, memory, cpu
+  metricValue: integer("metric_value"),
+  metricUnit: text("metric_unit"),
+  metadata: jsonb("metadata"),
+});
+
+export type SystemHealthMetric = typeof systemHealthMetrics.$inferSelect;

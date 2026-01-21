@@ -177,7 +177,7 @@ export function auditMiddleware(req: Request, res: Response, next: NextFunction)
     if (res.statusCode >= 200 && res.statusCode < 300) {
       const action = getActionFromMethod(req.method);
       const entityType = getEntityTypeFromPath(req.path);
-      const entityId = req.params.id || null;
+      const entityId = typeof req.params.id === 'string' ? req.params.id : null;
 
       createAuditLog({
         action,

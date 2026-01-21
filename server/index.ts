@@ -5,8 +5,27 @@ import { registerRoutes } from "./routes";
 import * as fs from "fs";
 import * as path from "path";
 
+// Production-grade middleware imports
+import {
+  generalRateLimiter,
+  authRateLimiter,
+  securityHeaders,
+  inputSanitizer,
+  requestIdMiddleware,
+} from "./middleware/security";
+import { auditMiddleware } from "./middleware/audit";
+import {
+  globalErrorHandler,
+  notFoundHandler,
+  setupGlobalErrorHandlers,
+} from "./middleware/error-handler";
+import { logger, logRequest } from "./services/logger";
+
 const app = express();
-const log = console.log;
+const log = logger.info.bind(logger);
+
+// Setup global error handlers for uncaught exceptions
+setupGlobalErrorHandlers();
 
 declare module "http" {
   interface IncomingMessage {
@@ -235,16 +254,50 @@ function setupErrorHandler(app: express.Application) {
 }
 
 (async () => {
+  // 1. Request ID for tracing
+  app.use(requestIdMiddleware);
+  
+  // 2. Security headers (Helmet)
+  app.use(securityHeaders);
+  
+  // 3. CORS setup
   setupCors(app);
+  
+  // 4. Body parsing
   setupBodyParsing(app);
+  
+  // 5. Input sanitization (XSS prevention)
+  app.use(inputSanitizer);
+  
+  // 6. Rate limiting for API endpoints
+  app.use("/api/", generalRateLimiter);
+  app.use("/api/admin/login", authRateLimiter);
+  app.use("/api/officer/login", authRateLimiter);
+  
+  // 7. Request logging
   setupRequestLogging(app);
+  
+  // 8. Audit middleware for data changes
+  app.use(auditMiddleware);
+  
+  // 9. Health check endpoint
+  app.get("/api/health", (_req: Request, res: Response) => {
+    res.json({
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || "development",
+    });
+  });
 
   // Register admin routes BEFORE Expo/static file serving
   const server = await registerRoutes(app);
 
   configureExpoAndLanding(app);
 
-  setupErrorHandler(app);
+  // Production-grade error handling
+  app.use(notFoundHandler);
+  app.use(globalErrorHandler);
 
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(
@@ -253,7 +306,8 @@ function setupErrorHandler(app: express.Application) {
       host: "0.0.0.0",
     },
     () => {
-      log(`express server serving on port ${port}`);
+      log(`Production-grade server running on port ${port}`);
+      log(`Environment: ${process.env.NODE_ENV || "development"}`);
     },
   );
 })();
