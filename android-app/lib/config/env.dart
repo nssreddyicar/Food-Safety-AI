@@ -37,7 +37,7 @@ class Env {
       _current = Environment.development;
       _apiBaseUrl = const String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: 'http://localhost:5000',
+        defaultValue: 'https://0afd0d5a-1dd7-4a9f-9619-6f8e5c1118e9-00-1zo5eoxc9298j.riker.replit.dev',
       );
     }
   }
