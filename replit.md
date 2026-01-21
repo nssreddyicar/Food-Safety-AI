@@ -1,115 +1,94 @@
-# Food Safety Inspector - Mobile Application
+# Food Safety Inspector - Government-Grade Regulatory System
 
 ## Overview
-This project is a government-grade mobile application designed for Food Safety Officers (FSOs) to efficiently manage their daily tasks, including inspections, sample collection, and prosecution workflows. The application aims to streamline regulatory enforcement, enhance data integrity, and provide FSOs with robust tools for their field operations. Its core purpose is to improve public health outcomes by ensuring food safety compliance.
-
-The application's vision is to become the leading digital platform for food safety enforcement, offering a comprehensive and intuitive solution that empowers officers, reduces administrative burden, and provides transparent oversight of food safety regulations.
+Government-grade regulatory system for Food Safety Officers (FSOs) to manage inspections, sample collection, and prosecution workflows under FSSAI regulations. Designed for court-admissible records with strict immutability rules for legal compliance.
 
 ## User Preferences
-I prefer detailed explanations.
-I want iterative development.
-Ask before making major changes.
-Do not make changes to the folder `server/templates`.
+- Prefer detailed explanations
+- Iterative development approach
+- Ask before major changes
+- Do not modify `server/templates` folder
+- Flutter for Android mobile app (build externally - not on Replit)
 
 ## System Architecture
 
-### Frontend
-The mobile application is built using Expo React Native, ensuring cross-platform compatibility. It follows a modular architecture with dedicated folders for components, hooks, utilities, and screens. Key UI/UX decisions include a clear, actionable dashboard, intuitive navigation via React Navigation (including bottom tabs and stack navigators), and a consistent design system defined in `constants/theme.ts`. The primary color scheme uses a deep authoritative blue (#1E40AF) with an urgent red accent (#DC2626) for critical indicators.
+### Project Structure (NEW)
+```
+/
+├── android-app/        # Flutter Android app (Play Store ready)
+├── web-app/            # React Admin & Authority Panel  
+├── backend/            # Domain logic & business rules
+├── server/             # API layer (routes, controllers, auth)
+├── database/           # Schema, repositories, migrations
+├── shared/             # Shared types & enums
+├── infra/              # Docker, deployment, CI/CD
+├── docs/               # Architecture documentation
+└── client/             # [LEGACY] Expo React Native (deprecated)
+```
 
-**Core Features and Technical Implementations:**
-- **Authentication**: Invite-only system with session persistence using AsyncStorage.
-- **Dashboard**: Displays key metrics, urgent actions, and quick access to a comprehensive Action Dashboard.
-- **Action Dashboard System**: A configurable system for tracking various FSO actions (e.g., Legal & Court, Inspection & Enforcement, Sampling & Laboratory, Administrative, Protocol & Duties). It features role-based categories, SLA tracking, priority indicators, and drill-down capabilities.
-- **Report Generation**: Supports professional PDF and Excel report generation from Action Dashboard data, with time period selection and platform-aware output (file creation on mobile, direct download on web).
-- **Inspection Management**: Allows creation of new inspections with dynamic forms, tracking deviations, actions taken (including image uploads), and sample lifting (Enforcement/Surveillance types).
-- **Sample Details & Tracking**: Comprehensive sample information capture, 14-day lab report countdown with visual urgency indicators, and filtering by status.
-- **Dynamic Sample Workflow System**: An admin-configurable workflow engine for managing the sample lifecycle with nodes (action, decision, end), conditional transitions, and dynamic input fields (text, date, select, image). Default workflows are provided and can be customized.
-- **Prosecution Case Management**: A complete system for tracking court cases, including case list, detailed view with hearing history, and new case creation. Features include search, filtering, and urgency indicators for upcoming hearings.
-- **QR/Barcode Scanner**: Real-time camera-based scanning (supporting multiple formats) with flash toggle, haptic feedback, and a notes management system for saving, viewing, copying, sharing, and deleting scanned data. Data is stored locally using AsyncStorage.
+### Android App (Flutter)
+**Location**: `android-app/`
+**Build**: External (Flutter SDK required - not available on Replit)
 
-### Backend
-The backend is developed with Express.js following a strict layered architecture for maintainability, testability, and regulatory compliance.
+Files created:
+- `lib/main.dart` - App entry point
+- `lib/screens/` - Login, Dashboard screens
+- `lib/widgets/` - Reusable UI components
+- `lib/services/` - API client, auth service
+- `lib/models/` - Officer model
+- `lib/config/` - Theme, environment config
+- `pubspec.yaml` - Flutter dependencies
 
-**Layered Architecture:**
+**To build locally**:
+```bash
+cd android-app
+flutter pub get
+flutter run
+```
 
-1. **Data Access Layer (`server/data/repositories/`)**: 
-   - Pure database operations via Drizzle ORM
-   - Repository pattern: `officer.repository.ts`, `inspection.repository.ts`, `sample.repository.ts`, `jurisdiction.repository.ts`
-   - No business logic - only CRUD operations and queries
-   - All operations are jurisdiction-aware
+### Backend Architecture
+Express.js with strict layered architecture:
 
-2. **Domain/Business Logic Layer (`server/domain/`)**: 
-   - Services enforcing domain rules: `officerService`, `inspectionService`, `sampleService`, `jurisdictionService`
-   - Workflow state machines for inspections and samples
-   - Immutability rules: Closed inspections and dispatched samples cannot be modified (legal requirement)
-   - Authority checks: Officers can only access data within their jurisdiction hierarchy
+1. **API Layer** (`server/routes.ts`)
+2. **Domain Layer** (`server/domain/`)
+3. **Data Access Layer** (`server/data/repositories/`)
+4. **Configuration** (`server/config/`)
 
-3. **API Layer (`server/routes.ts`)**: 
-   - HTTP endpoint handlers
-   - Request validation and authorization
-   - Calls domain services for business operations
+### Domain Rules (Legal Compliance)
+1. **Inspections**: Closed inspections are IMMUTABLE (court admissibility)
+2. **Samples**: Dispatched samples are IMMUTABLE (chain-of-custody)
+3. **Jurisdictions**: Data is jurisdiction-bound, not officer-bound
+4. **Audit Trail**: All modifications logged with officer ID and timestamp
 
-4. **Configuration Layer (`server/config/`)**: 
-   - Environment-based settings
-   - Configurable values (lab report deadlines, edit freeze hours)
-   - All settings that might change are configurable, not hardcoded
+## Key Files
 
-**Domain Rules:**
-- Inspections and samples are bound to JURISDICTIONS, not officers (ensures data continuity when officers transfer)
-- Closed inspections are IMMUTABLE for court admissibility
-- Dispatched samples are IMMUTABLE for chain-of-custody compliance
-- Officer roles, capacities, and jurisdiction levels are admin-configurable
+### New Structure
+- `android-app/` - Flutter mobile app scaffold
+- `shared/types/` - TypeScript interfaces for all entities
+- `shared/enums/status.enums.ts` - Status values and transitions
+- `infra/docker/` - Docker deployment configs
+- `docs/workflows/` - Inspection and sample workflow documentation
 
-**Technical Implementations:**
-- **API Routes**: Defined in `server/routes.ts`, incorporating a security model and categorized endpoints.
-- **Data Schema**: Managed in `shared/schema.ts`, reflecting the database structure with FSSAI regulatory context.
+### Existing (server/)
+- `server/routes.ts` - API endpoints
+- `server/domain/` - Business logic services
+- `server/data/repositories/` - Data access layer
+- `shared/schema.ts` - Drizzle ORM schema
 
-### Data Persistence
-- **Mobile Local Storage**: AsyncStorage is used for local data persistence on the mobile client, particularly for offline support and scanned notes.
-- **Backend Database**: PostgreSQL is used for central data storage, managing officer and administrative data.
-- **Jurisdiction-Bound Data**: Inspections and samples are bound to specific jurisdictions via `jurisdictionId`, ensuring data continuity regardless of officer transfers.
-
-## External Dependencies
-- **React Native (Expo)**: Frontend framework for mobile application development.
-- **Express.js**: Backend framework for building RESTful APIs.
-- **PostgreSQL**: Relational database for persistent data storage.
-- **Drizzle ORM**: Type-safe database operations and schema management.
-- **React Navigation**: For managing navigation flows within the mobile application.
-- **React Query**: For data fetching, caching, and state management in the frontend.
-- **AsyncStorage**: For local data persistence on the mobile device.
-- **expo-camera**: For camera-based QR/barcode scanning functionality.
-- **JSDoc**: For code documentation standards.
-
-## Important Files
-
-### Backend Architecture Files
-- `server/data/repositories/` - Data access layer with repository pattern
-  - `base.repository.ts` - Database connection and shared types
-  - `officer.repository.ts` - Officer CRUD operations
-  - `inspection.repository.ts` - Inspection data operations
-  - `sample.repository.ts` - Sample data operations
-  - `jurisdiction.repository.ts` - Jurisdiction hierarchy operations
-  - `index.ts` - Central exports for all repositories
-
-- `server/domain/` - Business logic layer with domain services
-  - `officer/officer.service.ts` - Authentication, officer management
-  - `inspection/inspection.service.ts` - Inspection workflow, immutability rules
-  - `sample/sample.service.ts` - Chain-of-custody, lab report deadlines
-  - `jurisdiction/jurisdiction.service.ts` - Hierarchy, authority checks
-  - `index.ts` - Central exports for all services
-
-- `server/config/index.ts` - Centralized configuration
-
-### Schema and Types
-- `shared/schema.ts` - Database schema definitions (Drizzle ORM)
-
-### API
-- `server/routes.ts` - HTTP endpoint handlers
+## Credentials
+- **Super Admin**: superadmin / Admin@123
+- **Test Officer**: officer@test.com / Officer@123
 
 ## Recent Changes
-- Implemented strict layered backend architecture (Data Access → Domain → API → Configuration)
-- Created repository pattern for all data operations
-- Added domain services with business rules enforcement
-- Implemented immutability rules for closed inspections and dispatched samples
-- Added jurisdiction authority checks
-- Created centralized configuration layer
+- Switched from Expo React Native to Flutter for Android app
+- Created new folder structure with strict separation of concerns
+- Added Flutter project scaffold (14 files) for external build
+- Created shared types layer for cross-platform consistency
+- Added infrastructure setup (Docker, env templates)
+- Added architecture documentation (overview, workflows)
+
+## Development Notes
+- Flutter app must be built externally (local machine or CI/CD)
+- Backend runs on Replit as before
+- Web admin panel can run on Replit
+- PostgreSQL database available via DATABASE_URL
