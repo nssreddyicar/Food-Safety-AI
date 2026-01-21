@@ -244,6 +244,14 @@
             <h3 style="margin: 20px 0 10px; color: #dc2626; border-bottom: 2px solid #dc2626; padding-bottom: 5px;">Actions Taken</h3>
             <table><thead><tr><th>Field Label</th><th>Type</th><th>Required</th><th>System</th><th>Actions</th></tr></thead><tbody id="actionsTable"></tbody></table>
           </div>
+          <div id="witness_fields" class="field-group">
+            <h3 style="margin: 20px 0 10px; color: #0891b2; border-bottom: 2px solid #0891b2; padding-bottom: 5px;">Witness Details</h3>
+            <table><thead><tr><th>Field Label</th><th>Type</th><th>Required</th><th>System</th><th>Actions</th></tr></thead><tbody id="witnessTable"></tbody></table>
+          </div>
+          <div id="samples_fields" class="field-group">
+            <h3 style="margin: 20px 0 10px; color: #be185d; border-bottom: 2px solid #be185d; padding-bottom: 5px;">Sample Collection</h3>
+            <table><thead><tr><th>Field Label</th><th>Type</th><th>Required</th><th>System</th><th>Actions</th></tr></thead><tbody id="samplesTable"></tbody></table>
+          </div>
           <div id="evidence_fields" class="field-group">
             <h3 style="margin: 20px 0 10px; color: #7c3aed; border-bottom: 2px solid #7c3aed; padding-bottom: 5px;">Evidence & Documentation</h3>
             <table><thead><tr><th>Field Label</th><th>Type</th><th>Required</th><th>System</th><th>Actions</th></tr></thead><tbody id="evidenceTable"></tbody></table>
@@ -492,6 +500,8 @@
             <option value="inspection_details">Inspection Details</option>
             <option value="findings">Findings</option>
             <option value="actions">Actions Taken</option>
+            <option value="witness">Witness Details</option>
+            <option value="samples">Sample Collection</option>
             <option value="evidence">Evidence & Documentation</option>
           </select>
         </div>
@@ -1023,6 +1033,8 @@
         inspection_details: document.getElementById('inspectionDetailsTable'),
         findings: document.getElementById('findingsTable'),
         actions: document.getElementById('actionsTable'),
+        witness: document.getElementById('witnessTable'),
+        samples: document.getElementById('samplesTable'),
         evidence: document.getElementById('evidenceTable')
       };
       

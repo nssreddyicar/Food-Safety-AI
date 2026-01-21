@@ -6298,10 +6298,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Actions Group
         { fieldName: "action_taken", fieldLabel: "Action Taken", fieldType: "dropdown", fieldGroup: "actions", displayOrder: 1, isRequired: true, isSystemField: true, helpText: "Select from configured action types" },
-        { fieldName: "samples_collected", fieldLabel: "Samples Collected?", fieldType: "checkbox", fieldGroup: "actions", displayOrder: 2, isRequired: false },
-        { fieldName: "sample_details", fieldLabel: "Sample Details", fieldType: "textarea", fieldGroup: "actions", displayOrder: 3, isRequired: false, placeholder: "Describe samples if collected" },
-        { fieldName: "follow_up_date", fieldLabel: "Follow-up Date", fieldType: "date", fieldGroup: "actions", displayOrder: 4, isRequired: false, helpText: "If follow-up required" },
-        { fieldName: "recommendations", fieldLabel: "Recommendations", fieldType: "textarea", fieldGroup: "actions", displayOrder: 5, isRequired: false, placeholder: "Recommendations for improvement" },
+        { fieldName: "follow_up_required", fieldLabel: "Follow-up Required?", fieldType: "checkbox", fieldGroup: "actions", displayOrder: 2, isRequired: false },
+        { fieldName: "follow_up_date", fieldLabel: "Follow-up Date", fieldType: "date", fieldGroup: "actions", displayOrder: 3, isRequired: false, helpText: "If follow-up required" },
+        { fieldName: "recommendations", fieldLabel: "Recommendations", fieldType: "textarea", fieldGroup: "actions", displayOrder: 4, isRequired: false, placeholder: "Recommendations for improvement" },
+        { fieldName: "improvement_notice_issued", fieldLabel: "Improvement Notice Issued?", fieldType: "checkbox", fieldGroup: "actions", displayOrder: 5, isRequired: false },
+        { fieldName: "notice_details", fieldLabel: "Notice Details", fieldType: "textarea", fieldGroup: "actions", displayOrder: 6, isRequired: false, placeholder: "Details of notice issued" },
+        
+        // Witness Group
+        { fieldName: "witness_required", fieldLabel: "Witness Present?", fieldType: "checkbox", fieldGroup: "witness", displayOrder: 1, isRequired: false, isSystemField: true },
+        { fieldName: "witness_1_name", fieldLabel: "Witness 1 Name", fieldType: "text", fieldGroup: "witness", displayOrder: 2, isRequired: false, placeholder: "Full name of first witness" },
+        { fieldName: "witness_1_address", fieldLabel: "Witness 1 Address", fieldType: "textarea", fieldGroup: "witness", displayOrder: 3, isRequired: false, placeholder: "Complete address" },
+        { fieldName: "witness_1_phone", fieldLabel: "Witness 1 Phone", fieldType: "phone", fieldGroup: "witness", displayOrder: 4, isRequired: false, placeholder: "10-digit mobile number" },
+        { fieldName: "witness_1_signature", fieldLabel: "Witness 1 Signature", fieldType: "file", fieldGroup: "witness", displayOrder: 5, isRequired: false, fileSettings: { maxFiles: 1, maxSizeMB: 2, allowedTypes: ["image/jpeg", "image/png"] } },
+        { fieldName: "witness_2_name", fieldLabel: "Witness 2 Name", fieldType: "text", fieldGroup: "witness", displayOrder: 6, isRequired: false, placeholder: "Full name of second witness" },
+        { fieldName: "witness_2_address", fieldLabel: "Witness 2 Address", fieldType: "textarea", fieldGroup: "witness", displayOrder: 7, isRequired: false, placeholder: "Complete address" },
+        { fieldName: "witness_2_phone", fieldLabel: "Witness 2 Phone", fieldType: "phone", fieldGroup: "witness", displayOrder: 8, isRequired: false, placeholder: "10-digit mobile number" },
+        { fieldName: "witness_2_signature", fieldLabel: "Witness 2 Signature", fieldType: "file", fieldGroup: "witness", displayOrder: 9, isRequired: false, fileSettings: { maxFiles: 1, maxSizeMB: 2, allowedTypes: ["image/jpeg", "image/png"] } },
+        
+        // Sample Collection Group
+        { fieldName: "samples_collected", fieldLabel: "Samples Collected?", fieldType: "checkbox", fieldGroup: "samples", displayOrder: 1, isRequired: false, isSystemField: true },
+        { fieldName: "sample_count", fieldLabel: "Number of Samples", fieldType: "number", fieldGroup: "samples", displayOrder: 2, isRequired: false, placeholder: "Total samples collected" },
+        { fieldName: "sample_type", fieldLabel: "Sample Type", fieldType: "dropdown", fieldGroup: "samples", displayOrder: 3, isRequired: false, dropdownOptions: [{ value: "food", label: "Food Sample" }, { value: "water", label: "Water Sample" }, { value: "swab", label: "Swab Sample" }, { value: "packaging", label: "Packaging Material" }, { value: "raw_material", label: "Raw Material" }] },
+        { fieldName: "sample_description", fieldLabel: "Sample Description", fieldType: "textarea", fieldGroup: "samples", displayOrder: 4, isRequired: false, placeholder: "Describe the sample(s) collected" },
+        { fieldName: "sample_quantity", fieldLabel: "Sample Quantity", fieldType: "text", fieldGroup: "samples", displayOrder: 5, isRequired: false, placeholder: "e.g., 500g, 1L, 3 units" },
+        { fieldName: "sample_batch_number", fieldLabel: "Batch/Lot Number", fieldType: "text", fieldGroup: "samples", displayOrder: 6, isRequired: false, placeholder: "Product batch number if available" },
+        { fieldName: "sample_manufacture_date", fieldLabel: "Manufacturing Date", fieldType: "date", fieldGroup: "samples", displayOrder: 7, isRequired: false },
+        { fieldName: "sample_expiry_date", fieldLabel: "Expiry Date", fieldType: "date", fieldGroup: "samples", displayOrder: 8, isRequired: false },
+        { fieldName: "sample_storage_temp", fieldLabel: "Storage Temperature", fieldType: "dropdown", fieldGroup: "samples", displayOrder: 9, isRequired: false, dropdownOptions: [{ value: "ambient", label: "Ambient" }, { value: "refrigerated", label: "Refrigerated (2-8°C)" }, { value: "frozen", label: "Frozen (-18°C or below)" }, { value: "hot", label: "Hot Holding (>60°C)" }] },
+        { fieldName: "sample_seal_number", fieldLabel: "Seal Number", fieldType: "text", fieldGroup: "samples", displayOrder: 10, isRequired: false, placeholder: "Official seal number", helpText: "Unique seal number for chain of custody" },
+        { fieldName: "sample_lab_destination", fieldLabel: "Destination Laboratory", fieldType: "dropdown", fieldGroup: "samples", displayOrder: 11, isRequired: false, dropdownOptions: [{ value: "state_lab", label: "State Food Laboratory" }, { value: "central_lab", label: "Central Food Laboratory" }, { value: "referral_lab", label: "Referral Laboratory" }, { value: "private_lab", label: "NABL Accredited Private Lab" }] },
+        { fieldName: "sample_photo", fieldLabel: "Sample Photos", fieldType: "file", fieldGroup: "samples", displayOrder: 12, isRequired: false, fileSettings: { maxFiles: 5, maxSizeMB: 5, allowedTypes: ["image/jpeg", "image/png"] }, watermarkSettings: { enabled: true, showGps: true, showTimestamp: true, position: "bottom-right", opacity: 0.8 } },
+        { fieldName: "sample_fbo_portion", fieldLabel: "FBO Portion Given?", fieldType: "checkbox", fieldGroup: "samples", displayOrder: 13, isRequired: false, helpText: "Was a portion given to FBO as per rules?" },
+        { fieldName: "sample_cost_deposited", fieldLabel: "Sample Cost Deposited", fieldType: "number", fieldGroup: "samples", displayOrder: 14, isRequired: false, placeholder: "Amount in Rs.", helpText: "Cost of sample paid by FSO" },
         
         // Evidence Group
         { fieldName: "photos", fieldLabel: "Inspection Photos", fieldType: "file", fieldGroup: "evidence", displayOrder: 1, isRequired: true, isSystemField: true, fileSettings: { maxFiles: 10, maxSizeMB: 5, allowedTypes: ["image/jpeg", "image/png"] }, watermarkSettings: { enabled: true, showGps: true, showTimestamp: true, position: "bottom-right", opacity: 0.8 } },
@@ -6310,7 +6338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { fieldName: "officer_remarks", fieldLabel: "Officer Remarks", fieldType: "textarea", fieldGroup: "evidence", displayOrder: 4, isRequired: false, placeholder: "Any additional remarks" },
       ];
       await db.insert(fboInspectionFormFields).values(defaultFields);
-      res.json({ success: true, message: "Reset to 27 default form fields across 5 groups" });
+      res.json({ success: true, message: "Reset to 50 default form fields across 7 groups" });
     } catch (error) {
       console.error("Error resetting FBO form fields:", error);
       res.status(500).json({ error: "Failed to reset form fields" });
