@@ -1378,6 +1378,7 @@ export const institutionalInspectionResponses = pgTable("institutional_inspectio
   // Response
   response: text("response").notNull(), // yes, no, na (not applicable)
   remarks: text("remarks"),
+  images: jsonb("images"), // Array of base64 image data URIs with watermarks
   
   // Snapshot at time of response (for audit)
   indicatorName: text("indicator_name").notNull(),
