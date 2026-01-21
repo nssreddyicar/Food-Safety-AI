@@ -114,14 +114,9 @@ export function sanitizeObject(obj: any): any {
  * Sanitizes req.body, req.query, and req.params
  */
 export function inputSanitizer(req: Request, _res: Response, next: NextFunction) {
-  if (req.body) {
+  // Only sanitize body - query and params are read-only in Express
+  if (req.body && typeof req.body === 'object') {
     req.body = sanitizeObject(req.body);
-  }
-  if (req.query) {
-    req.query = sanitizeObject(req.query);
-  }
-  if (req.params) {
-    req.params = sanitizeObject(req.params);
   }
   next();
 }
