@@ -7,6 +7,7 @@ import {
   Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -53,6 +54,7 @@ const RISK_COLORS = {
 export default function InstitutionalInspectionAssessmentScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'InstitutionalInspectionAssessment'>>();
   const { token, user } = useAuthContext();
@@ -291,7 +293,7 @@ export default function InstitutionalInspectionAssessmentScreen() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 100 },
+          { paddingBottom: tabBarHeight + insets.bottom + 100 },
         ]}
       >
         {pillars.map((pillar, index) => (
@@ -327,7 +329,7 @@ export default function InstitutionalInspectionAssessmentScreen() {
         ))}
       </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.md }]}>
+      <View style={[styles.footer, { paddingBottom: tabBarHeight + insets.bottom + Spacing.md }]}>
         <Button
           title={isSubmitting ? "Submitting..." : "Submit Assessment"}
           onPress={handleSubmit}

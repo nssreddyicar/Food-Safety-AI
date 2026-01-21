@@ -7,6 +7,7 @@ import {
   Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -39,6 +40,7 @@ interface ResponsiblePerson {
 export default function NewInstitutionalInspectionScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { user, token } = useAuthContext();
 
@@ -159,7 +161,7 @@ export default function NewInstitutionalInspectionScreen() {
       <KeyboardAwareScrollViewCompat
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + Spacing.xl },
+          { paddingBottom: tabBarHeight + insets.bottom + Spacing.xl },
         ]}
       >
         <Card style={styles.section}>
