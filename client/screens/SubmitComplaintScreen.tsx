@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -25,6 +26,7 @@ export default function SubmitComplaintScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation();
 
   const [name, setName] = useState("");
@@ -156,7 +158,7 @@ export default function SubmitComplaintScreen() {
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: headerHeight + Spacing.md, paddingBottom: insets.bottom + Spacing.xl },
+            { paddingTop: headerHeight + Spacing.md, paddingBottom: tabBarHeight + Spacing.xl + 20 },
           ]}
           keyboardShouldPersistTaps="handled"
         >
