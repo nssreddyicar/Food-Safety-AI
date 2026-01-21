@@ -93,8 +93,35 @@ Both Flutter and Expo apps use the same Express.js backend:
 - Authentication: JWT tokens
 - Endpoints: Same as Expo app
 
+## Layer Responsibilities
+
+**This is a FRONTEND layer (Layer 1A).**
+
+### MUST DO:
+- Render UI based on backend state
+- Collect user input and send to API
+- Handle local UI state (loading, errors, navigation)
+- Store auth tokens securely
+- Display validation errors from backend
+
+### MUST NOT DO:
+- Enforce business rules (backend does this)
+- Make workflow decisions (ask backend)
+- Bypass backend validation
+- Store sensitive data unencrypted
+- Modify immutable records (backend will reject)
+
+---
+
 ## Notes
 - Flutter app must be built externally (not on Replit)
 - Expo app can be used for development/preview on Replit
 - Both apps share the same backend API
 - Domain rules (immutability, jurisdictions) enforced by backend
+
+---
+
+## Related Documentation
+- [Architecture Guidelines](../docs/ARCHITECTURE.md)
+- [Domain Layer](../server/domain/README.md)
+- [Shared Types](../shared/README.md)

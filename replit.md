@@ -14,19 +14,32 @@ Government-grade regulatory system for Food Safety Officers (FSOs) to manage ins
 - **Expo** (`client/`) = Development/testing on Replit (preview here)
 - Both apps use the same backend API
 
+## Architecture Principles
+
+**See full guidelines**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+Core principles for this government-grade system:
+1. **Explicit Updates** - No automatic cascading across layers
+2. **Layer Boundaries** - Each layer has clear responsibilities
+3. **Domain-Driven** - Business rules enforced in domain layer only
+4. **Immutability** - Closed records cannot be modified (legal requirement)
+5. **Audit Trail** - All changes logged with officer ID and timestamp
+
 ## System Architecture
 
 ### Project Structure
 ```
 /
-├── android-app/        # Flutter Android app (Play Store - build externally)
-├── client/             # Expo React Native (development on Replit)
-├── web-app/            # React Admin Panel (future)
-├── server/             # Express.js API layer
-├── shared/             # Shared types & enums
-├── infra/              # Docker, deployment configs
-├── docs/               # Architecture documentation
-└── README.md
+├── android-app/        # LAYER 1A: Flutter (Production)
+├── client/             # LAYER 1B: Expo (Development)
+├── web-app/            # LAYER 1C: React Admin (Future)
+├── server/             # LAYER 2: API & Domain Logic
+│   ├── domain/         # Business rules (immutability, workflows)
+│   ├── data/           # Repository pattern (data access)
+│   └── services/       # Infrastructure services
+├── shared/             # LAYER 3: Types & Contracts
+├── docs/               # Documentation
+└── infra/              # Docker, deployment
 ```
 
 ### Flutter App (`android-app/`)
@@ -100,6 +113,9 @@ Express.js with strict layered architecture:
 - **Test Officer**: officer@test.com / Officer@123
 
 ## Recent Changes
+- Added comprehensive architecture documentation (docs/ARCHITECTURE.md)
+- Added layer README files with responsibilities
+- Added Expo file storage service (client/lib/file-storage.ts)
 - Added file storage service with API endpoints for upload/download/delete
 - Added Flutter storage service for file uploads
 - Made Flutter the production app (Play Store deployment)
