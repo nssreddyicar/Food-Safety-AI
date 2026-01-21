@@ -146,7 +146,7 @@ export default function InstitutionalInspectionsScreen() {
   const renderItem = ({ item, index }: { item: InstitutionalInspection; index: number }) => (
     <Animated.View entering={FadeInDown.delay(index * 50).duration(300)}>
       <Pressable
-        onPress={() => navigation.navigate("InstitutionalInspectionDetails", { inspectionId: item.id })}
+        onPress={() => navigation.navigate("InstitutionalInspectionAssessment", { inspectionId: item.id })}
       >
         <Card style={styles.card}>
           <View style={styles.cardHeader}>
