@@ -1,3 +1,43 @@
+/**
+ * =============================================================================
+ * FILE: client/lib/storage.ts
+ * =============================================================================
+ * 
+ * PURPOSE:
+ * This file provides local data persistence for the Food Safety Inspector
+ * mobile application using React Native's AsyncStorage. It enables offline
+ * functionality and fast data access for field officers.
+ * 
+ * BUSINESS/DOMAIN CONTEXT:
+ * - Food Safety Officers work in areas with unreliable network connectivity
+ * - Inspections must be captured even without internet access
+ * - Data must be preserved until successfully synced to the server
+ * - Local storage acts as a cache and offline-first data source
+ * 
+ * PROBLEMS SOLVED:
+ * - Enables offline inspection data entry
+ * - Provides fast access to frequently used data
+ * - Stores authenticated user session locally
+ * - Computes dashboard statistics from local data
+ * 
+ * ASSUMPTIONS THAT MUST NEVER BE MADE:
+ * - Never assume data is synced to server (check sync status)
+ * - Never assume storage will always succeed (handle errors)
+ * - Never store sensitive data like passwords (use secure storage)
+ * - Never rely on storage for primary data source (server is authoritative)
+ * 
+ * DATA INTEGRITY RULES:
+ * - User authentication data must be validated against server periodically
+ * - Inspections stored locally should be synced when connectivity restores
+ * - Demo data should never overwrite real user data
+ * 
+ * DEPENDENT SYSTEMS:
+ * - client/hooks/useAuth.ts uses storage for user session
+ * - client/screens/* use storage for inspection/sample data
+ * - client/context/AuthContext.tsx depends on storage for auth state
+ * =============================================================================
+ */
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   User,
@@ -7,13 +47,37 @@ import {
   UrgentAction,
 } from "@/types";
 
+/**
+ * Storage keys for AsyncStorage.
+ * 
+ * WHY: Consistent key naming prevents data collision and enables cleanup.
+ * RULES: All keys prefixed with @foodsafety_ for namespace isolation.
+ * NEVER: Change key names without migrating existing data.
+ */
 const KEYS = {
-  USER: "@foodsafety_user",
-  INSPECTIONS: "@foodsafety_inspections",
-  SAMPLES: "@foodsafety_samples",
+  USER: "@foodsafety_user",           // Authenticated user session
+  INSPECTIONS: "@foodsafety_inspections", // Cached inspection records
+  SAMPLES: "@foodsafety_samples",     // Legacy key, samples now in inspections
 };
 
+/**
+ * Storage module providing all local data operations.
+ * 
+ * WHY: Centralized storage access ensures consistent data handling.
+ * WHO: Used by hooks, screens, and contexts throughout the app.
+ * RULES: All storage operations are async and must be awaited.
+ * NEVER: Access AsyncStorage directly outside this module.
+ */
 export const storage = {
+  /**
+   * Retrieves the authenticated user from local storage.
+   * 
+   * WHY: User session persists across app restarts for convenience.
+   * WHO: Called by useAuth hook on app startup.
+   * RULES: Returns null if no user or if data is corrupted.
+   * NEVER: Assume returned user is still valid - validate with server.
+   * RESULT: User object if logged in, null otherwise.
+   */
   async getUser(): Promise<User | null> {
     try {
       const data = await AsyncStorage.getItem(KEYS.USER);
@@ -23,10 +87,25 @@ export const storage = {
     }
   },
 
+  /**
+   * Stores the authenticated user in local storage.
+   * 
+   * WHY: Persists login session for offline access and app restarts.
+   * WHO: Called after successful login.
+   * RULES: Overwrites any existing user data.
+   * NEVER: Store password - only store user profile data.
+   */
   async setUser(user: User): Promise<void> {
     await AsyncStorage.setItem(KEYS.USER, JSON.stringify(user));
   },
 
+  /**
+   * Removes user data from local storage (logout).
+   * 
+   * WHY: Security requirement to clear sensitive data on logout.
+   * WHO: Called during logout flow.
+   * RULES: Only clears user key, not inspection data.
+   */
   async clearUser(): Promise<void> {
     await AsyncStorage.removeItem(KEYS.USER);
   },

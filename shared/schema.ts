@@ -1,3 +1,44 @@
+/**
+ * =============================================================================
+ * FILE: shared/schema.ts
+ * =============================================================================
+ * 
+ * PURPOSE:
+ * This file defines the PostgreSQL database schema using Drizzle ORM for the
+ * Food Safety Inspector system. All tables represent real-world entities in
+ * the FSSAI (Food Safety and Standards Authority of India) regulatory framework.
+ * 
+ * BUSINESS/DOMAIN CONTEXT:
+ * - This is a government-grade regulatory system for food safety enforcement
+ * - Data must be audit-ready and court-admissible
+ * - Records related to inspections, samples, and prosecutions are legally binding
+ * - The system supports dynamic administrative hierarchies (State → District → Zone)
+ * 
+ * PROBLEMS SOLVED:
+ * - Provides type-safe database access through Drizzle ORM
+ * - Ensures data integrity through proper constraints
+ * - Supports dynamic jurisdiction hierarchies (admin-controlled)
+ * - Maintains audit trails through timestamps and status fields
+ * 
+ * ASSUMPTIONS THAT MUST NEVER BE MADE:
+ * - Never assume jurisdiction levels are fixed (State, District, Zone are configurable)
+ * - Never assume officer roles are static (FSO, DO, etc. are admin-controlled)
+ * - Never assume workflow steps are hardcoded (workflows are configurable)
+ * - Never assume sample deadlines are fixed (14 days is a system setting)
+ * 
+ * DATA INTEGRITY RULES:
+ * - Inspections become immutable once status is "closed"
+ * - Sample records cannot be modified after dispatch to lab
+ * - Prosecution records are append-only for court admissibility
+ * - All modifications must preserve historical data
+ * 
+ * DEPENDENT SYSTEMS:
+ * - server/routes.ts uses these schemas for API operations
+ * - server/db.ts connects to the database using this schema
+ * - client/types/index.ts mirrors these types for the mobile app
+ * =============================================================================
+ */
+
 import { sql } from "drizzle-orm";
 import {
   pgTable,
@@ -11,6 +52,12 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+/**
+ * Users table for basic authentication (legacy, use officers table instead).
+ * 
+ * WHY: Initial user management, being phased out in favor of officers table.
+ * NEVER: Use for food safety officer authentication - use officers table.
+ */
 export const users = pgTable("users", {
   id: varchar("id")
     .primaryKey()
