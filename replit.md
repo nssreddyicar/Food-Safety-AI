@@ -53,6 +53,7 @@ Screens:
 - `scanner_screen.dart` - QR/Barcode scanner
 - `court_cases_screen.dart` - Prosecution management
 - `profile_screen.dart` - Officer profile
+- `complaints_screen.dart` - Complaint management (pending)
 
 To build:
 ```bash
@@ -67,6 +68,11 @@ flutter run
 Same features as Flutter, accessible via:
 - Expo Go app (scan QR)
 - Web preview
+
+Complaint Screens (new):
+- `ComplaintsScreen.tsx` - List/filter/search complaints
+- `ComplaintDetailsScreen.tsx` - View details, update status, assign
+- `ComplaintsStackNavigator.tsx` - Navigation stack
 
 ### Backend Architecture
 Express.js with strict layered architecture:
