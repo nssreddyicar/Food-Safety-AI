@@ -177,6 +177,15 @@ export default function SafetyAssessmentScreen() {
   const [scorePreview, setScorePreview] = useState<{
     totalScore: number;
     riskClassification: string;
+    pillarScores?: Array<{
+      pillarName: string;
+      score: number;
+      maxScore: number;
+      percentage: number;
+    }>;
+    highRiskCount?: number;
+    mediumRiskCount?: number;
+    lowRiskCount?: number;
   } | null>(null);
 
   const [institutionName, setInstitutionName] = useState("");
@@ -284,9 +293,38 @@ export default function SafetyAssessmentScreen() {
       );
       if (response.ok) {
         const data = await response.json();
+        
+        // Calculate pillar-wise scores locally
+        const pillarScores = pillars.map(pillar => {
+          let pillarScore = 0;
+          let pillarMaxScore = 0;
+          
+          pillar.indicators.forEach((ind: Indicator) => {
+            const weight = ind.weight || 1;
+            pillarMaxScore += weight;
+            const resp = responses[ind.id];
+            if (resp?.response === 'yes') {
+              pillarScore += weight;
+            } else if (resp?.response === 'na') {
+              pillarMaxScore -= weight; // NA doesn't count
+            }
+          });
+          
+          return {
+            pillarName: pillar.name,
+            score: pillarScore,
+            maxScore: pillarMaxScore,
+            percentage: pillarMaxScore > 0 ? Math.round((pillarScore / pillarMaxScore) * 100) : 0,
+          };
+        });
+        
         setScorePreview({
           totalScore: data.totalScore,
           riskClassification: data.riskClassification,
+          pillarScores,
+          highRiskCount: data.highRiskCount || 0,
+          mediumRiskCount: data.mediumRiskCount || 0,
+          lowRiskCount: data.lowRiskCount || 0,
         });
       }
     } catch (error) {
@@ -843,6 +881,67 @@ export default function SafetyAssessmentScreen() {
           </View>
         ))}
 
+        {scorePreview ? (
+          <Card style={styles.scoreSummaryCard}>
+            <ThemedText style={styles.scoreSummaryTitle}>Assessment Summary</ThemedText>
+            
+            <View style={styles.totalScoreSection}>
+              <View style={styles.totalScoreCircle}>
+                <ThemedText style={styles.totalScoreValue}>{scorePreview.totalScore}</ThemedText>
+                <ThemedText style={styles.totalScoreLabel}>Total Score</ThemedText>
+              </View>
+              <View style={[
+                styles.riskBadgeLarge,
+                { backgroundColor: RISK_COLORS[scorePreview.riskClassification as keyof typeof RISK_COLORS]?.bg || '#E5E7EB' }
+              ]}>
+                <ThemedText style={[
+                  styles.riskBadgeLargeText,
+                  { color: RISK_COLORS[scorePreview.riskClassification as keyof typeof RISK_COLORS]?.text || '#374151' }
+                ]}>
+                  {scorePreview.riskClassification?.toUpperCase()} RISK
+                </ThemedText>
+              </View>
+            </View>
+            
+            <View style={styles.deviationCountsRow}>
+              <View style={[styles.deviationBox, { backgroundColor: '#FEE2E2' }]}>
+                <ThemedText style={[styles.deviationCount, { color: '#DC2626' }]}>{scorePreview.highRiskCount || 0}</ThemedText>
+                <ThemedText style={styles.deviationLabel}>High Risk</ThemedText>
+              </View>
+              <View style={[styles.deviationBox, { backgroundColor: '#FEF3C7' }]}>
+                <ThemedText style={[styles.deviationCount, { color: '#D97706' }]}>{scorePreview.mediumRiskCount || 0}</ThemedText>
+                <ThemedText style={styles.deviationLabel}>Medium Risk</ThemedText>
+              </View>
+              <View style={[styles.deviationBox, { backgroundColor: '#D1FAE5' }]}>
+                <ThemedText style={[styles.deviationCount, { color: '#059669' }]}>{scorePreview.lowRiskCount || 0}</ThemedText>
+                <ThemedText style={styles.deviationLabel}>Low Risk</ThemedText>
+              </View>
+            </View>
+            
+            <ThemedText style={styles.pillarScoresTitle}>Pillar-wise Scores</ThemedText>
+            {scorePreview.pillarScores?.map((pillar, index) => (
+              <View key={index} style={styles.pillarScoreRow}>
+                <View style={styles.pillarScoreInfo}>
+                  <ThemedText style={styles.pillarScoreName}>{pillar.pillarName}</ThemedText>
+                  <ThemedText style={styles.pillarScoreValue}>{pillar.score}/{pillar.maxScore}</ThemedText>
+                </View>
+                <View style={styles.pillarProgressBar}>
+                  <View 
+                    style={[
+                      styles.pillarProgressFill, 
+                      { 
+                        width: `${pillar.percentage}%`,
+                        backgroundColor: pillar.percentage >= 80 ? '#059669' : pillar.percentage >= 50 ? '#D97706' : '#DC2626'
+                      }
+                    ]} 
+                  />
+                </View>
+                <ThemedText style={styles.pillarPercentage}>{pillar.percentage}%</ThemedText>
+              </View>
+            ))}
+          </Card>
+        ) : null}
+
         <View style={styles.submitSection}>
           <Button
             onPress={handleSubmit}
@@ -1073,4 +1172,24 @@ const styles = StyleSheet.create({
   savePersonBtn: { marginTop: Spacing.md },
   dropdownButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderRadius: 8, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, marginBottom: Spacing.sm },
   dropdownText: { fontSize: FontSize.md, flex: 1 },
+  scoreSummaryCard: { marginHorizontal: Spacing.md, marginBottom: Spacing.lg, padding: Spacing.lg },
+  scoreSummaryTitle: { fontSize: FontSize.lg, fontWeight: '700', marginBottom: Spacing.md, textAlign: 'center' },
+  totalScoreSection: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: Spacing.lg, marginBottom: Spacing.lg },
+  totalScoreCircle: { alignItems: 'center', justifyContent: 'center', width: 80, height: 80, borderRadius: 40, backgroundColor: '#F3F4F6', borderWidth: 3, borderColor: '#3B82F6' },
+  totalScoreValue: { fontSize: 24, fontWeight: '700', color: '#3B82F6' },
+  totalScoreLabel: { fontSize: 10, color: '#6B7280' },
+  riskBadgeLarge: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderRadius: 8 },
+  riskBadgeLargeText: { fontSize: FontSize.md, fontWeight: '700' },
+  deviationCountsRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: Spacing.lg },
+  deviationBox: { alignItems: 'center', paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg, borderRadius: 8, minWidth: 80 },
+  deviationCount: { fontSize: FontSize.xl, fontWeight: '700' },
+  deviationLabel: { fontSize: FontSize.xs, color: '#6B7280', marginTop: 2 },
+  pillarScoresTitle: { fontSize: FontSize.md, fontWeight: '600', marginBottom: Spacing.sm },
+  pillarScoreRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.sm, gap: Spacing.sm },
+  pillarScoreInfo: { width: 140 },
+  pillarScoreName: { fontSize: FontSize.xs, color: '#374151' },
+  pillarScoreValue: { fontSize: FontSize.xs, color: '#6B7280' },
+  pillarProgressBar: { flex: 1, height: 8, backgroundColor: '#E5E7EB', borderRadius: 4, overflow: 'hidden' },
+  pillarProgressFill: { height: '100%', borderRadius: 4 },
+  pillarPercentage: { width: 40, fontSize: FontSize.xs, fontWeight: '600', textAlign: 'right' },
 });
