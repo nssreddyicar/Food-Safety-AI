@@ -164,6 +164,10 @@ export default function SubmitComplaintScreen() {
       Alert.alert("Required", "Please enter your mobile number");
       return;
     }
+    if (!establishmentName.trim()) {
+      Alert.alert("Required", "Please enter the establishment name");
+      return;
+    }
     if (!description.trim()) {
       Alert.alert("Required", "Please describe the incident");
       return;
@@ -420,7 +424,7 @@ export default function SubmitComplaintScreen() {
             />
 
             <Input
-              label="Establishment Name (Optional)"
+              label="Establishment Name *"
               placeholder="Enter the name of the establishment"
               value={establishmentName}
               onChangeText={setEstablishmentName}
