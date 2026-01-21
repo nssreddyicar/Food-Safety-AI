@@ -143,6 +143,9 @@ Key features:
 - **Test Officer**: officer@test.com / Officer@123
 
 ## Recent Changes
+- **Fully Dynamic Complaint Form**: Web complaint form now renders ALL fields dynamically from admin config - field labels, required status, visibility, help text, dropdown options, and file upload settings are all configurable
+- **Enhanced Admin Form Field Editor**: Admin can now configure file upload settings (max files 1-10, max size MB) and watermark settings (enable/disable, GPS display, timestamp display, position, opacity) for evidence fields
+- **Field Groups**: Form fields organized into 5 groups: Complainant, Establishment, Incident, Location, Evidence - each renders as a separate card in the form
 - **Web Complaint Form**: Public web form at `/complaint?token=xxx` for shared link submissions. Accessible without app installation, mobile-responsive design.
 - **Admin Complaint Management**: New admin panel section for managing complaints, form config, and status workflows at `/admin/complaints`
 - **Dynamic Complaint Form Configuration**: Complaint type and nature dropdowns now fetch from `/api/complaints/form-config` API, managed via admin panel. Seeded with default options (Food Safety, Hygiene Violation, etc.)
