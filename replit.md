@@ -73,8 +73,43 @@ The backend is developed with Express.js following a strict layered architecture
 - **React Native (Expo)**: Frontend framework for mobile application development.
 - **Express.js**: Backend framework for building RESTful APIs.
 - **PostgreSQL**: Relational database for persistent data storage.
+- **Drizzle ORM**: Type-safe database operations and schema management.
 - **React Navigation**: For managing navigation flows within the mobile application.
 - **React Query**: For data fetching, caching, and state management in the frontend.
 - **AsyncStorage**: For local data persistence on the mobile device.
 - **expo-camera**: For camera-based QR/barcode scanning functionality.
 - **JSDoc**: For code documentation standards.
+
+## Important Files
+
+### Backend Architecture Files
+- `server/data/repositories/` - Data access layer with repository pattern
+  - `base.repository.ts` - Database connection and shared types
+  - `officer.repository.ts` - Officer CRUD operations
+  - `inspection.repository.ts` - Inspection data operations
+  - `sample.repository.ts` - Sample data operations
+  - `jurisdiction.repository.ts` - Jurisdiction hierarchy operations
+  - `index.ts` - Central exports for all repositories
+
+- `server/domain/` - Business logic layer with domain services
+  - `officer/officer.service.ts` - Authentication, officer management
+  - `inspection/inspection.service.ts` - Inspection workflow, immutability rules
+  - `sample/sample.service.ts` - Chain-of-custody, lab report deadlines
+  - `jurisdiction/jurisdiction.service.ts` - Hierarchy, authority checks
+  - `index.ts` - Central exports for all services
+
+- `server/config/index.ts` - Centralized configuration
+
+### Schema and Types
+- `shared/schema.ts` - Database schema definitions (Drizzle ORM)
+
+### API
+- `server/routes.ts` - HTTP endpoint handlers
+
+## Recent Changes
+- Implemented strict layered backend architecture (Data Access → Domain → API → Configuration)
+- Created repository pattern for all data operations
+- Added domain services with business rules enforcement
+- Implemented immutability rules for closed inspections and dispatched samples
+- Added jurisdiction authority checks
+- Created centralized configuration layer
