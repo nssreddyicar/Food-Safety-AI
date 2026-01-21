@@ -89,7 +89,7 @@ import {
   complaintStatusWorkflows,
   institutionalInspectionPersonTypes,
 } from "../shared/schema";
-import { desc, asc, count, sql } from "drizzle-orm";
+import { desc, asc, count, sql, eq } from "drizzle-orm";
 
 /**
  * Super Admin credentials for web panel access.
@@ -5497,6 +5497,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get active person types for mobile app (public endpoint) - MUST be before /:id route
+  app.get("/api/institutional-inspections/person-types", async (req: Request, res: Response) => {
+    try {
+      const personTypes = await db.select()
+        .from(institutionalInspectionPersonTypes)
+        .where(eq(institutionalInspectionPersonTypes.isActive, true))
+        .orderBy(institutionalInspectionPersonTypes.displayOrder);
+      res.json(personTypes);
+    } catch (error) {
+      console.error("Error fetching person types:", error);
+      res.status(500).json({ error: "Failed to fetch person types" });
+    }
+  });
+
   // Get all inspections (with optional filters)
   app.get("/api/institutional-inspections", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -5796,20 +5810,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting person type:", error);
       res.status(500).json({ error: "Failed to delete person type" });
-    }
-  });
-
-  // Get active person types for mobile app (public endpoint)
-  app.get("/api/institutional-inspections/person-types", async (req: Request, res: Response) => {
-    try {
-      const personTypes = await db.select()
-        .from(institutionalInspectionPersonTypes)
-        .where(eq(institutionalInspectionPersonTypes.isActive, true))
-        .orderBy(institutionalInspectionPersonTypes.displayOrder);
-      res.json(personTypes);
-    } catch (error) {
-      console.error("Error fetching person types:", error);
-      res.status(500).json({ error: "Failed to fetch person types" });
     }
   });
 

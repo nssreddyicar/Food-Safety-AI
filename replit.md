@@ -152,6 +152,7 @@ Key features:
 - **Mobile OTP Authentication**: Requires Twilio integration setup. When ready, set up Twilio connector in Replit integrations or manually add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER as secrets.
 
 ## Recent Changes
+- **Dynamic Person Management for Institutional Inspections**: Admin-configurable person types (Head of Institution, Warden, Contractor, Cook, Supervisor) with custom field configurations. Officers can dynamically add persons during inspection with full details (name, mobile, designation, etc.). Person info appears in compact watermarks (20% of photo height).
 - **PDF Report Generation for Institutional Inspections**: Added PDF generation service at `/api/institutional-inspections/:id/report` that generates comprehensive FSSAI-compliant inspection reports with institution details, risk scores, and 35-indicator assessment results
 - **Institutional Inspection Assessment Form**: 7 pillars with 35 FSSAI-aligned indicators, expandable sections, real-time risk score calculation, Yes/No/NA responses with weighted scoring
 - **Fully Dynamic Complaint Form**: Web complaint form now renders ALL fields dynamically from admin config - field labels, required status, visibility, help text, dropdown options, and file upload settings are all configurable
