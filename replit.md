@@ -48,12 +48,12 @@ Core principles for this government-grade system:
 Screens:
 - `login_screen.dart` - Officer authentication
 - `dashboard_screen.dart` - Key metrics, urgent actions
-- `inspections_screen.dart` - Inspection management
+- `inspections_screen.dart` - FBO Inspection management
 - `samples_screen.dart` - Sample tracking with deadlines
 - `scanner_screen.dart` - QR/Barcode scanner
 - `court_cases_screen.dart` - Prosecution management
 - `profile_screen.dart` - Officer profile
-- `complaints_screen.dart` - Complaint management (pending)
+- `complaints_screen.dart` - Complaint management
 
 To build:
 ```bash
@@ -69,30 +69,44 @@ Same features as Flutter, accessible via:
 - Expo Go app (scan QR)
 - Web preview
 
-Complaint Screens:
-- `ComplaintsScreen.tsx` - List/filter/search complaints
-- `ComplaintDetailsScreen.tsx` - View details, update status, assign
+#### Complaint Screens
+- `ComplaintsScreen.tsx` - List/filter/search complaints with status tabs
+- `ComplaintDetailsScreen.tsx` - View details, update status, assign officer
+- `SubmitComplaintScreen.tsx` - Public complaint submission with GPS & evidence
 - `ComplaintsStackNavigator.tsx` - Navigation stack
 
-Institutional Inspection Screens (new):
-- `InstitutionalInspectionsScreen.tsx` - List/filter institutional inspections
-- `NewInstitutionalInspectionScreen.tsx` - Create new institutional inspection
-- `InstitutionalInspectionAssessmentScreen.tsx` - 35-indicator risk assessment
-- `InstitutionalInspectionsStackNavigator.tsx` - Navigation stack
+#### Institutional Inspection Screens
+- `InstitutionalInspectionsScreen.tsx` - **Home screen** with status tabs (All/Draft/Submitted), search bar, inspection cards showing date/status/score, and floating + button
+- `SafetyAssessmentScreen.tsx` - 35-indicator FSSAI risk assessment form with 7 pillars, real-time score calculation, photo evidence with watermarks
+- `InstitutionalInspectionsStackNavigator.tsx` - Navigation stack (list → assessment → details)
+
+#### FBO Inspection Screens
+- `InspectionsScreen.tsx` - List FBO inspections
+- `NewInspectionScreen.tsx` - Create new FBO inspection
+- `InspectionDetailsScreen.tsx` - View inspection details
+
+#### Other Screens
+- `DashboardScreen.tsx` - Key metrics, urgent actions, quick navigation
+- `SamplesScreen.tsx` - Sample tracking with deadlines
+- `CourtCasesScreen.tsx` - Prosecution case management
+- `ProfileScreen.tsx` - Officer profile and settings
+- `ActionDashboardScreen.tsx` - Action items and follow-ups
 
 ### Backend Architecture
 Express.js with strict layered architecture:
 
-1. **API Layer** (`server/routes.ts`)
-2. **Domain Layer** (`server/domain/`)
-3. **Data Access Layer** (`server/data/repositories/`)
-4. **Configuration** (`server/config/`)
+1. **API Layer** (`server/routes.ts`) - HTTP endpoints
+2. **Domain Layer** (`server/domain/`) - Business logic & rules
+3. **Data Access Layer** (`server/data/repositories/`) - Database operations
+4. **Services** (`server/services/`) - PDF generation, file storage, etc.
+5. **Configuration** (`server/config/`) - App settings
 
 ### Domain Rules (Legal Compliance)
 1. **Inspections**: Closed inspections are IMMUTABLE (court admissibility)
 2. **Samples**: Dispatched samples are IMMUTABLE (chain-of-custody)
 3. **Jurisdictions**: Data is jurisdiction-bound, not officer-bound
 4. **Audit Trail**: All modifications logged with officer ID and timestamp
+5. **GPS Immutability**: Location data cannot be modified after capture
 
 ## Key Files
 
@@ -103,16 +117,27 @@ Express.js with strict layered architecture:
 - `android-app/lib/services/api_client.dart` - HTTP client
 - `android-app/pubspec.yaml` - Dependencies
 
+### Expo App
+- `client/App.tsx` - Entry point with navigation
+- `client/screens/` - All screens
+- `client/navigation/` - Stack and tab navigators
+- `client/components/` - Reusable UI components
+- `client/lib/query-client.ts` - API client utilities
+- `client/context/AuthContext.tsx` - Authentication state
+
 ### Shared Types
 - `shared/types/` - TypeScript interfaces
 - `shared/enums/status.enums.ts` - Status values
+- `shared/schema.ts` - Drizzle ORM schema
 
 ### Backend
-- `server/routes.ts` - API endpoints
-- `server/domain/` - Business logic
-- `server/data/repositories/` - Data access
+- `server/routes.ts` - API endpoints (~6300 lines)
+- `server/domain/` - Business logic services
+- `server/data/repositories/` - Data access layer
 - `server/services/storage.service.ts` - File storage service
-- `shared/schema.ts` - Drizzle ORM schema
+- `server/services/institutional-inspection-pdf.service.ts` - PDF report generation
+
+## API Reference
 
 ### File Storage API
 - `POST /api/files/upload` - Upload file (base64, categories: inspection/sample/document/profile)
@@ -126,23 +151,71 @@ Dynamic, location-aware complaint system with admin-configurable forms:
 - `GET /api/complaints/form-config` - Get form configuration (public)
 - `POST /api/complaints/submit` - Submit new complaint with GPS/evidence (public)
 - `GET /api/complaints/track/:code` - Track complaint by public code (public)
-- `GET /api/complaints` - List complaints with filters (officer)
-- `GET /api/complaints/:id` - Get complaint details (officer)
-- `PUT /api/complaints/:id/status` - Update complaint status (officer)
-- `PUT /api/complaints/:id/assign` - Assign complaint to officer (admin)
+- `GET /api/complaints` - List complaints with filters
+- `GET /api/complaints/:id` - Get complaint details
+- `PUT /api/complaints/:id/status` - Update complaint status
+- `PUT /api/complaints/:id/assign` - Assign complaint to officer
 - `POST /api/complaints/:id/evidence` - Add evidence with EXIF metadata
 
-Domain files:
-- `server/domain/complaint/complaint.service.ts` - Business rules
-- `server/data/repositories/complaint.repository.ts` - Data access
-- `shared/types/complaint.types.ts` - TypeScript interfaces
+### Institutional Inspection API
+FSSAI-aligned institutional food safety inspections:
 
-Key features:
-- GPS location capture with immutability (legal requirement)
-- Admin-configurable dynamic form fields
-- Evidence uploads with EXIF metadata preservation
-- Jurisdiction auto-mapping from coordinates
-- Public tracking via generated codes (PII protected)
+- `GET /api/institutional-inspections` - List all inspections with filters
+- `GET /api/institutional-inspections/:id` - Get inspection details
+- `POST /api/institutional-inspections` - Create new inspection (draft)
+- `POST /api/institutional-inspections/:id/submit` - Submit completed inspection
+- `POST /api/institutional-inspections/:id/responses` - Save indicator responses
+- `GET /api/institutional-inspections/:id/report` - Generate PDF report
+- `GET /api/institutional-inspections/form-config` - Get pillars, indicators, institution types
+- `GET /api/institutional-inspections/institution-types` - List institution types
+- `GET /api/institutional-inspections/person-types` - List person types for watermarks
+- `POST /api/institutional-inspections/calculate-score` - Calculate risk score from responses
+
+### Admin Panel APIs
+
+#### FBO Inspections Admin (`/admin/fbo-inspections`)
+- `GET/POST/PUT/DELETE /api/admin/fbo-inspection/types` - Inspection types CRUD
+- `GET/POST/PUT/DELETE /api/admin/fbo-inspection/deviation-categories` - Deviation categories CRUD
+- `GET/POST/PUT/DELETE /api/admin/fbo-inspection/action-types` - Action types CRUD
+- `GET/POST/PUT/DELETE /api/admin/fbo-inspection/form-fields` - Form fields CRUD
+- `POST /api/admin/fbo-inspection/reset-defaults` - Reset to factory defaults
+
+#### Institutional Inspections Admin (`/admin/institutional-inspections`)
+- `GET/POST/PUT/DELETE /api/admin/institutional-inspection/pillars` - Pillars CRUD
+- `GET/POST/PUT/DELETE /api/admin/institutional-inspection/indicators` - Indicators CRUD
+- `GET/POST/PUT/DELETE /api/admin/institutional-inspection/institution-types` - Institution types CRUD
+- `GET/PUT /api/admin/institutional-inspection/person-types` - Person types management
+- `GET/PUT /api/admin/institutional-inspection/config` - Risk thresholds config
+- `POST /api/admin/institutional-inspection/reset-defaults` - Reset to FSSAI defaults
+
+#### Complaints Admin (`/admin/complaints`)
+- `GET/PUT /api/admin/complaints/form-config` - Form field configuration
+- Shared link management for complaint submission
+
+## Admin Panels
+
+### Super Admin Dashboard (`/admin`)
+- Officer management
+- District management
+- System settings
+
+### FBO Inspections Admin (`/admin/fbo-inspections`)
+5 tabs: Overview, Inspection Types, Deviation Categories, Action Types, Form Fields
+- 7 default inspection types (Routine, Follow-up, Surveillance, etc.)
+- 10 deviation categories with severity levels and FSSAI legal references
+- 10 action types from Verbal Warning to Emergency Prohibition
+- 50 configurable form fields across 7 groups
+
+### Institutional Inspections Admin (`/admin/institutional-inspections`)
+5 tabs: Overview, Pillars & Indicators, Institution Types, Person Types, Risk Thresholds
+- 7 FSSAI pillars with 35 indicators (5 per pillar)
+- Dynamic person type management with watermark fields
+- Configurable risk score thresholds
+
+### Complaints Admin (`/admin/complaints`)
+- Dynamic form field configuration
+- Shared link management
+- Status workflow configuration
 
 ## Credentials
 - **Super Admin**: superadmin / Admin@123
@@ -151,45 +224,42 @@ Key features:
 ## Pending Features
 - **Mobile OTP Authentication**: Requires Twilio integration setup. When ready, set up Twilio connector in Replit integrations or manually add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER as secrets.
 
-## Recent Changes
-- **Fixed Institutional Inspection Submit**: Added institution type picker to safety assessment form. The `institutionTypeId` is now properly passed when creating inspections, fixing the database constraint error.
-- **Enhanced Safety Assessment Form**: Compact indicator layout with 2-line explanations for all 35 FSSAI indicators, risk dots, Y/N/NA buttons, and title card showing "7 Pillars with 35 FSSAI-Aligned Indicators".
-- **Admin Panel for FBO Inspections**: Full-featured admin panel at `/admin/fbo-inspections` with 5 tabs: Overview, Inspection Types, Deviation Categories, Action Types, and **Form Fields**. Features full CRUD for inspection types (7 defaults: Routine, Follow-up, Surveillance, Complaint-Based, Special Drive, License Verification, Pre-License), deviation categories (10 defaults with severity levels and FSSAI legal references), action types (10 defaults from Verbal Warning to Emergency Prohibition with follow-up requirements), and **50 configurable inspection form fields** across 7 groups (FBO Details, Inspection Details, Findings, Actions, Witness Details, Sample Collection, Evidence). Includes **Reset to Defaults** buttons for all entities.
-- **Admin Panel for Institutional Inspections**: Full-featured admin panel accessible via Quick Actions with 5 tabs: Overview, Pillars & Indicators, Institution Types, Person Types, and Risk Thresholds. Features full CRUD for pillars (add/edit/delete) and indicators (add/edit/delete per pillar), dynamic field editor for person types with required/watermark toggles, field type selection, and **Reset to Defaults** button to restore the standard FSSAI 7 pillars and 35 indicators.
-- **Dynamic Person Management for Institutional Inspections**: Admin-configurable person types (Head of Institution, Warden, Contractor, Cook, Supervisor) with custom field configurations. Officers can dynamically add persons during inspection with full details (name, mobile, designation, etc.). Person info appears in compact watermarks (20% of photo height).
-- **PDF Report Generation for Institutional Inspections**: Added PDF generation service at `/api/institutional-inspections/:id/report` that generates comprehensive FSSAI-compliant inspection reports with institution details, risk scores, and 35-indicator assessment results
-- **Institutional Inspection Assessment Form**: 7 pillars with 35 FSSAI-aligned indicators, expandable sections, real-time risk score calculation, Yes/No/NA responses with weighted scoring
-- **Fully Dynamic Complaint Form**: Web complaint form now renders ALL fields dynamically from admin config - field labels, required status, visibility, help text, dropdown options, and file upload settings are all configurable
-- **Enhanced Admin Form Field Editor**: Admin can now configure file upload settings (max files 1-10, max size MB) and watermark settings (enable/disable, GPS display, timestamp display, position, opacity) for evidence fields
-- **Field Groups**: Form fields organized into 5 groups: Complainant, Establishment, Incident, Location, Evidence - each renders as a separate card in the form
-- **Web Complaint Form**: Public web form at `/complaint?token=xxx` for shared link submissions. Accessible without app installation, mobile-responsive design.
-- **Admin Complaint Management**: New admin panel section for managing complaints, form config, and status workflows at `/admin/complaints`
-- **Dynamic Complaint Form Configuration**: Complaint type and nature dropdowns now fetch from `/api/complaints/form-config` API, managed via admin panel. Seeded with default options (Food Safety, Hygiene Violation, etc.)
-- **Evidence Image Anti-Fraud Watermarking**: Camera-only image capture (max 3 images) with tamper-evident watermarks showing GPS coordinates, capture timestamp, and upload timestamp baked into images
-- **Complaint ID System Redesign**: District-based IDs (format: {DISTRICT_ABBR}{4-digit-seq}{MMYYYY}, e.g., DEL0001012026) with monthly sequence reset
-- **Shared Complaint Links**: Officers can create shareable links for pre-assigned district complaint forms with unique tokens
-- **PDF Acknowledgement**: Generates downloadable PDF receipts after complaint submission with tracking info
-- **Shared Link API**: Create, validate, and list shared links with token-based authentication
-- **New DB Tables**: shared_complaint_links, complaint_sequences for link management and ID generation
-- **District Abbreviations**: Added abbreviation field to districts table for ID generation
-- Added Dynamic Complaint Management System with 9 API endpoints
-- Complaint features: GPS location capture, evidence uploads, admin-configurable forms, public tracking codes
-- Added complaint domain service with legal compliance rules (location immutability)
-- Added complaint repository for data access layer
-- Added shared TypeScript types for complaints
-- Added comprehensive architecture documentation (docs/ARCHITECTURE.md)
-- Added layer README files with responsibilities
-- Added Expo file storage service (client/lib/file-storage.ts)
-- Added file storage service with API endpoints for upload/download/delete
-- Added Flutter storage service for file uploads
-- Made Flutter the production app (Play Store deployment)
-- Expo remains for development/testing on Replit
-- Added all screens to Flutter: Dashboard, Inspections, Samples, Scanner, Court Cases, Profile
-- Added navigation with bottom tabs
-- Added models for Inspection and Sample with immutability checks
+## Recent Changes (January 2026)
+
+### Institutional Inspections List Screen
+- **New Home Screen**: Institutional Inspections tab now shows a list of all inspections instead of immediately opening the form
+- **Status Tabs**: Filter by All, Draft, or Submitted with count badges
+- **Search Bar**: Search by institution name or inspection code
+- **Inspection Cards**: Each card shows inspection code, date, institution name, address, and for submitted inspections: total score with risk classification badge
+- **Floating + Button**: Tap to create a new assessment
+- **Tap to View**: Click submitted inspections to view details
+
+### Previous Changes
+- **PDF Report with Image Appendix**: Indicator photos appear at end of report in 2-column, 5-row grid with captions
+- **Assessment Summary Before Submit**: Shows total score, pillar-wise scores with progress bars, risk category, deviation counts
+- **Custom Success Screen**: "Inspection Submitted" with "Download PDF Report" button
+- **Watermark Images**: Each indicator response can have photos with compact watermarks (20% height) showing institution details, GPS, timestamp
+- **Real-time Score Calculation**: Score updates as officer answers each indicator
+- **7 Pillars with 35 Indicators**: FSSAI-aligned assessment framework
+
+### Core Features
+- **Evidence Anti-Fraud Watermarking**: Camera-only capture with GPS, timestamps baked into images
+- **District-based Complaint IDs**: Format {DISTRICT_ABBR}{4-digit-seq}{MMYYYY}
+- **Shared Complaint Links**: Officers create shareable links for pre-assigned districts
+- **PDF Acknowledgements**: Downloadable receipts after complaint submission
+- **Dynamic Form Configuration**: All form fields configurable via admin panel
 
 ## Development Notes
 - Use Expo on Replit for development preview
 - Build Flutter externally for Play Store
 - Both apps share same backend API
 - PostgreSQL database available via DATABASE_URL
+- GitHub integration configured for version control
+
+## Technology Stack
+- **Frontend**: React Native (Expo), Flutter
+- **Backend**: Express.js, TypeScript
+- **Database**: PostgreSQL with Drizzle ORM
+- **PDF Generation**: pdfkit
+- **File Storage**: Local filesystem with API endpoints
+- **Authentication**: Session-based for admin, token-based for mobile
