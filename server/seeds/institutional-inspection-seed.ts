@@ -14,7 +14,85 @@ import {
   institutionalInspectionPillars,
   institutionalInspectionIndicators,
   institutionalInspectionConfig,
+  institutionalInspectionPersonTypes,
 } from "../../shared/schema";
+
+// Person Types Data - Admin-configurable person types with their fields
+const personTypesData = [
+  {
+    typeName: "Head of Institution",
+    typeCode: "head_of_institution",
+    description: "Principal, Director, Manager or Head of the institution",
+    displayOrder: 1,
+    isActive: true,
+    isRequired: false,
+    maxCount: 1,
+    fields: [
+      { key: "fullName", label: "Full Name", type: "text", required: true, showInWatermark: true },
+      { key: "designation", label: "Designation", type: "text", required: false, showInWatermark: true },
+      { key: "mobile", label: "Mobile Number", type: "phone", required: false, showInWatermark: true },
+      { key: "email", label: "Email", type: "email", required: false, showInWatermark: false },
+    ],
+  },
+  {
+    typeName: "Warden / Incharge",
+    typeCode: "warden_incharge",
+    description: "Hostel warden, supervisor, or person in charge",
+    displayOrder: 2,
+    isActive: true,
+    isRequired: false,
+    maxCount: 2,
+    fields: [
+      { key: "fullName", label: "Full Name", type: "text", required: true, showInWatermark: true },
+      { key: "designation", label: "Designation", type: "text", required: false, showInWatermark: true },
+      { key: "mobile", label: "Mobile Number", type: "phone", required: true, showInWatermark: true },
+    ],
+  },
+  {
+    typeName: "Contractor / Caterer",
+    typeCode: "contractor_caterer",
+    description: "Food contractor, caterer, or food service provider",
+    displayOrder: 3,
+    isActive: true,
+    isRequired: false,
+    maxCount: 3,
+    fields: [
+      { key: "fullName", label: "Full Name / Firm Name", type: "text", required: true, showInWatermark: true },
+      { key: "mobile", label: "Mobile Number", type: "phone", required: true, showInWatermark: true },
+      { key: "fssaiLicense", label: "FSSAI License No.", type: "text", required: false, showInWatermark: false },
+      { key: "licenseExpiry", label: "License Expiry Date", type: "date", required: false, showInWatermark: false },
+    ],
+  },
+  {
+    typeName: "Cook / Food Handler",
+    typeCode: "cook_food_handler",
+    description: "Cook or food handler working at the institution",
+    displayOrder: 4,
+    isActive: true,
+    isRequired: false,
+    maxCount: 5,
+    fields: [
+      { key: "fullName", label: "Full Name", type: "text", required: true, showInWatermark: true },
+      { key: "mobile", label: "Mobile Number", type: "phone", required: false, showInWatermark: true },
+      { key: "healthCertificate", label: "Health Certificate", type: "text", required: false, showInWatermark: false },
+      { key: "certificateExpiry", label: "Certificate Expiry", type: "date", required: false, showInWatermark: false },
+    ],
+  },
+  {
+    typeName: "Supervisor / Observer",
+    typeCode: "supervisor_observer",
+    description: "Meal supervisor or observer during distribution",
+    displayOrder: 5,
+    isActive: true,
+    isRequired: false,
+    maxCount: 2,
+    fields: [
+      { key: "fullName", label: "Full Name", type: "text", required: true, showInWatermark: true },
+      { key: "designation", label: "Designation", type: "text", required: false, showInWatermark: true },
+      { key: "mobile", label: "Mobile Number", type: "phone", required: false, showInWatermark: true },
+    ],
+  },
+];
 
 // Institution Types Data
 const institutionTypesData = [
@@ -149,11 +227,27 @@ export async function seedInstitutionalInspection() {
     console.log("Inserting configuration...");
     await db.insert(institutionalInspectionConfig).values(configData);
     
+    // 5. Insert Person Types
+    console.log("Inserting person types...");
+    for (const personType of personTypesData) {
+      await db.insert(institutionalInspectionPersonTypes).values({
+        typeName: personType.typeName,
+        typeCode: personType.typeCode,
+        description: personType.description,
+        displayOrder: personType.displayOrder,
+        isActive: personType.isActive,
+        isRequired: personType.isRequired,
+        maxCount: personType.maxCount,
+        fields: personType.fields,
+      });
+    }
+    
     console.log("Institutional Inspection module seeded successfully!");
     console.log(`- ${institutionTypesData.length} institution types`);
     console.log(`- ${pillarsData.length} pillars`);
     console.log(`- ${indicatorsData.length} indicators`);
     console.log(`- ${configData.length} configuration settings`);
+    console.log(`- ${personTypesData.length} person types`);
     
   } catch (error) {
     console.error("Error seeding Institutional Inspection module:", error);

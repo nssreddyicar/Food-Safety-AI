@@ -87,6 +87,7 @@ import {
   reportSections,
   complaintFormConfigs,
   complaintStatusWorkflows,
+  institutionalInspectionPersonTypes,
 } from "../shared/schema";
 import { desc, asc, count, sql } from "drizzle-orm";
 
@@ -5744,6 +5745,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating institution type:", error);
       res.status(500).json({ error: "Failed to update institution type" });
+    }
+  });
+
+  // ============ PERSON TYPES MANAGEMENT (ADMIN) ============
+  
+  // Get all person types
+  app.get("/api/admin/institutional-inspection/person-types", async (req: Request, res: Response) => {
+    try {
+      const personTypes = await db.select().from(institutionalInspectionPersonTypes).orderBy(institutionalInspectionPersonTypes.displayOrder);
+      res.json(personTypes);
+    } catch (error) {
+      console.error("Error fetching person types:", error);
+      res.status(500).json({ error: "Failed to fetch person types" });
+    }
+  });
+
+  // Create person type
+  app.post("/api/admin/institutional-inspection/person-types", async (req: Request, res: Response) => {
+    try {
+      const [personType] = await db.insert(institutionalInspectionPersonTypes).values(req.body).returning();
+      res.json(personType);
+    } catch (error) {
+      console.error("Error creating person type:", error);
+      res.status(500).json({ error: "Failed to create person type" });
+    }
+  });
+
+  // Update person type
+  app.put("/api/admin/institutional-inspection/person-types/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const [updated] = await db.update(institutionalInspectionPersonTypes)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(institutionalInspectionPersonTypes.id, id))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating person type:", error);
+      res.status(500).json({ error: "Failed to update person type" });
+    }
+  });
+
+  // Delete person type
+  app.delete("/api/admin/institutional-inspection/person-types/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(institutionalInspectionPersonTypes).where(eq(institutionalInspectionPersonTypes.id, id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting person type:", error);
+      res.status(500).json({ error: "Failed to delete person type" });
+    }
+  });
+
+  // Get active person types for mobile app (public endpoint)
+  app.get("/api/institutional-inspections/person-types", async (req: Request, res: Response) => {
+    try {
+      const personTypes = await db.select()
+        .from(institutionalInspectionPersonTypes)
+        .where(eq(institutionalInspectionPersonTypes.isActive, true))
+        .orderBy(institutionalInspectionPersonTypes.displayOrder);
+      res.json(personTypes);
+    } catch (error) {
+      console.error("Error fetching person types:", error);
+      res.status(500).json({ error: "Failed to fetch person types" });
     }
   });
 

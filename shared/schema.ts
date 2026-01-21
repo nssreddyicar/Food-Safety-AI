@@ -1500,3 +1500,71 @@ export const institutionalInspectionHistory = pgTable("institutional_inspection_
 });
 
 export type InstitutionalInspectionHistoryEntry = typeof institutionalInspectionHistory.$inferSelect;
+
+/**
+ * Institutional Inspection Person Types - Admin-configurable person types.
+ * 
+ * WHY: Allows admin to define what types of persons can be added to inspections.
+ * EXAMPLES: Head of Institution, Warden, Contractor, Cook, Supervisor, etc.
+ * FIELDS: Each person type has configurable fields (name, mobile, designation, etc.)
+ */
+export const institutionalInspectionPersonTypes = pgTable("institutional_inspection_person_types", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  
+  // Type identification
+  typeName: text("type_name").notNull(), // e.g., "Head of Institution", "Contractor"
+  typeCode: text("type_code").notNull().unique(), // e.g., "head_of_institution", "contractor"
+  description: text("description"),
+  
+  // Display
+  displayOrder: integer("display_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  isRequired: boolean("is_required").notNull().default(false),
+  maxCount: integer("max_count").notNull().default(1), // How many of this type can be added
+  
+  // Fields configuration (which fields to collect for this person type)
+  fields: jsonb("fields").notNull().default(sql`'[]'::jsonb`), // Array of field configs
+  
+  // Audit
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by"),
+  updatedBy: varchar("updated_by"),
+});
+
+export type InstitutionalInspectionPersonType = typeof institutionalInspectionPersonTypes.$inferSelect;
+
+/**
+ * Institutional Inspection Persons - Persons linked to each inspection.
+ * 
+ * WHY: Stores actual persons added to each inspection dynamically.
+ * FLEXIBILITY: User can add multiple persons of different types as needed.
+ */
+export const institutionalInspectionPersons = pgTable("institutional_inspection_persons", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  
+  // Links
+  inspectionId: varchar("inspection_id").notNull(),
+  personTypeId: varchar("person_type_id").notNull(),
+  
+  // Person details (stored as JSONB for flexibility based on type fields)
+  personData: jsonb("person_data").notNull().default(sql`'{}'::jsonb`),
+  
+  // Common fields (extracted for easy querying)
+  fullName: text("full_name").notNull(),
+  mobile: text("mobile"),
+  designation: text("designation"),
+  
+  // Display
+  displayOrder: integer("display_order").notNull().default(0),
+  
+  // Audit
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type InstitutionalInspectionPerson = typeof institutionalInspectionPersons.$inferSelect;
