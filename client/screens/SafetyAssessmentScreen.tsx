@@ -28,7 +28,8 @@ import { getApiUrl } from "@/lib/query-client";
 import {
   EvidenceImage,
   ImageMetadata,
-  generateWatermarkLines,
+  formatDateTime,
+  formatCoordinates,
   generateUniqueId,
 } from "@/lib/image-watermark";
 
@@ -53,9 +54,12 @@ interface IndicatorResponse {
   images?: string[];
 }
 
-interface InspectionInfo {
-  institutionName?: string;
-  institutionAddress?: string;
+interface InstitutionInfo {
+  name: string;
+  address: string;
+  headOfInstitution: string;
+  responsiblePerson: string;
+  contractor: string;
 }
 
 const RISK_COLORS = {
@@ -66,6 +70,17 @@ const RISK_COLORS = {
 
 interface IndicatorImageData {
   [indicatorId: string]: EvidenceImage[];
+}
+
+function generateCompactWatermark(metadata: ImageMetadata, info: InstitutionInfo): string[] {
+  const lines: string[] = [];
+  if (info.name) lines.push(`Inst: ${info.name.substring(0, 25)}`);
+  if (info.headOfInstitution) lines.push(`Head: ${info.headOfInstitution.substring(0, 20)}`);
+  if (info.responsiblePerson) lines.push(`Resp: ${info.responsiblePerson.substring(0, 20)}`);
+  if (info.contractor) lines.push(`Cont: ${info.contractor.substring(0, 20)}`);
+  lines.push(formatDateTime(metadata.capturedAt));
+  lines.push(formatCoordinates(metadata.latitude, metadata.longitude));
+  return lines;
 }
 
 export default function SafetyAssessmentScreen() {
@@ -87,6 +102,10 @@ export default function SafetyAssessmentScreen() {
 
   const [institutionName, setInstitutionName] = useState("");
   const [institutionAddress, setInstitutionAddress] = useState("");
+  const [headOfInstitution, setHeadOfInstitution] = useState("");
+  const [responsiblePerson, setResponsiblePerson] = useState("");
+  const [contractor, setContractor] = useState("");
+  
   const [currentLocation, setCurrentLocation] = useState<{
     latitude: string;
     longitude: string;
@@ -309,6 +328,9 @@ export default function SafetyAssessmentScreen() {
           body: JSON.stringify({
             institutionName,
             institutionAddress,
+            headOfInstitution,
+            inchargeWarden: responsiblePerson,
+            contractorCookServiceProvider: contractor,
             jurisdictionId: user?.jurisdiction?.unitId,
             districtId: user?.jurisdiction?.unitId,
             inspectionDate: new Date().toISOString(),
@@ -374,6 +396,9 @@ export default function SafetyAssessmentScreen() {
   const resetForm = () => {
     setInstitutionName("");
     setInstitutionAddress("");
+    setHeadOfInstitution("");
+    setResponsiblePerson("");
+    setContractor("");
     setIndicatorImages({});
     const initialResponses: Record<string, IndicatorResponse> = {};
     pillars.forEach((pillar: Pillar) => {
@@ -384,15 +409,16 @@ export default function SafetyAssessmentScreen() {
     setResponses(initialResponses);
   };
 
+  const getInstitutionInfo = (): InstitutionInfo => ({
+    name: institutionName,
+    address: institutionAddress,
+    headOfInstitution,
+    responsiblePerson,
+    contractor,
+  });
+
   const renderWatermarkedImage = (image: EvidenceImage, indicatorId: string) => {
-    const inspectionInfo: InspectionInfo = {
-      institutionName,
-      institutionAddress,
-    };
-    const watermarkLines = generateWatermarkLines(image.metadata, {
-      complainantName: institutionName,
-      establishmentName: institutionAddress,
-    });
+    const watermarkLines = generateCompactWatermark(image.metadata, getInstitutionInfo());
 
     if (!viewShotRefs.current[image.id]) {
       viewShotRefs.current[image.id] = React.createRef<ViewShot | null>();
@@ -484,6 +510,27 @@ export default function SafetyAssessmentScreen() {
             placeholder="Enter address"
             value={institutionAddress}
             onChangeText={setInstitutionAddress}
+            style={styles.input}
+          />
+          <Input
+            label="Head of Institution"
+            placeholder="Principal / Director / Manager"
+            value={headOfInstitution}
+            onChangeText={setHeadOfInstitution}
+            style={styles.input}
+          />
+          <Input
+            label="Responsible Person / Warden"
+            placeholder="Incharge / Warden / Supervisor"
+            value={responsiblePerson}
+            onChangeText={setResponsiblePerson}
+            style={styles.input}
+          />
+          <Input
+            label="Contractor / Cook / Service Provider"
+            placeholder="Caterer / Cook / Food Service"
+            value={contractor}
+            onChangeText={setContractor}
             style={styles.input}
           />
           <View style={styles.locationRow}>
@@ -768,19 +815,19 @@ const styles = StyleSheet.create({
   },
   watermarkContainer: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    paddingHorizontal: 3,
-    paddingVertical: 1,
-    borderRadius: 2,
-    maxWidth: '70%',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '20%',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 2,
+    justifyContent: 'center',
   },
   watermarkText: {
     fontFamily: Platform.select({ ios: 'Courier', android: 'monospace', default: 'monospace' }),
-    fontSize: 5,
+    fontSize: 4,
     color: '#ffffff',
-    lineHeight: 7,
+    lineHeight: 5,
   },
   gpsText: {
     color: '#90EE90',
@@ -789,9 +836,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 2,
     right: 2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: '#dc3545',
     justifyContent: 'center',
     alignItems: 'center',
