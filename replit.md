@@ -84,6 +84,33 @@ The server implements enterprise-grade security through a layered middleware sta
 - **Authentication**: Session-based for admin, JWT tokens for mobile.
 - **Potential Integration**: Twilio (for Mobile OTP Authentication).
 
+## Mobile App Production Features (Flutter)
+
+### Network Service (`android-app/lib/services/network_service.dart`)
+- Exponential backoff retry (3 retries, 1s → 2s → 4s delays)
+- Offline queue for mutations when network unavailable
+- Automatic token refresh on 401 errors
+- Connectivity monitoring with status stream
+
+### Connectivity Service (`android-app/lib/services/connectivity_service.dart`)
+- Real-time network status monitoring
+- OfflineBanner widget for user feedback
+- ConnectivityWrapper for automatic UI integration
+- Riverpod state management integration
+
+### Crash Reporter (`android-app/lib/services/crash_reporter.dart`)
+- Automatic Flutter error capture
+- Breadcrumb trail for error context (last 50 actions)
+- User context for debugging
+- Device info collection
+- Backend reporting endpoint support
+
+### Key Mobile Services
+- `network_service.dart` - Production networking with retry/offline support
+- `connectivity_service.dart` - UI widgets for connectivity status
+- `crash_reporter.dart` - Error capture and reporting
+- `auth_service.dart` - JWT with refresh token handling
+
 ## Recent Changes (January 21, 2026)
 - Added production-grade security hardening with rate limiting, Helmet headers, XSS prevention
 - Implemented comprehensive input validation with Zod schemas for all entities
@@ -91,3 +118,6 @@ The server implements enterprise-grade security through a layered middleware sta
 - Created global error handling with Winston structured logging
 - Built JWT authentication service with refresh tokens
 - Added 4 new database tables: audit_logs, refresh_tokens, rate_limit_records, system_health_metrics
+- Added Flutter production networking: retry logic, offline queue, connectivity monitoring
+- Added crash reporting service with breadcrumb trail for debugging
+- Integrated automatic token refresh on 401 errors
