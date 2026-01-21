@@ -28,7 +28,37 @@ The mobile application is built using Expo React Native, ensuring cross-platform
 - **QR/Barcode Scanner**: Real-time camera-based scanning (supporting multiple formats) with flash toggle, haptic feedback, and a notes management system for saving, viewing, copying, sharing, and deleting scanned data. Data is stored locally using AsyncStorage.
 
 ### Backend
-The backend is developed with Express.js, primarily serving API routes for the mobile application.
+The backend is developed with Express.js following a strict layered architecture for maintainability, testability, and regulatory compliance.
+
+**Layered Architecture:**
+
+1. **Data Access Layer (`server/data/repositories/`)**: 
+   - Pure database operations via Drizzle ORM
+   - Repository pattern: `officer.repository.ts`, `inspection.repository.ts`, `sample.repository.ts`, `jurisdiction.repository.ts`
+   - No business logic - only CRUD operations and queries
+   - All operations are jurisdiction-aware
+
+2. **Domain/Business Logic Layer (`server/domain/`)**: 
+   - Services enforcing domain rules: `officerService`, `inspectionService`, `sampleService`, `jurisdictionService`
+   - Workflow state machines for inspections and samples
+   - Immutability rules: Closed inspections and dispatched samples cannot be modified (legal requirement)
+   - Authority checks: Officers can only access data within their jurisdiction hierarchy
+
+3. **API Layer (`server/routes.ts`)**: 
+   - HTTP endpoint handlers
+   - Request validation and authorization
+   - Calls domain services for business operations
+
+4. **Configuration Layer (`server/config/`)**: 
+   - Environment-based settings
+   - Configurable values (lab report deadlines, edit freeze hours)
+   - All settings that might change are configurable, not hardcoded
+
+**Domain Rules:**
+- Inspections and samples are bound to JURISDICTIONS, not officers (ensures data continuity when officers transfer)
+- Closed inspections are IMMUTABLE for court admissibility
+- Dispatched samples are IMMUTABLE for chain-of-custody compliance
+- Officer roles, capacities, and jurisdiction levels are admin-configurable
 
 **Technical Implementations:**
 - **API Routes**: Defined in `server/routes.ts`, incorporating a security model and categorized endpoints.
