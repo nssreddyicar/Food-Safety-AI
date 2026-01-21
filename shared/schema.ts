@@ -1568,3 +1568,91 @@ export const institutionalInspectionPersons = pgTable("institutional_inspection_
 });
 
 export type InstitutionalInspectionPerson = typeof institutionalInspectionPersons.$inferSelect;
+
+// ==================== FBO INSPECTION CONFIGURATION ====================
+
+/**
+ * FBO Inspection Types - Admin-configurable inspection types
+ * Examples: Routine, Follow-up, Surveillance, Special Drive, Complaint-Based
+ */
+export const fboInspectionTypes = pgTable("fbo_inspection_types", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(),
+  description: text("description"),
+  requiresSample: boolean("requires_sample").default(false),
+  requiresFollowup: boolean("requires_followup").default(false),
+  followupDays: integer("followup_days"),
+  displayOrder: integer("display_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  color: text("color").default("#3B82F6"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type FboInspectionType = typeof fboInspectionTypes.$inferSelect;
+
+/**
+ * FBO Deviation Categories - Categories of deviations found during FBO inspections
+ * Examples: Hygiene, Licensing, Labeling, Adulteration, Storage
+ */
+export const fboDeviationCategories = pgTable("fbo_deviation_categories", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(),
+  description: text("description"),
+  severity: text("severity").notNull().default("medium"), // low, medium, high, critical
+  legalReference: text("legal_reference"), // FSSAI Act/Rules reference
+  penaltyRange: text("penalty_range"), // e.g., "Rs. 25,000 - Rs. 5,00,000"
+  displayOrder: integer("display_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type FboDeviationCategory = typeof fboDeviationCategories.$inferSelect;
+
+/**
+ * FBO Action Types - Types of actions that can be taken during inspections
+ * Examples: Warning, Notice, Sample Collection, Seizure, Prosecution
+ */
+export const fboActionTypes = pgTable("fbo_action_types", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(),
+  description: text("description"),
+  requiresFollowup: boolean("requires_followup").default(false),
+  followupDays: integer("followup_days"),
+  severity: text("severity").notNull().default("medium"), // info, warning, enforcement, legal
+  legalBasis: text("legal_basis"), // FSSAI Act section reference
+  displayOrder: integer("display_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  color: text("color").default("#F59E0B"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type FboActionType = typeof fboActionTypes.$inferSelect;
+
+/**
+ * FBO Inspection Configuration - System-wide settings for FBO inspections
+ */
+export const fboInspectionConfig = pgTable("fbo_inspection_config", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  configKey: text("config_key").notNull().unique(),
+  configValue: text("config_value").notNull(),
+  configType: text("config_type").notNull(), // number, boolean, string, json
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type FboInspectionConfig = typeof fboInspectionConfig.$inferSelect;
