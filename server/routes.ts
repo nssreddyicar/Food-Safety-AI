@@ -5422,6 +5422,333 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(404).send("Admin dashboard settings page not found");
   });
 
+  // ============ INSTITUTIONAL FOOD SAFETY INSPECTION MODULE ============
+  // Dynamic, risk-based inspection system for government institutions
+  // (Schools, Hostels, Hospitals, Canteens, Temples, etc.)
+  
+  const { institutionalInspectionService } = await import("./domain/institutional-inspection/institutional-inspection.service");
+  const { institutionalInspectionRepository } = await import("./data/repositories/institutional-inspection.repository");
+
+  // Get form configuration (institution types, pillars, indicators, config)
+  app.get("/api/institutional-inspections/form-config", async (req: Request, res: Response) => {
+    try {
+      const config = await institutionalInspectionService.getFormConfig();
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching form config:", error);
+      res.status(500).json({ error: "Failed to fetch form configuration" });
+    }
+  });
+
+  // Get all institution types
+  app.get("/api/institutional-inspections/institution-types", async (req: Request, res: Response) => {
+    try {
+      const types = await institutionalInspectionRepository.getAllInstitutionTypes();
+      res.json(types);
+    } catch (error) {
+      console.error("Error fetching institution types:", error);
+      res.status(500).json({ error: "Failed to fetch institution types" });
+    }
+  });
+
+  // Create new institutional inspection (draft)
+  app.post("/api/institutional-inspections", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const {
+        institutionTypeId,
+        institutionName,
+        institutionAddress,
+        districtId,
+        jurisdictionId,
+        latitude,
+        longitude,
+        inspectionDate,
+        headOfInstitution,
+        inchargeWarden,
+        contractorCookServiceProvider,
+      } = req.body;
+
+      // Get officer ID from session
+      const officerId = (req as any).officerId || req.body.officerId;
+      if (!officerId) {
+        return res.status(401).json({ error: "Officer ID required" });
+      }
+
+      const inspection = await institutionalInspectionService.createInspection({
+        institutionTypeId,
+        institutionName,
+        institutionAddress,
+        districtId,
+        jurisdictionId,
+        latitude,
+        longitude,
+        inspectionDate: new Date(inspectionDate),
+        officerId,
+        headOfInstitution,
+        inchargeWarden,
+        contractorCookServiceProvider,
+      });
+
+      res.status(201).json(inspection);
+    } catch (error) {
+      console.error("Error creating institutional inspection:", error);
+      res.status(500).json({ error: "Failed to create inspection" });
+    }
+  });
+
+  // Get all inspections (with optional filters)
+  app.get("/api/institutional-inspections", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { districtId, officerId, limit } = req.query;
+      
+      let inspections;
+      if (officerId) {
+        inspections = await institutionalInspectionRepository.getInspectionsByOfficer(officerId as string);
+      } else if (districtId) {
+        inspections = await institutionalInspectionRepository.getInspectionsByDistrict(districtId as string);
+      } else {
+        inspections = await institutionalInspectionRepository.getAllInspections(parseInt(limit as string) || 100);
+      }
+
+      res.json(inspections);
+    } catch (error) {
+      console.error("Error fetching inspections:", error);
+      res.status(500).json({ error: "Failed to fetch inspections" });
+    }
+  });
+
+  // Get inspection by ID with full details
+  app.get("/api/institutional-inspections/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const inspection = await institutionalInspectionService.getInspectionDetails(id);
+      
+      if (!inspection) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+
+      res.json(inspection);
+    } catch (error) {
+      console.error("Error fetching inspection:", error);
+      res.status(500).json({ error: "Failed to fetch inspection details" });
+    }
+  });
+
+  // Submit indicator responses
+  app.post("/api/institutional-inspections/:id/responses", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { responses } = req.body;
+      const officerId = (req as any).officerId || req.body.officerId;
+
+      if (!responses || !Array.isArray(responses)) {
+        return res.status(400).json({ error: "Responses array required" });
+      }
+
+      const result = await institutionalInspectionService.submitResponses(id, responses, officerId);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error submitting responses:", error);
+      res.status(400).json({ error: error.message || "Failed to submit responses" });
+    }
+  });
+
+  // Calculate risk score (preview without saving)
+  app.post("/api/institutional-inspections/calculate-score", async (req: Request, res: Response) => {
+    try {
+      const { responses } = req.body;
+
+      if (!responses || !Array.isArray(responses)) {
+        return res.status(400).json({ error: "Responses array required" });
+      }
+
+      const result = await institutionalInspectionService.calculateRiskScore(responses);
+      res.json(result);
+    } catch (error) {
+      console.error("Error calculating score:", error);
+      res.status(500).json({ error: "Failed to calculate risk score" });
+    }
+  });
+
+  // Submit inspection (makes it immutable)
+  app.post("/api/institutional-inspections/:id/submit", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { recommendations } = req.body;
+      const officerId = (req as any).officerId || req.body.officerId;
+
+      const inspection = await institutionalInspectionService.submitInspection(id, officerId, recommendations);
+      res.json(inspection);
+    } catch (error: any) {
+      console.error("Error submitting inspection:", error);
+      res.status(400).json({ error: error.message || "Failed to submit inspection" });
+    }
+  });
+
+  // Add surveillance sample
+  app.post("/api/institutional-inspections/:id/samples", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const officerId = (req as any).officerId || req.body.officerId;
+
+      const sample = await institutionalInspectionService.addSample(id, req.body, officerId);
+      res.status(201).json(sample);
+    } catch (error: any) {
+      console.error("Error adding sample:", error);
+      res.status(400).json({ error: error.message || "Failed to add sample" });
+    }
+  });
+
+  // Add photo
+  app.post("/api/institutional-inspections/:id/photos", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const officerId = (req as any).officerId || req.body.officerId;
+
+      const photo = await institutionalInspectionService.addPhoto(id, req.body, officerId);
+      res.status(201).json(photo);
+    } catch (error: any) {
+      console.error("Error adding photo:", error);
+      res.status(400).json({ error: error.message || "Failed to add photo" });
+    }
+  });
+
+  // Get inspection statistics
+  app.get("/api/institutional-inspections/stats", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { districtId } = req.query;
+      const stats = await institutionalInspectionService.getStats(districtId as string);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      res.status(500).json({ error: "Failed to fetch statistics" });
+    }
+  });
+
+  // ============ ADMIN ROUTES FOR INSTITUTIONAL INSPECTION CONFIG ============
+
+  // Get all pillars (admin)
+  app.get("/api/admin/institutional-inspection/pillars", async (req: Request, res: Response) => {
+    try {
+      const pillars = await institutionalInspectionRepository.getAllPillars();
+      res.json(pillars);
+    } catch (error) {
+      console.error("Error fetching pillars:", error);
+      res.status(500).json({ error: "Failed to fetch pillars" });
+    }
+  });
+
+  // Update pillar (admin)
+  app.put("/api/admin/institutional-inspection/pillars/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updated = await institutionalInspectionRepository.updatePillar(id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating pillar:", error);
+      res.status(500).json({ error: "Failed to update pillar" });
+    }
+  });
+
+  // Get all indicators (admin)
+  app.get("/api/admin/institutional-inspection/indicators", async (req: Request, res: Response) => {
+    try {
+      const indicators = await institutionalInspectionRepository.getAllIndicators();
+      res.json(indicators);
+    } catch (error) {
+      console.error("Error fetching indicators:", error);
+      res.status(500).json({ error: "Failed to fetch indicators" });
+    }
+  });
+
+  // Update indicator (admin)
+  app.put("/api/admin/institutional-inspection/indicators/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updated = await institutionalInspectionRepository.updateIndicator(id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating indicator:", error);
+      res.status(500).json({ error: "Failed to update indicator" });
+    }
+  });
+
+  // Create indicator (admin)
+  app.post("/api/admin/institutional-inspection/indicators", async (req: Request, res: Response) => {
+    try {
+      const indicator = await institutionalInspectionRepository.createIndicator(req.body);
+      res.status(201).json(indicator);
+    } catch (error) {
+      console.error("Error creating indicator:", error);
+      res.status(500).json({ error: "Failed to create indicator" });
+    }
+  });
+
+  // Get all config (admin)
+  app.get("/api/admin/institutional-inspection/config", async (req: Request, res: Response) => {
+    try {
+      const config = await institutionalInspectionRepository.getAllConfig();
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching config:", error);
+      res.status(500).json({ error: "Failed to fetch configuration" });
+    }
+  });
+
+  // Update config (admin)
+  app.put("/api/admin/institutional-inspection/config/:key", async (req: Request, res: Response) => {
+    try {
+      const { key } = req.params;
+      const { value } = req.body;
+      const updated = await institutionalInspectionRepository.updateConfig(key, value);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating config:", error);
+      res.status(500).json({ error: "Failed to update configuration" });
+    }
+  });
+
+  // Create institution type (admin)
+  app.post("/api/admin/institutional-inspection/institution-types", async (req: Request, res: Response) => {
+    try {
+      const type = await institutionalInspectionRepository.createInstitutionType(req.body);
+      res.status(201).json(type);
+    } catch (error) {
+      console.error("Error creating institution type:", error);
+      res.status(500).json({ error: "Failed to create institution type" });
+    }
+  });
+
+  // Update institution type (admin)
+  app.put("/api/admin/institutional-inspection/institution-types/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updated = await institutionalInspectionRepository.updateInstitutionType(id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating institution type:", error);
+      res.status(500).json({ error: "Failed to update institution type" });
+    }
+  });
+
+  // Admin page for institutional inspection config
+  app.get("/admin/institutional-inspections", (req: Request, res: Response) => {
+    const sessionToken = getSessionToken(req);
+    if (!sessionToken || !isValidSession(sessionToken)) {
+      return res.redirect("/admin");
+    }
+    const templatePath = path.resolve(
+      process.cwd(),
+      "server",
+      "templates",
+      "admin-institutional-inspections.html",
+    );
+    if (fs.existsSync(templatePath)) {
+      return res.sendFile(templatePath);
+    }
+    res.status(404).send("Admin institutional inspections page not found");
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
