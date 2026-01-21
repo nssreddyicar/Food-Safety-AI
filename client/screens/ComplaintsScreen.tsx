@@ -276,11 +276,13 @@ export default function ComplaintsScreen() {
               icon="search"
               containerStyle={styles.searchInput}
             />
-            <FilterChips
-              options={STATUS_OPTIONS}
-              selectedValue={statusFilter}
-              onSelect={handleStatusFilter}
-            />
+            <View style={styles.filterContainer}>
+              <FilterChips
+                options={STATUS_OPTIONS}
+                selectedValue={statusFilter}
+                onSelect={handleStatusFilter}
+              />
+            </View>
           </View>
         }
         ListEmptyComponent={
@@ -315,6 +317,9 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     marginBottom: Spacing.md,
+  },
+  filterContainer: {
+    marginHorizontal: -Spacing.lg,
   },
   card: {
     marginBottom: Spacing.md,
