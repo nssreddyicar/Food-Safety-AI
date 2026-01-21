@@ -5,7 +5,10 @@ import {
   FlatList,
   RefreshControl,
   Pressable,
+  Share,
+  Alert,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -269,6 +272,29 @@ export default function ComplaintsScreen() {
         ]}
         ListHeaderComponent={
           <View style={styles.header}>
+            <Pressable
+              style={[styles.shareFormButton, { backgroundColor: theme.primary }]}
+              onPress={async () => {
+                const formLink = `https://food-safety-complaint.example.com/submit`;
+                const message = `Submit your food safety complaint online:\n\n${formLink}\n\nReport any food safety violations including expired products, unsanitary conditions, or adulteration.`;
+                
+                try {
+                  await Share.share({
+                    message,
+                    title: "Food Safety Complaint Form",
+                  });
+                } catch (error) {
+                  await Clipboard.setStringAsync(formLink);
+                  Alert.alert("Link Copied", "Complaint form link copied to clipboard");
+                }
+              }}
+            >
+              <Feather name="share-2" size={18} color="#fff" />
+              <ThemedText style={styles.shareFormButtonText}>
+                Share Complaint Form Link
+              </ThemedText>
+            </Pressable>
+            
             <Input
               placeholder="Search complaints..."
               value={searchQuery}
@@ -314,6 +340,21 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: Spacing.md,
+  },
+  shareFormButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
+  },
+  shareFormButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   searchInput: {
     marginBottom: Spacing.md,
