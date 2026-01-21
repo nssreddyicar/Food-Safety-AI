@@ -266,7 +266,7 @@ export default function InstitutionalInspectionAssessmentScreen() {
   if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
-        <ThemedText>Loading assessment form...</ThemedText>
+        <ThemedText>Loading safety assessment...</ThemedText>
       </ThemedView>
     );
   }
@@ -275,7 +275,7 @@ export default function InstitutionalInspectionAssessmentScreen() {
     <ThemedView style={styles.container}>
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <View style={styles.scorePreview}>
-          <ThemedText style={styles.scoreLabel}>Risk Score</ThemedText>
+          <ThemedText style={styles.scoreLabel}>Safety Score</ThemedText>
           <ThemedText style={[styles.scoreValue, { color: theme.primary }]}>
             {scorePreview?.totalScore ?? 0}
           </ThemedText>

@@ -39,7 +39,7 @@ export default function InstitutionalInspectionsStackNavigator() {
         component={InstitutionalInspectionAssessmentScreen}
         options={{
           ...opaqueScreenOptions,
-          headerTitle: "Risk Assessment",
+          headerTitle: "Safety Assessment",
         }}
       />
     </Stack.Navigator>
