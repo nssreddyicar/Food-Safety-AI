@@ -536,6 +536,422 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== MOBILE APP ENDPOINTS ====================
+
+  // Get current officer profile (for Flutter/Expo apps)
+  app.get("/api/officer/me", async (req: Request, res: Response) => {
+    try {
+      const officerId = req.query.officerId as string;
+      if (!officerId) {
+        return res.status(401).json({ error: "Officer ID required" });
+      }
+
+      const [officer] = await db
+        .select()
+        .from(officers)
+        .where(sql`${officers.id} = ${officerId}`);
+
+      if (!officer) {
+        return res.status(404).json({ error: "Officer not found" });
+      }
+
+      // Get assignments
+      const assignments = await db
+        .select()
+        .from(officerAssignments)
+        .where(
+          sql`${officerAssignments.officerId} = ${officerId} AND ${officerAssignments.status} = 'active'`
+        );
+
+      const allJurisdictions = [];
+      for (const assignment of assignments) {
+        const [unit] = await db
+          .select()
+          .from(jurisdictionUnits)
+          .where(sql`${jurisdictionUnits.id} = ${assignment.jurisdictionId}`);
+        const [role] = await db
+          .select()
+          .from(officerRoles)
+          .where(sql`${officerRoles.id} = ${assignment.roleId}`);
+        const [capacity] = await db
+          .select()
+          .from(officerCapacities)
+          .where(sql`${officerCapacities.id} = ${assignment.capacityId}`);
+        allJurisdictions.push({
+          assignmentId: assignment.id,
+          jurisdictionId: unit?.id,
+          jurisdictionName: unit?.name,
+          roleId: role?.id,
+          roleName: role?.name,
+          capacityId: capacity?.id,
+          capacityName: capacity?.name,
+          isPrimary: assignment.isPrimary,
+        });
+      }
+
+      const primaryJurisdiction =
+        allJurisdictions.find((a: any) => a.isPrimary) || allJurisdictions[0] || null;
+
+      const { password: _, ...officerData } = officer;
+      return res.json({
+        ...officerData,
+        jurisdictions: allJurisdictions,
+        primaryJurisdiction,
+      });
+    } catch (error) {
+      console.error("Error fetching officer profile:", error);
+      return res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  // ==================== INSPECTIONS API ====================
+
+  // Get all inspections for officer's jurisdiction
+  app.get("/api/inspections", async (req: Request, res: Response) => {
+    try {
+      const { jurisdictionId, officerId, status, type, limit = "50", offset = "0" } = req.query;
+
+      const conditions: any[] = [];
+      if (jurisdictionId) {
+        conditions.push(sql`${inspections.jurisdictionId} = ${jurisdictionId}`);
+      }
+      if (officerId) {
+        conditions.push(sql`${inspections.officerId} = ${officerId}`);
+      }
+      if (status) {
+        conditions.push(sql`${inspections.status} = ${status}`);
+      }
+      if (type) {
+        conditions.push(sql`${inspections.type} = ${type}`);
+      }
+
+      const whereClause =
+        conditions.length > 0 ? sql.join(conditions, sql` AND `) : sql`1=1`;
+
+      const allInspections = await db
+        .select()
+        .from(inspections)
+        .where(whereClause)
+        .orderBy(desc(inspections.createdAt))
+        .limit(parseInt(limit as string))
+        .offset(parseInt(offset as string));
+
+      res.json(allInspections);
+    } catch (error) {
+      console.error("Error fetching inspections:", error);
+      res.status(500).json({ error: "Failed to fetch inspections" });
+    }
+  });
+
+  // Get single inspection
+  app.get("/api/inspections/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      const [inspection] = await db
+        .select()
+        .from(inspections)
+        .where(sql`${inspections.id} = ${id}`);
+
+      if (!inspection) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+
+      // Get associated samples
+      const associatedSamples = await db
+        .select()
+        .from(samples)
+        .where(sql`${samples.inspectionId} = ${id}`);
+
+      res.json({ inspection, samples: associatedSamples });
+    } catch (error) {
+      console.error("Error fetching inspection:", error);
+      res.status(500).json({ error: "Failed to fetch inspection" });
+    }
+  });
+
+  // Create inspection
+  app.post("/api/inspections", async (req: Request, res: Response) => {
+    try {
+      const { officerId, jurisdictionId, ...data } = req.body;
+
+      if (!officerId || !jurisdictionId) {
+        return res.status(400).json({ error: "Officer ID and Jurisdiction ID required" });
+      }
+
+      const [created] = await db
+        .insert(inspections)
+        .values({
+          officerId,
+          jurisdictionId,
+          status: "draft",
+          ...data,
+        })
+        .returning();
+
+      res.json(created);
+    } catch (error) {
+      console.error("Error creating inspection:", error);
+      res.status(500).json({ error: "Failed to create inspection" });
+    }
+  });
+
+  // Update inspection (with immutability check)
+  app.put("/api/inspections/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+
+      // Check if inspection exists and is not closed
+      const [existing] = await db
+        .select()
+        .from(inspections)
+        .where(sql`${inspections.id} = ${id}`);
+
+      if (!existing) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+
+      if (existing.status === "closed") {
+        return res.status(403).json({
+          error: "Cannot modify closed inspection (immutable for court admissibility)",
+        });
+      }
+
+      const [updated] = await db
+        .update(inspections)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(sql`${inspections.id} = ${id}`)
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating inspection:", error);
+      res.status(500).json({ error: "Failed to update inspection" });
+    }
+  });
+
+  // Close inspection (make immutable)
+  app.post("/api/inspections/:id/close", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      const [existing] = await db
+        .select()
+        .from(inspections)
+        .where(sql`${inspections.id} = ${id}`);
+
+      if (!existing) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+
+      if (existing.status === "closed") {
+        return res.status(400).json({ error: "Inspection already closed" });
+      }
+
+      const [updated] = await db
+        .update(inspections)
+        .set({ status: "closed", updatedAt: new Date() })
+        .where(sql`${inspections.id} = ${id}`)
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error closing inspection:", error);
+      res.status(500).json({ error: "Failed to close inspection" });
+    }
+  });
+
+  // ==================== SAMPLES API ====================
+
+  // Get all samples for officer's jurisdiction
+  app.get("/api/samples", async (req: Request, res: Response) => {
+    try {
+      const { jurisdictionId, officerId, status, sampleType, inspectionId, limit = "50", offset = "0" } = req.query;
+
+      const conditions: any[] = [];
+      if (jurisdictionId) {
+        conditions.push(sql`${samples.jurisdictionId} = ${jurisdictionId}`);
+      }
+      if (officerId) {
+        conditions.push(sql`${samples.officerId} = ${officerId}`);
+      }
+      if (status) {
+        conditions.push(sql`${samples.status} = ${status}`);
+      }
+      if (sampleType) {
+        conditions.push(sql`${samples.sampleType} = ${sampleType}`);
+      }
+      if (inspectionId) {
+        conditions.push(sql`${samples.inspectionId} = ${inspectionId}`);
+      }
+
+      const whereClause =
+        conditions.length > 0 ? sql.join(conditions, sql` AND `) : sql`1=1`;
+
+      const allSamples = await db
+        .select()
+        .from(samples)
+        .where(whereClause)
+        .orderBy(desc(samples.createdAt))
+        .limit(parseInt(limit as string))
+        .offset(parseInt(offset as string));
+
+      // Add computed fields
+      const samplesWithDeadlines = allSamples.map((sample: any) => {
+        let daysUntilDeadline = null;
+        let isOverdue = false;
+
+        if (sample.dispatchDate) {
+          const deadline = new Date(sample.dispatchDate);
+          deadline.setDate(deadline.getDate() + 14);
+          daysUntilDeadline = Math.ceil(
+            (deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+          );
+          isOverdue = daysUntilDeadline < 0;
+        }
+
+        return { ...sample, daysUntilDeadline, isOverdue };
+      });
+
+      res.json(samplesWithDeadlines);
+    } catch (error) {
+      console.error("Error fetching samples:", error);
+      res.status(500).json({ error: "Failed to fetch samples" });
+    }
+  });
+
+  // Get single sample
+  app.get("/api/samples/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      const [sample] = await db
+        .select()
+        .from(samples)
+        .where(sql`${samples.id} = ${id}`);
+
+      if (!sample) {
+        return res.status(404).json({ error: "Sample not found" });
+      }
+
+      // Add computed fields
+      let daysUntilDeadline = null;
+      let isOverdue = false;
+      if (sample.dispatchDate) {
+        const deadline = new Date(sample.dispatchDate);
+        deadline.setDate(deadline.getDate() + 14);
+        daysUntilDeadline = Math.ceil(
+          (deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        );
+        isOverdue = daysUntilDeadline < 0;
+      }
+
+      res.json({ ...sample, daysUntilDeadline, isOverdue });
+    } catch (error) {
+      console.error("Error fetching sample:", error);
+      res.status(500).json({ error: "Failed to fetch sample" });
+    }
+  });
+
+  // Create sample
+  app.post("/api/samples", async (req: Request, res: Response) => {
+    try {
+      const { officerId, jurisdictionId, ...data } = req.body;
+
+      if (!officerId || !jurisdictionId) {
+        return res.status(400).json({ error: "Officer ID and Jurisdiction ID required" });
+      }
+
+      const [created] = await db
+        .insert(samples)
+        .values({
+          officerId,
+          jurisdictionId,
+          status: "pending",
+          ...data,
+        })
+        .returning();
+
+      res.json(created);
+    } catch (error) {
+      console.error("Error creating sample:", error);
+      res.status(500).json({ error: "Failed to create sample" });
+    }
+  });
+
+  // Update sample (with immutability check)
+  app.put("/api/samples/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+
+      // Check if sample exists and is not immutable
+      const [existing] = await db
+        .select()
+        .from(samples)
+        .where(sql`${samples.id} = ${id}`);
+
+      if (!existing) {
+        return res.status(404).json({ error: "Sample not found" });
+      }
+
+      const immutableStatuses = ["dispatched", "at_lab", "result_received", "processed"];
+      if (immutableStatuses.includes(existing.status)) {
+        return res.status(403).json({
+          error: "Cannot modify sample after dispatch (chain-of-custody compliance)",
+        });
+      }
+
+      const [updated] = await db
+        .update(samples)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(sql`${samples.id} = ${id}`)
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating sample:", error);
+      res.status(500).json({ error: "Failed to update sample" });
+    }
+  });
+
+  // Dispatch sample (triggers immutability)
+  app.post("/api/samples/:id/dispatch", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { labName } = req.body;
+
+      const [existing] = await db
+        .select()
+        .from(samples)
+        .where(sql`${samples.id} = ${id}`);
+
+      if (!existing) {
+        return res.status(404).json({ error: "Sample not found" });
+      }
+
+      if (existing.status !== "collected") {
+        return res.status(400).json({ error: "Only collected samples can be dispatched" });
+      }
+
+      const [updated] = await db
+        .update(samples)
+        .set({
+          status: "dispatched",
+          dispatchDate: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(sql`${samples.id} = ${id}`)
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error dispatching sample:", error);
+      res.status(500).json({ error: "Failed to dispatch sample" });
+    }
+  });
+
   // Basic validation for mobile app API routes
   app.use(/\/api\/.*/, (req, res, next) => {
     // Skip auth for routes already handled or public
