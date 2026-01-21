@@ -101,94 +101,7 @@
         <div id="errorMessage" class="error-message hidden"></div>
 
         <form id="complaintForm">
-          <div class="card">
-            <div class="card-title">
-              <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-              Your Details
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Full Name <span class="required">*</span></label>
-                <input type="text" class="form-input" id="complainantName" required placeholder="Enter your full name">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Mobile Number <span class="required">*</span></label>
-                <input type="tel" class="form-input" id="complainantMobile" required placeholder="Enter mobile number">
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Email (Optional)</label>
-              <input type="email" class="form-input" id="complainantEmail" placeholder="Enter email address">
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">
-              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-              Incident Details
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Complaint Type <span class="required">*</span></label>
-                <select class="form-select" id="complaintType" required>
-                  <option value="">Select type...</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Complaint Nature <span class="required">*</span></label>
-                <select class="form-select" id="complaintNature" required>
-                  <option value="">Select nature...</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Establishment Name <span class="required">*</span></label>
-              <input type="text" class="form-input" id="establishmentName" required placeholder="Name of the establishment">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Description <span class="required">*</span></label>
-              <textarea class="form-textarea" id="incidentDescription" required placeholder="Describe the food safety violation in detail..."></textarea>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">
-              <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-              Location
-            </div>
-            <button type="button" class="location-btn" id="locationBtn" onclick="getLocation()">
-              <svg viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
-              <span id="locationBtnText">Capture Current Location</span>
-            </button>
-            <div id="locationInfo" class="location-info hidden">
-              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-              <span id="locationText">Location captured</span>
-            </div>
-            <input type="hidden" id="latitude">
-            <input type="hidden" id="longitude">
-            <input type="hidden" id="accuracy">
-            <div class="form-group" style="margin-top: 16px;">
-              <label class="form-label">Address / Landmark</label>
-              <textarea class="form-textarea" id="address" placeholder="Enter the location address or nearby landmark" style="min-height: 60px;"></textarea>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">
-              <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-              Evidence Photos (Optional)
-            </div>
-            <p class="evidence-note">Upload up to 3 photos as evidence. Photos should clearly show the violation.</p>
-            <div class="file-input-wrapper">
-              <div class="file-input">
-                <input type="file" id="evidenceFiles" accept="image/*" multiple onchange="handleFileSelect(event)">
-                <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
-                <p>Click or drag photos here</p>
-              </div>
-            </div>
-            <div id="filePreview" class="file-preview"></div>
-          </div>
-
+          <div id="dynamicFormFields"></div>
           <button type="submit" class="submit-btn" id="submitBtn">Submit Complaint</button>
         </form>
       </div>
@@ -240,51 +153,196 @@
         showForm();
       }
 
+      let formConfig = [];
+      let maxFilesAllowed = 3;
+      
+      const groupIcons = {
+        complainant: '<svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>',
+        establishment: '<svg viewBox="0 0 24 24"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>',
+        incident: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>',
+        location: '<svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
+        evidence: '<svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>'
+      };
+      
+      const groupTitles = {
+        complainant: 'Your Details',
+        establishment: 'Establishment Details',
+        incident: 'Incident Details',
+        location: 'Location',
+        evidence: 'Evidence'
+      };
+
       async function loadFormConfig() {
         try {
           const res = await fetch('/api/complaints/form-config');
-          const config = await res.json();
+          formConfig = await res.json();
           
-          const typeField = config.find(f => f.fieldName === 'complaint_type');
-          const natureField = config.find(f => f.fieldName === 'complaint_nature');
+          // Filter active fields and group them
+          const activeFields = formConfig.filter(f => f.isActive);
+          const groups = {};
           
-          const typeSelect = document.getElementById('complaintType');
-          const natureSelect = document.getElementById('complaintNature');
+          activeFields.forEach(field => {
+            const group = field.fieldGroup || 'incident';
+            if (!groups[group]) groups[group] = [];
+            groups[group].push(field);
+          });
           
-          if (typeField && typeField.dropdownOptions) {
-            typeField.dropdownOptions.forEach(opt => {
-              const option = document.createElement('option');
-              option.value = opt.value;
-              option.textContent = opt.label;
-              typeSelect.appendChild(option);
-            });
-          } else {
-            ['Food Safety', 'Hygiene Violation', 'Expired Products', 'Adulteration', 'Other'].forEach(v => {
-              const option = document.createElement('option');
-              option.value = v;
-              option.textContent = v;
-              typeSelect.appendChild(option);
-            });
-          }
+          // Sort fields within each group by displayOrder
+          Object.keys(groups).forEach(g => {
+            groups[g].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+          });
           
-          if (natureField && natureField.dropdownOptions) {
-            natureField.dropdownOptions.forEach(opt => {
-              const option = document.createElement('option');
-              option.value = opt.value;
-              option.textContent = opt.label;
-              natureSelect.appendChild(option);
-            });
-          } else {
-            ['General', 'Urgent', 'Public Health Risk'].forEach(v => {
-              const option = document.createElement('option');
-              option.value = v;
-              option.textContent = v;
-              natureSelect.appendChild(option);
-            });
-          }
+          // Build form HTML
+          const container = document.getElementById('dynamicFormFields');
+          const groupOrder = ['complainant', 'establishment', 'incident', 'location', 'evidence'];
+          
+          groupOrder.forEach(groupName => {
+            if (!groups[groupName] || groups[groupName].length === 0) return;
+            
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            let cardHTML = `<div class="card-title">${groupIcons[groupName] || ''}${groupTitles[groupName] || groupName}</div>`;
+            
+            if (groupName === 'location') {
+              cardHTML += buildLocationSection(groups[groupName]);
+            } else if (groupName === 'evidence') {
+              cardHTML += buildEvidenceSection(groups[groupName]);
+            } else {
+              cardHTML += buildFieldsSection(groups[groupName]);
+            }
+            
+            card.innerHTML = cardHTML;
+            container.appendChild(card);
+          });
+          
         } catch (e) {
           console.error('Failed to load form config:', e);
+          // Fallback to default form
+          buildDefaultForm();
         }
+      }
+      
+      function buildFieldsSection(fields) {
+        return fields.map(field => buildFieldHTML(field)).join('');
+      }
+      
+      function buildFieldHTML(field) {
+        const required = field.isRequired ? '<span class="required">*</span>' : '';
+        const reqAttr = field.isRequired ? 'required' : '';
+        const helpText = field.helpText ? `<small style="color:#6b7280;display:block;margin-top:4px;">${field.helpText}</small>` : '';
+        
+        switch (field.fieldType) {
+          case 'text':
+          case 'phone':
+          case 'email':
+            const inputType = field.fieldType === 'phone' ? 'tel' : field.fieldType === 'email' ? 'email' : 'text';
+            return `<div class="form-group">
+              <label class="form-label">${field.fieldLabel} ${required}</label>
+              <input type="${inputType}" class="form-input" id="${field.fieldName}" ${reqAttr} placeholder="${field.helpText || ''}">
+            </div>`;
+            
+          case 'textarea':
+            return `<div class="form-group">
+              <label class="form-label">${field.fieldLabel} ${required}</label>
+              <textarea class="form-textarea" id="${field.fieldName}" ${reqAttr} placeholder="${field.helpText || ''}"></textarea>
+            </div>`;
+            
+          case 'dropdown':
+            const options = (field.dropdownOptions || []).map(opt => 
+              `<option value="${opt.value}">${opt.label}</option>`
+            ).join('');
+            return `<div class="form-group">
+              <label class="form-label">${field.fieldLabel} ${required}</label>
+              <select class="form-select" id="${field.fieldName}" ${reqAttr}>
+                <option value="">Select...</option>
+                ${options}
+              </select>
+            </div>`;
+            
+          default:
+            return '';
+        }
+      }
+      
+      function buildLocationSection(fields) {
+        const addressField = fields.find(f => f.fieldName === 'establishment_address');
+        const addressLabel = addressField ? addressField.fieldLabel : 'Address / Landmark';
+        const addressRequired = addressField && addressField.isRequired;
+        
+        return `
+          <button type="button" class="location-btn" id="locationBtn" onclick="getLocation()">
+            <svg viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+            <span id="locationBtnText">Capture Current Location</span>
+          </button>
+          <div id="locationInfo" class="location-info hidden">
+            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <span id="locationText">Location captured</span>
+          </div>
+          <input type="hidden" id="latitude">
+          <input type="hidden" id="longitude">
+          <input type="hidden" id="accuracy">
+          <div class="form-group" style="margin-top: 16px;">
+            <label class="form-label">${addressLabel} ${addressRequired ? '<span class="required">*</span>' : ''}</label>
+            <textarea class="form-textarea" id="address" placeholder="Enter the location address or nearby landmark" style="min-height: 60px;" ${addressRequired ? 'required' : ''}></textarea>
+          </div>
+        `;
+      }
+      
+      function buildEvidenceSection(fields) {
+        const evidenceField = fields.find(f => f.fieldType === 'file');
+        if (!evidenceField) return '';
+        
+        const rules = evidenceField.validationRules || {};
+        maxFilesAllowed = rules.maxFiles || 3;
+        const maxSizeMB = rules.maxSizeMB || 5;
+        const watermarkEnabled = rules.watermark?.enabled !== false;
+        
+        const required = evidenceField.isRequired ? '<span class="required">*</span>' : '';
+        const noteText = `Upload up to ${maxFilesAllowed} photos as evidence${watermarkEnabled ? ' (watermark will be added)' : ''}. Max ${maxSizeMB}MB each.`;
+        
+        return `
+          <p class="evidence-note">${noteText}</p>
+          <div class="file-input-wrapper">
+            <div class="file-input">
+              <input type="file" id="evidenceFiles" accept="image/*" multiple onchange="handleFileSelect(event)">
+              <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+              <p>Click or drag photos here</p>
+            </div>
+          </div>
+          <div id="filePreview" class="file-preview"></div>
+        `;
+      }
+      
+      function buildDefaultForm() {
+        document.getElementById('dynamicFormFields').innerHTML = `
+          <div class="card">
+            <div class="card-title">${groupIcons.complainant}Your Details</div>
+            <div class="form-group">
+              <label class="form-label">Full Name <span class="required">*</span></label>
+              <input type="text" class="form-input" id="complainant_name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mobile Number <span class="required">*</span></label>
+              <input type="tel" class="form-input" id="complainant_mobile" required>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">${groupIcons.incident}Incident Details</div>
+            <div class="form-group">
+              <label class="form-label">Complaint Type <span class="required">*</span></label>
+              <select class="form-select" id="complaint_type" required>
+                <option value="">Select...</option>
+                <option value="Food Safety">Food Safety</option>
+                <option value="Hygiene Violation">Hygiene Violation</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description <span class="required">*</span></label>
+              <textarea class="form-textarea" id="incident_description" required></textarea>
+            </div>
+          </div>
+        `;
       }
 
       function showInvalidLink(message) {
@@ -352,12 +410,12 @@
 
       function handleFileSelect(event) {
         const files = Array.from(event.target.files);
-        if (files.length + selectedFiles.length > 3) {
-          showError('Maximum 3 photos allowed');
+        if (files.length + selectedFiles.length > maxFilesAllowed) {
+          showError(`Maximum ${maxFilesAllowed} photos allowed`);
           return;
         }
         
-        selectedFiles = [...selectedFiles, ...files].slice(0, 3);
+        selectedFiles = [...selectedFiles, ...files].slice(0, maxFilesAllowed);
         renderFilePreviews();
       }
 
@@ -376,6 +434,11 @@
         `).join('');
       }
 
+      function getFieldValue(fieldName) {
+        const el = document.getElementById(fieldName);
+        return el ? (el.value || '').trim() : '';
+      }
+      
       document.getElementById('complaintForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         hideError();
@@ -385,30 +448,32 @@
         submitBtn.textContent = 'Submitting...';
 
         try {
-          const latitude = document.getElementById('latitude').value;
-          const longitude = document.getElementById('longitude').value;
+          const latitude = document.getElementById('latitude')?.value;
+          const longitude = document.getElementById('longitude')?.value;
+          const addressEl = document.getElementById('address') || document.getElementById('establishment_address');
+          const addressValue = addressEl ? addressEl.value.trim() : '';
           
           const payload = {
             sharedLinkToken: sharedLinkData?.token,
             districtId: sharedLinkData?.districtId,
-            complainantName: document.getElementById('complainantName').value.trim(),
-            complainantMobile: document.getElementById('complainantMobile').value.trim(),
-            complainantEmail: document.getElementById('complainantEmail').value.trim() || undefined,
-            complaintType: document.getElementById('complaintType').value,
-            complaintNature: document.getElementById('complaintNature').value,
-            establishmentName: document.getElementById('establishmentName').value.trim(),
-            incidentDescription: document.getElementById('incidentDescription').value.trim(),
+            complainantName: getFieldValue('complainant_name'),
+            complainantMobile: getFieldValue('complainant_mobile'),
+            complainantEmail: getFieldValue('complainant_email') || undefined,
+            complaintType: getFieldValue('complaint_type'),
+            complaintNature: getFieldValue('complaint_nature'),
+            establishmentName: getFieldValue('establishment_name'),
+            incidentDescription: getFieldValue('incident_description'),
             location: latitude ? {
               latitude: latitude,
               longitude: longitude,
-              accuracy: document.getElementById('accuracy').value,
+              accuracy: document.getElementById('accuracy')?.value || '0',
               source: 'gps',
-              address: document.getElementById('address').value.trim()
+              address: addressValue
             } : {
               latitude: '0',
               longitude: '0',
               source: 'manual',
-              address: document.getElementById('address').value.trim()
+              address: addressValue
             },
             submittedVia: 'web'
           };
