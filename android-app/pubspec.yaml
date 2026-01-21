@@ -58,6 +58,15 @@ dependencies:
   
   # UUID Generation
   uuid: ^4.2.1
+  
+  # Biometric Authentication
+  local_auth: ^2.1.6
+  
+  # Push Notifications
+  flutter_local_notifications: ^16.1.0
+  
+  # URL Launcher
+  url_launcher: ^6.1.14
 
 dev_dependencies:
   flutter_test:

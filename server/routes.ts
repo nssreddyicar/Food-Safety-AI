@@ -6345,6 +6345,193 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==========================================================================
+  // ANALYTICS AND EXPORT API ROUTES
+  // ==========================================================================
+  
+  // Import analytics and export services
+  const analyticsService = await import("./services/analytics.service");
+  const exportService = await import("./services/export.service");
+
+  // Analytics Dashboard API
+  app.get("/api/analytics/dashboard", async (_req: Request, res: Response) => {
+    try {
+      const metrics = await analyticsService.getDashboardMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching dashboard metrics:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  // Inspection Analytics
+  app.get("/api/analytics/inspections", async (_req: Request, res: Response) => {
+    try {
+      const analytics = await analyticsService.getInspectionAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching inspection analytics:", error);
+      res.status(500).json({ error: "Failed to fetch inspection analytics" });
+    }
+  });
+
+  // Sample Analytics
+  app.get("/api/analytics/samples", async (_req: Request, res: Response) => {
+    try {
+      const analytics = await analyticsService.getSampleAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching sample analytics:", error);
+      res.status(500).json({ error: "Failed to fetch sample analytics" });
+    }
+  });
+
+  // Complaint Analytics
+  app.get("/api/analytics/complaints", async (_req: Request, res: Response) => {
+    try {
+      const analytics = await analyticsService.getComplaintAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching complaint analytics:", error);
+      res.status(500).json({ error: "Failed to fetch complaint analytics" });
+    }
+  });
+
+  // Officer Performance
+  app.get("/api/analytics/officers", async (_req: Request, res: Response) => {
+    try {
+      const performance = await analyticsService.getOfficerPerformance();
+      res.json(performance);
+    } catch (error) {
+      console.error("Error fetching officer performance:", error);
+      res.status(500).json({ error: "Failed to fetch officer performance" });
+    }
+  });
+
+  // System Health
+  app.get("/api/analytics/health", async (_req: Request, res: Response) => {
+    try {
+      const health = await analyticsService.getSystemHealthMetrics();
+      res.json(health);
+    } catch (error) {
+      console.error("Error fetching system health:", error);
+      res.status(500).json({ error: "Failed to fetch system health" });
+    }
+  });
+
+  // Export Inspections
+  app.get("/api/export/inspections", async (req: Request, res: Response) => {
+    try {
+      const format = (req.query.format as "csv" | "json") || "csv";
+      const result = await exportService.exportInspections({ format });
+      
+      res.setHeader("Content-Type", result.mimeType);
+      res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+      res.send(result.data);
+    } catch (error) {
+      console.error("Error exporting inspections:", error);
+      res.status(500).json({ error: "Failed to export inspections" });
+    }
+  });
+
+  // Export Samples
+  app.get("/api/export/samples", async (req: Request, res: Response) => {
+    try {
+      const format = (req.query.format as "csv" | "json") || "csv";
+      const result = await exportService.exportSamples({ format });
+      
+      res.setHeader("Content-Type", result.mimeType);
+      res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+      res.send(result.data);
+    } catch (error) {
+      console.error("Error exporting samples:", error);
+      res.status(500).json({ error: "Failed to export samples" });
+    }
+  });
+
+  // Export Complaints
+  app.get("/api/export/complaints", async (req: Request, res: Response) => {
+    try {
+      const format = (req.query.format as "csv" | "json") || "csv";
+      const result = await exportService.exportComplaints({ format });
+      
+      res.setHeader("Content-Type", result.mimeType);
+      res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+      res.send(result.data);
+    } catch (error) {
+      console.error("Error exporting complaints:", error);
+      res.status(500).json({ error: "Failed to export complaints" });
+    }
+  });
+
+  // Export Court Cases
+  app.get("/api/export/court-cases", async (req: Request, res: Response) => {
+    try {
+      const format = (req.query.format as "csv" | "json") || "csv";
+      const result = await exportService.exportCourtCases({ format });
+      
+      res.setHeader("Content-Type", result.mimeType);
+      res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+      res.send(result.data);
+    } catch (error) {
+      console.error("Error exporting court cases:", error);
+      res.status(500).json({ error: "Failed to export court cases" });
+    }
+  });
+
+  // Export Full Report
+  app.get("/api/export/full", async (req: Request, res: Response) => {
+    try {
+      const format = (req.query.format as "csv" | "json") || "json";
+      const result = await exportService.exportFullReport({ format });
+      
+      res.setHeader("Content-Type", result.mimeType);
+      res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+      res.send(result.data);
+    } catch (error) {
+      console.error("Error exporting full report:", error);
+      res.status(500).json({ error: "Failed to export full report" });
+    }
+  });
+
+  // Notification registration endpoint
+  app.post("/api/notifications/register", async (req: Request, res: Response) => {
+    try {
+      const { token, platform } = req.body;
+      // Store device token in database for push notifications
+      console.log(`Registered device token: ${token} for platform: ${platform}`);
+      res.json({ success: true, message: "Device registered for notifications" });
+    } catch (error) {
+      console.error("Error registering notification token:", error);
+      res.status(500).json({ error: "Failed to register device" });
+    }
+  });
+
+  // Notification unregister endpoint
+  app.post("/api/notifications/unregister", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body;
+      console.log(`Unregistered device token: ${token}`);
+      res.json({ success: true, message: "Device unregistered" });
+    } catch (error) {
+      console.error("Error unregistering notification token:", error);
+      res.status(500).json({ error: "Failed to unregister device" });
+    }
+  });
+
+  // Crash reports endpoint
+  app.post("/api/crash-reports", async (req: Request, res: Response) => {
+    try {
+      const report = req.body;
+      console.error("Crash report received:", JSON.stringify(report, null, 2));
+      // In production, save to database or send to monitoring service
+      res.json({ success: true, message: "Crash report received" });
+    } catch (error) {
+      console.error("Error receiving crash report:", error);
+      res.status(500).json({ error: "Failed to receive crash report" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
