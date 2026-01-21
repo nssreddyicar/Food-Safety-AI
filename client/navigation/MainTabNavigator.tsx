@@ -6,7 +6,7 @@ import { Platform, StyleSheet } from "react-native";
 import DashboardStackNavigator from "@/navigation/DashboardStackNavigator";
 import InspectionsStackNavigator from "@/navigation/InspectionsStackNavigator";
 import SamplesStackNavigator from "@/navigation/SamplesStackNavigator";
-import ScannerStackNavigator from "@/navigation/ScannerStackNavigator";
+import ComplaintsStackNavigator from "@/navigation/ComplaintsStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
 
@@ -14,7 +14,7 @@ export type MainTabParamList = {
   DashboardTab: undefined;
   InspectionsTab: undefined;
   SamplesTab: undefined;
-  ScannerTab: undefined;
+  ComplaintsTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -81,12 +81,12 @@ export default function MainTabNavigator() {
         }}
       />
       <Tab.Screen
-        name="ScannerTab"
-        component={ScannerStackNavigator}
+        name="ComplaintsTab"
+        component={ComplaintsStackNavigator}
         options={{
-          title: "Scanner",
+          title: "Complaints",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="maximize" size={size} color={color} />
+            <Feather name="alert-circle" size={size} color={color} />
           ),
         }}
       />
