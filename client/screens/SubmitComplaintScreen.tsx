@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -26,6 +26,8 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 import { generateAcknowledgementHTML, ComplaintAcknowledgementData } from "@/lib/complaint-acknowledgement-template";
+import EvidenceImageCapture, { EvidenceImageCaptureRef } from "@/components/EvidenceImageCapture";
+import { EvidenceImage } from "@/lib/image-watermark";
 import type { ComplaintsStackParamList } from "@/navigation/ComplaintsStackNavigator";
 
 type SubmitComplaintRouteProp = RouteProp<ComplaintsStackParamList, "SubmitComplaint">;
@@ -65,6 +67,8 @@ export default function SubmitComplaintScreen() {
   const [address, setAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [evidenceImages, setEvidenceImages] = useState<EvidenceImage[]>([]);
+  const evidenceRef = useRef<EvidenceImageCaptureRef>(null);
   const [location, setLocation] = useState<{
     latitude: string;
     longitude: string;
@@ -166,6 +170,28 @@ export default function SubmitComplaintScreen() {
 
     setIsSubmitting(true);
     try {
+      // Capture watermarked images if any
+      let watermarkedImageUris: string[] = [];
+      if (evidenceImages.length > 0 && evidenceRef.current) {
+        try {
+          watermarkedImageUris = await evidenceRef.current.captureWatermarkedImages();
+        } catch (imgError) {
+          console.error("Failed to capture watermarked images:", imgError);
+          watermarkedImageUris = evidenceImages.map(img => img.uri);
+        }
+      }
+
+      // Prepare evidence data with metadata
+      const evidenceData = evidenceImages.map((img, index) => ({
+        uri: watermarkedImageUris[index] || img.uri,
+        metadata: {
+          capturedAt: img.metadata.capturedAt.toISOString(),
+          uploadedAt: img.metadata.uploadedAt.toISOString(),
+          latitude: img.metadata.latitude,
+          longitude: img.metadata.longitude,
+        },
+      }));
+
       const apiUrl = getApiUrl();
       const response = await fetch(`${apiUrl}/api/complaints/submit`, {
         method: "POST",
@@ -189,6 +215,7 @@ export default function SubmitComplaintScreen() {
             source: "manual",
             address: address.trim(),
           },
+          evidence: evidenceData,
           submittedVia: "mobile",
         }),
       });
@@ -439,6 +466,15 @@ export default function SubmitComplaintScreen() {
               containerStyle={styles.inputSpacing}
             />
           </Card>
+
+          {/* Evidence Image Capture */}
+          <EvidenceImageCapture
+            ref={evidenceRef}
+            images={evidenceImages}
+            onImagesChange={setEvidenceImages}
+            currentLocation={location}
+            disabled={isSubmitting}
+          />
 
           <Button
             onPress={handleSubmit}
