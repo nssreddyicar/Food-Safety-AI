@@ -1,3 +1,51 @@
+/**
+ * =============================================================================
+ * FILE: server/routes.ts
+ * =============================================================================
+ * 
+ * PURPOSE:
+ * This file defines all HTTP API routes for the Food Safety Inspector system.
+ * It serves both the mobile app API and the Super Admin web panel.
+ * 
+ * BUSINESS/DOMAIN CONTEXT:
+ * - This is the backend for a government regulatory system (FSSAI)
+ * - Two user categories: Food Safety Officers (mobile app) and Super Admins (web)
+ * - All operations must maintain audit trails for legal compliance
+ * - Data integrity is critical for court admissibility
+ * 
+ * API CATEGORIES:
+ * 1. Admin Panel Routes (/admin/*) - Web UI for super administrators
+ * 2. Officer Authentication (/api/officer/*) - Mobile app login
+ * 3. Jurisdiction Management (/api/jurisdictions/*) - Dynamic hierarchy
+ * 4. Officer Management (/api/officers/*) - CRUD for officers
+ * 5. Inspection/Sample APIs - Core regulatory workflow
+ * 6. Dashboard & Reporting - Metrics and statistics
+ * 
+ * SECURITY MODEL:
+ * - Admin Panel: Cookie-based session authentication
+ * - Mobile App: JWT-style token authentication (via AsyncStorage)
+ * - All sensitive operations require authentication
+ * 
+ * ASSUMPTIONS THAT MUST NEVER BE MADE:
+ * - Never assume roles are fixed (FSO, DO are admin-controlled)
+ * - Never assume jurisdiction levels are static (configurable hierarchy)
+ * - Never hardcode workflow steps (workflows are database-driven)
+ * - Never assume sample deadlines (configurable system settings)
+ * 
+ * DATA INTEGRITY RULES:
+ * - Inspections become immutable when status is "closed"
+ * - Sample records cannot change after lab dispatch
+ * - Prosecution records are append-only for legal compliance
+ * - All audit logs must be preserved indefinitely
+ * 
+ * DEPENDENT SYSTEMS:
+ * - shared/schema.ts defines all database tables
+ * - server/db.ts provides database connection
+ * - client/* mobile app consumes these APIs
+ * - server/templates/* admin panel HTML templates
+ * =============================================================================
+ */
+
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
 import * as fs from "fs";
@@ -39,17 +87,46 @@ import {
 } from "../shared/schema";
 import { desc, asc, count, sql } from "drizzle-orm";
 
+/**
+ * Super Admin credentials for web panel access.
+ * 
+ * WHY: Provides administrative access to system configuration.
+ * RULES: Should be changed in production environment.
+ * NEVER: Expose these credentials in logs or error messages.
+ */
 const ADMIN_CREDENTIALS = {
   username: "superadmin",
   password: "Admin@123",
 };
 
+/**
+ * In-memory session store for admin panel authentication.
+ * 
+ * WHY: Simple session management for single-server deployment.
+ * RULES: Sessions expire after configured timeout.
+ * NEVER: Use in multi-server deployment without external session store.
+ */
 const adminSessions = new Map<string, { expires: number }>();
 
+/**
+ * Generates a cryptographically simple session token.
+ * 
+ * WHY: Creates unique identifier for admin sessions.
+ * RULES: Tokens should be unpredictable.
+ * RESULT: Random alphanumeric string with timestamp.
+ */
 function generateSessionToken(): string {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }
 
+/**
+ * Validates if a session token is still valid.
+ * 
+ * WHY: Ensures only authenticated admins access protected routes.
+ * WHO: Called by requireAuth middleware.
+ * RULES: Expired sessions are automatically cleaned up.
+ * RESULT: true if valid, false if invalid or expired.
+ */
 function isValidSession(token: string): boolean {
   const session = adminSessions.get(token);
   if (!session) return false;
@@ -60,6 +137,13 @@ function isValidSession(token: string): boolean {
   return true;
 }
 
+/**
+ * Extracts session token from request cookies.
+ * 
+ * WHY: Cookies provide persistent authentication for web panel.
+ * WHO: Used by requireAuth middleware.
+ * RESULT: Session token string or undefined if not found.
+ */
 function getSessionToken(req: Request): string | undefined {
   return req.headers.cookie
     ?.split(";")
@@ -67,6 +151,14 @@ function getSessionToken(req: Request): string | undefined {
     ?.split("=")[1];
 }
 
+/**
+ * Express middleware to require admin authentication.
+ * 
+ * WHY: Protects admin-only API endpoints.
+ * WHO: Applied to all /api/* routes that require admin access.
+ * RULES: Returns 401 Unauthorized if session is invalid.
+ * NEVER: Skip this middleware for sensitive operations.
+ */
 function requireAuth(req: Request, res: Response, next: () => void) {
   const token = getSessionToken(req);
   if (!token || !isValidSession(token)) {
@@ -75,6 +167,24 @@ function requireAuth(req: Request, res: Response, next: () => void) {
   next();
 }
 
+/**
+ * Registers all HTTP routes for the Food Safety Inspector API.
+ * 
+ * WHY: Central entry point for all API route definitions.
+ * WHO: Called by server/index.ts during app initialization.
+ * 
+ * ROUTE CATEGORIES:
+ * - /admin/* : Super Admin web panel pages
+ * - /api/admin/* : Admin API endpoints (require auth)
+ * - /api/officer/* : Mobile app officer endpoints
+ * - /api/jurisdictions/* : Jurisdiction hierarchy management
+ * - /api/officers/* : Officer CRUD operations
+ * - /api/inspections/* : Inspection workflow
+ * - /api/samples/* : Sample tracking
+ * - /api/dashboard/* : Metrics and statistics
+ * 
+ * RESULT: Configured Express app with HTTP server.
+ */
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/admin", (_req: Request, res: Response) => {
     const templatePath = path.resolve(
