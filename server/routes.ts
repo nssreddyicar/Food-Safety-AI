@@ -94,6 +94,7 @@ import {
   fboDeviationCategories,
   fboActionTypes,
   fboInspectionConfig,
+  fboInspectionFormFields,
 } from "../shared/schema";
 import { desc, asc, count, sql, eq } from "drizzle-orm";
 
@@ -6212,6 +6213,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating FBO config:", error);
       res.status(500).json({ error: "Failed to update configuration" });
+    }
+  });
+
+  // FBO Inspection Form Fields CRUD
+  app.get("/api/admin/fbo-inspection/form-fields", async (req: Request, res: Response) => {
+    try {
+      const fields = await db.select().from(fboInspectionFormFields).orderBy(asc(fboInspectionFormFields.fieldGroup), asc(fboInspectionFormFields.displayOrder));
+      res.json(fields);
+    } catch (error) {
+      console.error("Error fetching FBO form fields:", error);
+      res.status(500).json({ error: "Failed to fetch form fields" });
+    }
+  });
+
+  app.post("/api/admin/fbo-inspection/form-fields", async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(fboInspectionFormFields).values(req.body).returning();
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating FBO form field:", error);
+      res.status(500).json({ error: "Failed to create form field" });
+    }
+  });
+
+  app.put("/api/admin/fbo-inspection/form-fields/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const [updated] = await db.update(fboInspectionFormFields)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(fboInspectionFormFields.id, id))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating FBO form field:", error);
+      res.status(500).json({ error: "Failed to update form field" });
+    }
+  });
+
+  app.delete("/api/admin/fbo-inspection/form-fields/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      // Check if it's a system field
+      const [field] = await db.select().from(fboInspectionFormFields).where(eq(fboInspectionFormFields.id, id));
+      if (field?.isSystemField) {
+        return res.status(400).json({ error: "Cannot delete system fields" });
+      }
+      await db.delete(fboInspectionFormFields).where(eq(fboInspectionFormFields.id, id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting FBO form field:", error);
+      res.status(500).json({ error: "Failed to delete form field" });
+    }
+  });
+
+  // Reset FBO form fields to defaults
+  app.post("/api/admin/fbo-inspection/form-fields/reset", async (req: Request, res: Response) => {
+    try {
+      await db.delete(fboInspectionFormFields);
+      const defaultFields = [
+        // FBO Details Group
+        { fieldName: "fbo_name", fieldLabel: "FBO Name", fieldType: "text", fieldGroup: "fbo_details", displayOrder: 1, isRequired: true, isSystemField: true, placeholder: "Enter FBO business name" },
+        { fieldName: "fbo_license_number", fieldLabel: "FSSAI License Number", fieldType: "text", fieldGroup: "fbo_details", displayOrder: 2, isRequired: true, isSystemField: true, placeholder: "e.g., 12345678901234", helpText: "14-digit FSSAI license number" },
+        { fieldName: "fbo_license_type", fieldLabel: "License Type", fieldType: "dropdown", fieldGroup: "fbo_details", displayOrder: 3, isRequired: true, dropdownOptions: [{ value: "basic", label: "Basic Registration" }, { value: "state", label: "State License" }, { value: "central", label: "Central License" }] },
+        { fieldName: "fbo_address", fieldLabel: "FBO Address", fieldType: "textarea", fieldGroup: "fbo_details", displayOrder: 4, isRequired: true, placeholder: "Complete address" },
+        { fieldName: "fbo_contact_person", fieldLabel: "Contact Person", fieldType: "text", fieldGroup: "fbo_details", displayOrder: 5, isRequired: false, placeholder: "Name of owner/manager" },
+        { fieldName: "fbo_phone", fieldLabel: "Contact Phone", fieldType: "phone", fieldGroup: "fbo_details", displayOrder: 6, isRequired: false, placeholder: "10-digit mobile number" },
+        { fieldName: "fbo_category", fieldLabel: "FBO Category", fieldType: "dropdown", fieldGroup: "fbo_details", displayOrder: 7, isRequired: true, dropdownOptions: [{ value: "manufacturer", label: "Manufacturer" }, { value: "processor", label: "Processor" }, { value: "retailer", label: "Retailer" }, { value: "restaurant", label: "Restaurant/Caterer" }, { value: "distributor", label: "Distributor" }, { value: "transporter", label: "Transporter" }, { value: "storage", label: "Storage/Warehouse" }] },
+        
+        // Inspection Details Group
+        { fieldName: "inspection_date", fieldLabel: "Inspection Date", fieldType: "date", fieldGroup: "inspection_details", displayOrder: 1, isRequired: true, isSystemField: true },
+        { fieldName: "inspection_time", fieldLabel: "Inspection Time", fieldType: "time", fieldGroup: "inspection_details", displayOrder: 2, isRequired: true },
+        { fieldName: "inspection_type", fieldLabel: "Inspection Type", fieldType: "dropdown", fieldGroup: "inspection_details", displayOrder: 3, isRequired: true, isSystemField: true, helpText: "Select from configured inspection types" },
+        { fieldName: "inspection_location", fieldLabel: "GPS Location", fieldType: "location", fieldGroup: "inspection_details", displayOrder: 4, isRequired: true, isSystemField: true, helpText: "Auto-captured from device GPS" },
+        { fieldName: "accompanying_officer", fieldLabel: "Accompanying Officer", fieldType: "text", fieldGroup: "inspection_details", displayOrder: 5, isRequired: false, placeholder: "Name if applicable" },
+        
+        // Findings Group
+        { fieldName: "hygiene_status", fieldLabel: "Overall Hygiene Status", fieldType: "dropdown", fieldGroup: "findings", displayOrder: 1, isRequired: true, dropdownOptions: [{ value: "satisfactory", label: "Satisfactory" }, { value: "needs_improvement", label: "Needs Improvement" }, { value: "unsatisfactory", label: "Unsatisfactory" }] },
+        { fieldName: "license_displayed", fieldLabel: "License Displayed?", fieldType: "checkbox", fieldGroup: "findings", displayOrder: 2, isRequired: true },
+        { fieldName: "food_handlers_trained", fieldLabel: "Food Handlers Trained?", fieldType: "checkbox", fieldGroup: "findings", displayOrder: 3, isRequired: false },
+        { fieldName: "pest_control_records", fieldLabel: "Pest Control Records Available?", fieldType: "checkbox", fieldGroup: "findings", displayOrder: 4, isRequired: false },
+        { fieldName: "deviations_found", fieldLabel: "Deviations Found", fieldType: "dropdown", fieldGroup: "findings", displayOrder: 5, isRequired: true, isSystemField: true, helpText: "Select from configured deviation categories" },
+        { fieldName: "observations", fieldLabel: "Detailed Observations", fieldType: "textarea", fieldGroup: "findings", displayOrder: 6, isRequired: true, placeholder: "Describe inspection findings in detail" },
+        
+        // Actions Group
+        { fieldName: "action_taken", fieldLabel: "Action Taken", fieldType: "dropdown", fieldGroup: "actions", displayOrder: 1, isRequired: true, isSystemField: true, helpText: "Select from configured action types" },
+        { fieldName: "samples_collected", fieldLabel: "Samples Collected?", fieldType: "checkbox", fieldGroup: "actions", displayOrder: 2, isRequired: false },
+        { fieldName: "sample_details", fieldLabel: "Sample Details", fieldType: "textarea", fieldGroup: "actions", displayOrder: 3, isRequired: false, placeholder: "Describe samples if collected" },
+        { fieldName: "follow_up_date", fieldLabel: "Follow-up Date", fieldType: "date", fieldGroup: "actions", displayOrder: 4, isRequired: false, helpText: "If follow-up required" },
+        { fieldName: "recommendations", fieldLabel: "Recommendations", fieldType: "textarea", fieldGroup: "actions", displayOrder: 5, isRequired: false, placeholder: "Recommendations for improvement" },
+        
+        // Evidence Group
+        { fieldName: "photos", fieldLabel: "Inspection Photos", fieldType: "file", fieldGroup: "evidence", displayOrder: 1, isRequired: true, isSystemField: true, fileSettings: { maxFiles: 10, maxSizeMB: 5, allowedTypes: ["image/jpeg", "image/png"] }, watermarkSettings: { enabled: true, showGps: true, showTimestamp: true, position: "bottom-right", opacity: 0.8 } },
+        { fieldName: "documents", fieldLabel: "Supporting Documents", fieldType: "file", fieldGroup: "evidence", displayOrder: 2, isRequired: false, fileSettings: { maxFiles: 5, maxSizeMB: 10, allowedTypes: ["application/pdf", "image/jpeg", "image/png"] } },
+        { fieldName: "fbo_signature", fieldLabel: "FBO Representative Signature", fieldType: "file", fieldGroup: "evidence", displayOrder: 3, isRequired: true, helpText: "Signature of FBO owner/manager", fileSettings: { maxFiles: 1, maxSizeMB: 2, allowedTypes: ["image/jpeg", "image/png"] } },
+        { fieldName: "officer_remarks", fieldLabel: "Officer Remarks", fieldType: "textarea", fieldGroup: "evidence", displayOrder: 4, isRequired: false, placeholder: "Any additional remarks" },
+      ];
+      await db.insert(fboInspectionFormFields).values(defaultFields);
+      res.json({ success: true, message: "Reset to 27 default form fields across 5 groups" });
+    } catch (error) {
+      console.error("Error resetting FBO form fields:", error);
+      res.status(500).json({ error: "Failed to reset form fields" });
     }
   });
 
