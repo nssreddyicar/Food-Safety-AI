@@ -45,15 +45,26 @@ Core principles for this government-grade system:
 ### Flutter App (`android-app/`)
 **Build**: External only (Flutter SDK required)
 
+6-tab bottom navigation: Dashboard, FBO, Institutional, Samples, Complaints, Cases
+
 Screens:
-- `login_screen.dart` - Officer authentication
-- `dashboard_screen.dart` - Key metrics, urgent actions
-- `inspections_screen.dart` - FBO Inspection management
-- `samples_screen.dart` - Sample tracking with deadlines
-- `scanner_screen.dart` - QR/Barcode scanner
-- `court_cases_screen.dart` - Prosecution management
-- `profile_screen.dart` - Officer profile
-- `complaints_screen.dart` - Complaint management
+- `login_screen.dart` - Officer authentication with email/password
+- `dashboard_screen.dart` - Key metrics with API integration, urgent actions, quick navigation
+- `inspections_screen.dart` - FBO Inspection list with status tabs (All/In Progress/Completed/Follow-up)
+- `inspection_details_screen.dart` - View inspection with deviations, samples, actions taken
+- `new_inspection_screen.dart` - Create new FBO inspection
+- `institutional_inspections_screen.dart` - Institutional inspections list with Draft/Submitted filter
+- `safety_assessment_screen.dart` - 35-indicator FSSAI assessment form across 7 pillars
+- `samples_screen.dart` - Sample tracking with deadline monitoring, status tabs
+- `sample_details_screen.dart` - Full sample details with chain-of-custody timeline
+- `complaints_screen.dart` - Complaint list with status tabs and search
+- `complaint_details_screen.dart` - View complaint with evidence, update status, assign officer
+- `court_cases_screen.dart` - Case list with upcoming hearing alerts
+- `case_details_screen.dart` - Case details with hearing history
+- `new_case_screen.dart` - Create new prosecution case
+- `action_dashboard_screen.dart` - Urgent actions by category with deadline alerts
+- `scanner_screen.dart` - QR/Barcode scanner for quick lookup
+- `profile_screen.dart` - Officer profile with settings and logout
 
 To build:
 ```bash
