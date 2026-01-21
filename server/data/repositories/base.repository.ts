@@ -31,7 +31,7 @@
  * =============================================================================
  */
 
-import { db } from "../db";
+import { db } from "../../db";
 
 /**
  * Re-export database connection for repository use.
