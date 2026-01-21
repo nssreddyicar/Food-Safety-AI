@@ -7,8 +7,9 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/inspections_screen.dart';
+import '../screens/institutional_inspections_screen.dart';
 import '../screens/samples_screen.dart';
-import '../screens/scanner_screen.dart';
+import '../screens/complaints_screen.dart';
 import '../screens/court_cases_screen.dart';
 import '../screens/profile_screen.dart';
 
@@ -25,8 +26,9 @@ class _AppNavigatorState extends State<AppNavigator> {
   final List<Widget> _screens = const [
     DashboardScreen(),
     InspectionsScreen(),
+    InstitutionalInspectionsScreen(),
     SamplesScreen(),
-    ScannerScreen(),
+    ComplaintsScreen(),
     CourtCasesScreen(),
   ];
 
@@ -42,6 +44,8 @@ class _AppNavigatorState extends State<AppNavigator> {
         currentIndex: _currentIndex,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
+        selectedFontSize: 11,
+        unselectedFontSize: 11,
         onTap: (index) {
           setState(() {
             _currentIndex = index;
@@ -56,7 +60,12 @@ class _AppNavigatorState extends State<AppNavigator> {
           BottomNavigationBarItem(
             icon: Icon(Icons.assignment_outlined),
             activeIcon: Icon(Icons.assignment),
-            label: 'Inspections',
+            label: 'FBO',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.business_outlined),
+            activeIcon: Icon(Icons.business),
+            label: 'Institutional',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.science_outlined),
@@ -64,9 +73,9 @@ class _AppNavigatorState extends State<AppNavigator> {
             label: 'Samples',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.qr_code_scanner_outlined),
-            activeIcon: Icon(Icons.qr_code_scanner),
-            label: 'Scanner',
+            icon: Icon(Icons.report_problem_outlined),
+            activeIcon: Icon(Icons.report_problem),
+            label: 'Complaints',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.gavel_outlined),
