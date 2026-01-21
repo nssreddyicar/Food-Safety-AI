@@ -10,7 +10,6 @@ import {
   Modal,
   TextInput as RNTextInput,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -193,6 +192,7 @@ export default function SafetyAssessmentScreen() {
   const [showPersonFormModal, setShowPersonFormModal] = useState(false);
   const [selectedPersonType, setSelectedPersonType] = useState<PersonType | null>(null);
   const [personFormData, setPersonFormData] = useState<Record<string, string>>({});
+  const [showInstitutionTypeModal, setShowInstitutionTypeModal] = useState(false);
 
   const viewShotRefs = useRef<Record<string, React.RefObject<ViewShot | null>>>({});
 
@@ -649,21 +649,15 @@ export default function SafetyAssessmentScreen() {
           
           <View style={styles.formField}>
             <ThemedText style={styles.fieldLabel}>Institution Type *</ThemedText>
-            <View style={[styles.pickerContainer, { borderColor: theme.border }]}>
-              <Picker
-                selectedValue={selectedInstitutionTypeId}
-                onValueChange={(value) => setSelectedInstitutionTypeId(value)}
-                style={[styles.picker, { color: theme.text }]}
-              >
-                {institutionTypes.map((type) => (
-                  <Picker.Item 
-                    key={type.id} 
-                    label={type.typeName} 
-                    value={type.id} 
-                  />
-                ))}
-              </Picker>
-            </View>
+            <Pressable
+              style={[styles.dropdownButton, { borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
+              onPress={() => setShowInstitutionTypeModal(true)}
+            >
+              <ThemedText style={styles.dropdownText}>
+                {institutionTypes.find(t => t.id === selectedInstitutionTypeId)?.typeName || "Select institution type"}
+              </ThemedText>
+              <Feather name="chevron-down" size={18} color={theme.textSecondary} />
+            </Pressable>
           </View>
           
           <Input
@@ -823,7 +817,7 @@ export default function SafetyAssessmentScreen() {
                             <Image source={{ uri: img.uri }} style={styles.compactThumbnail} />
                             <Pressable 
                               style={styles.compactDeleteBtn}
-                              onPress={() => handleDeleteImage(indicator.id, img.id)}
+                              onPress={() => handleRemoveImage(indicator.id, img.id)}
                             >
                               <Feather name="x" size={10} color="#fff" />
                             </Pressable>
@@ -858,6 +852,45 @@ export default function SafetyAssessmentScreen() {
           </Button>
         </View>
       </ScrollView>
+
+      <Modal visible={showInstitutionTypeModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundSecondary }]}>
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Select Institution Type</ThemedText>
+              <Pressable onPress={() => setShowInstitutionTypeModal(false)}>
+                <Feather name="x" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.personTypesList}>
+              {institutionTypes.map((type) => (
+                <Pressable
+                  key={type.id}
+                  style={[
+                    styles.personTypeItem, 
+                    { borderColor: theme.border },
+                    selectedInstitutionTypeId === type.id && { backgroundColor: theme.primary + '15' }
+                  ]}
+                  onPress={() => {
+                    setSelectedInstitutionTypeId(type.id);
+                    setShowInstitutionTypeModal(false);
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <ThemedText style={styles.personTypeName}>{type.typeName}</ThemedText>
+                    <ThemedText style={styles.personTypeDesc}>{type.description}</ThemedText>
+                  </View>
+                  {selectedInstitutionTypeId === type.id ? (
+                    <Feather name="check-circle" size={20} color={theme.primary} />
+                  ) : (
+                    <Feather name="circle" size={20} color={theme.textSecondary} />
+                  )}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={showPersonTypeModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -1038,6 +1071,6 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: FontSize.sm, fontWeight: '500', marginBottom: Spacing.xs },
   fieldInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, fontSize: FontSize.md },
   savePersonBtn: { marginTop: Spacing.md },
-  pickerContainer: { borderWidth: 1, borderRadius: 8, marginBottom: Spacing.sm, overflow: 'hidden' },
-  picker: { height: 50 },
+  dropdownButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderRadius: 8, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, marginBottom: Spacing.sm },
+  dropdownText: { fontSize: FontSize.md, flex: 1 },
 });
