@@ -107,6 +107,7 @@ export const districts = pgTable("districts", {
     .primaryKey()
     .default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
+  abbreviation: varchar("abbreviation", { length: 3 }), // 3-letter district code for complaint IDs
   state: text("state").notNull(),
   zone: text("zone"),
   headquarters: text("headquarters"),
@@ -1100,3 +1101,79 @@ export const complaintSettings = pgTable("complaint_settings", {
 });
 
 export type ComplaintSetting = typeof complaintSettings.$inferSelect;
+
+/**
+ * Complaint Sequences - Monthly sequence numbers per district.
+ * 
+ * WHY: Generates complaint IDs with district code + sequence + month/year.
+ * RULES:
+ * - Sequence resets each month
+ * - Format: {DISTRICT_ABBR}{4-digit-seq}{MMYYYY} e.g., DEL0001012026
+ * - Ensures unique, predictable complaint IDs
+ */
+export const complaintSequences = pgTable("complaint_sequences", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  districtId: varchar("district_id").notNull(),
+  districtAbbreviation: varchar("district_abbreviation", { length: 3 }).notNull(),
+  month: integer("month").notNull(), // 1-12
+  year: integer("year").notNull(),
+  lastSequence: integer("last_sequence").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type ComplaintSequence = typeof complaintSequences.$inferSelect;
+
+/**
+ * Shared Complaint Links - Pre-generated shareable links for complaint submission.
+ * 
+ * WHY: Allows officers to share pre-generated complaint links with unique tokens.
+ * RULES:
+ * - Each link has a unique token
+ * - Link expires once complaint is submitted
+ * - If shared in one month but submitted in next, ID updates to submission month
+ * - Generates PDF acknowledgement with tracking URL
+ */
+export const sharedComplaintLinks = pgTable("shared_complaint_links", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  token: varchar("token", { length: 64 }).notNull().unique(), // Unique shareable token
+  
+  // Pre-assigned district for ID generation
+  districtId: varchar("district_id"),
+  districtAbbreviation: varchar("district_abbreviation", { length: 3 }),
+  
+  // Reserved sequence at share time (may change on submit if month differs)
+  reservedSequence: integer("reserved_sequence"),
+  reservedMonth: integer("reserved_month"),
+  reservedYear: integer("reserved_year"),
+  
+  // Link status
+  status: text("status").notNull().default("active"), // active, submitted, expired
+  
+  // When submitted
+  complaintId: varchar("complaint_id"), // Links to final complaint
+  complaintCode: text("complaint_code"), // Final assigned complaint code
+  
+  // Sharing context
+  sharedByOfficerId: varchar("shared_by_officer_id"),
+  sharedByOfficerName: text("shared_by_officer_name"),
+  sharedAt: timestamp("shared_at").defaultNow(),
+  
+  // Expiry
+  expiresAt: timestamp("expires_at"), // Optional expiry
+  
+  // Submission tracking
+  submittedAt: timestamp("submitted_at"),
+  
+  // PDF tracking
+  pdfGenerated: boolean("pdf_generated").default(false),
+  pdfUrl: text("pdf_url"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type SharedComplaintLink = typeof sharedComplaintLinks.$inferSelect;
