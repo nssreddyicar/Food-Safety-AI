@@ -273,8 +273,9 @@
           <label class="form-label">Field Group</label>
           <select class="form-select" id="fieldGroup">
             <option value="complainant">Complainant Details</option>
+            <option value="establishment">Establishment Details</option>
             <option value="incident">Incident Details</option>
-            <option value="accused">Accused Details</option>
+            <option value="location">Location</option>
             <option value="evidence">Evidence</option>
           </select>
         </div>
@@ -284,6 +285,44 @@
           <div class="add-option-row">
             <input type="text" class="form-input add-option-input" id="newOptionInput" placeholder="Add option...">
             <button class="add-option-btn" onclick="addOption()">Add</button>
+          </div>
+        </div>
+        <div class="form-group" id="fileSettingsSection" style="display: none;">
+          <label class="form-label">File Upload Settings</label>
+          <div style="background: #f9fafb; padding: 12px; border-radius: 8px; margin-top: 8px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label class="form-label" style="font-size: 12px;">Max Files</label>
+                <input type="number" class="form-input" id="maxFiles" value="3" min="1" max="10">
+              </div>
+              <div>
+                <label class="form-label" style="font-size: 12px;">Max Size (MB)</label>
+                <input type="number" class="form-input" id="maxSizeMB" value="5" min="1" max="20">
+              </div>
+            </div>
+            <div style="margin-top: 12px;">
+              <label class="form-label" style="font-size: 13px; font-weight: 600;">Watermark Settings</label>
+              <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                <label style="font-size: 13px;"><input type="checkbox" id="watermarkEnabled" checked> Enable Watermark</label>
+                <label style="font-size: 13px;"><input type="checkbox" id="watermarkShowGPS" checked> Show GPS Coordinates</label>
+                <label style="font-size: 13px;"><input type="checkbox" id="watermarkShowTimestamp" checked> Show Timestamp</label>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                <div>
+                  <label class="form-label" style="font-size: 12px;">Position</label>
+                  <select class="form-select" id="watermarkPosition">
+                    <option value="bottom-right">Bottom Right</option>
+                    <option value="bottom-left">Bottom Left</option>
+                    <option value="top-right">Top Right</option>
+                    <option value="top-left">Top Left</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 12px;">Opacity</label>
+                  <input type="number" class="form-input" id="watermarkOpacity" value="0.8" min="0.1" max="1" step="0.1">
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="form-group">
@@ -395,6 +434,7 @@
       function toggleOptionsSection() {
         const type = document.getElementById('fieldType').value;
         document.getElementById('optionsSection').style.display = type === 'dropdown' ? 'block' : 'none';
+        document.getElementById('fileSettingsSection').style.display = type === 'file' ? 'block' : 'none';
       }
 
       function addOption() {
@@ -431,6 +471,15 @@
         document.getElementById('isActive').checked = true;
         document.getElementById('helpText').value = '';
         document.getElementById('formFieldModalTitle').textContent = 'Add Form Field';
+        
+        // Reset file settings to defaults
+        document.getElementById('maxFiles').value = '3';
+        document.getElementById('maxSizeMB').value = '5';
+        document.getElementById('watermarkEnabled').checked = true;
+        document.getElementById('watermarkShowGPS').checked = true;
+        document.getElementById('watermarkShowTimestamp').checked = true;
+        document.getElementById('watermarkPosition').value = 'bottom-right';
+        document.getElementById('watermarkOpacity').value = '0.8';
 
         if (field) {
           document.getElementById('fieldId').value = field.id;
@@ -444,6 +493,19 @@
           document.getElementById('helpText').value = field.helpText || '';
           if (field.dropdownOptions) {
             currentOptions = field.dropdownOptions;
+          }
+          // Load file settings from validationRules
+          if (field.validationRules && field.fieldType === 'file') {
+            const rules = field.validationRules;
+            document.getElementById('maxFiles').value = rules.maxFiles || 3;
+            document.getElementById('maxSizeMB').value = rules.maxSizeMB || 5;
+            if (rules.watermark) {
+              document.getElementById('watermarkEnabled').checked = rules.watermark.enabled !== false;
+              document.getElementById('watermarkShowGPS').checked = rules.watermark.showGPS !== false;
+              document.getElementById('watermarkShowTimestamp').checked = rules.watermark.showTimestamp !== false;
+              document.getElementById('watermarkPosition').value = rules.watermark.position || 'bottom-right';
+              document.getElementById('watermarkOpacity').value = rules.watermark.opacity || 0.8;
+            }
           }
           document.getElementById('formFieldModalTitle').textContent = 'Edit Form Field';
         }
@@ -459,16 +521,36 @@
 
       async function saveFormField() {
         const id = document.getElementById('fieldId').value;
+        const fieldType = document.getElementById('fieldType').value;
+        
+        // Build validation rules based on field type
+        let validationRules = null;
+        if (fieldType === 'file') {
+          validationRules = {
+            maxFiles: parseInt(document.getElementById('maxFiles').value) || 3,
+            maxSizeMB: parseInt(document.getElementById('maxSizeMB').value) || 5,
+            acceptedTypes: ['image/jpeg', 'image/png'],
+            watermark: {
+              enabled: document.getElementById('watermarkEnabled').checked,
+              showGPS: document.getElementById('watermarkShowGPS').checked,
+              showTimestamp: document.getElementById('watermarkShowTimestamp').checked,
+              position: document.getElementById('watermarkPosition').value,
+              opacity: parseFloat(document.getElementById('watermarkOpacity').value) || 0.8
+            }
+          };
+        }
+        
         const data = {
           fieldName: document.getElementById('fieldName').value,
           fieldLabel: document.getElementById('fieldLabel').value,
-          fieldType: document.getElementById('fieldType').value,
+          fieldType: fieldType,
           fieldGroup: document.getElementById('fieldGroup').value,
           displayOrder: parseInt(document.getElementById('displayOrder').value) || 0,
           isRequired: document.getElementById('isRequired').checked,
           isActive: document.getElementById('isActive').checked,
           helpText: document.getElementById('helpText').value,
-          dropdownOptions: document.getElementById('fieldType').value === 'dropdown' ? currentOptions : null
+          dropdownOptions: fieldType === 'dropdown' ? currentOptions : null,
+          validationRules: validationRules
         };
 
         try {
@@ -500,6 +582,39 @@
         }
       }
 
+      const groupLabels = {
+        complainant: 'Complainant',
+        establishment: 'Establishment',
+        incident: 'Incident',
+        location: 'Location',
+        evidence: 'Evidence'
+      };
+      
+      const typeLabels = {
+        text: 'Text',
+        textarea: 'Text Area',
+        dropdown: 'Dropdown',
+        date: 'Date',
+        phone: 'Phone',
+        email: 'Email',
+        file: 'File Upload',
+        location: 'GPS Location'
+      };
+      
+      function getFieldSummary(f) {
+        let summary = '';
+        if (f.fieldType === 'dropdown' && f.dropdownOptions) {
+          summary = `${f.dropdownOptions.length} options`;
+        } else if (f.fieldType === 'file' && f.validationRules) {
+          const rules = f.validationRules;
+          const parts = [];
+          if (rules.maxFiles) parts.push(`Max ${rules.maxFiles} files`);
+          if (rules.watermark?.enabled) parts.push('Watermark ON');
+          summary = parts.join(', ');
+        }
+        return summary;
+      }
+
       async function loadFormFields() {
         try {
           const res = await fetch('/api/complaints/form-config');
@@ -513,8 +628,8 @@
             <tr>
               <td><code>${f.fieldName}</code></td>
               <td>${f.fieldLabel}</td>
-              <td>${f.fieldType}</td>
-              <td>${f.fieldGroup}</td>
+              <td>${typeLabels[f.fieldType] || f.fieldType}${getFieldSummary(f) ? '<br><small style="color:#6b7280">' + getFieldSummary(f) + '</small>' : ''}</td>
+              <td>${groupLabels[f.fieldGroup] || f.fieldGroup}</td>
               <td>${f.isRequired ? 'Yes' : 'No'}</td>
               <td><span class="status-badge ${f.isActive ? 'status-active' : 'status-inactive'}">${f.isActive ? 'Active' : 'Inactive'}</span></td>
               <td class="action-btns">
