@@ -9,12 +9,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import { Feather } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { Input } from "@/components/Input";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuthContext } from "@/context/AuthContext";
 import { Spacing, FontSize } from "@/constants/theme";
@@ -40,24 +40,18 @@ interface IndicatorResponse {
   response: 'yes' | 'no' | 'na';
 }
 
-type RouteParams = {
-  InstitutionalInspectionAssessment: { inspectionId: string };
-};
-
 const RISK_COLORS = {
   high: { bg: '#FEE2E2', text: '#DC2626' },
   medium: { bg: '#FEF3C7', text: '#D97706' },
   low: { bg: '#D1FAE5', text: '#059669' },
 };
 
-export default function InstitutionalInspectionAssessmentScreen() {
+export default function SafetyAssessmentScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
-  const route = useRoute<RouteProp<RouteParams, 'InstitutionalInspectionAssessment'>>();
   const { user } = useAuthContext();
-  const { inspectionId } = route.params;
 
   const [pillars, setPillars] = useState<Pillar[]>([]);
   const [responses, setResponses] = useState<Record<string, IndicatorResponse>>({});
@@ -67,6 +61,9 @@ export default function InstitutionalInspectionAssessmentScreen() {
     totalScore: number;
     riskClassification: string;
   } | null>(null);
+
+  const [institutionName, setInstitutionName] = useState("");
+  const [institutionAddress, setInstitutionAddress] = useState("");
 
   useEffect(() => {
     loadFormConfig();
@@ -132,7 +129,7 @@ export default function InstitutionalInspectionAssessmentScreen() {
     }));
   };
 
-  const handleDownloadReport = async () => {
+  const handleDownloadReport = async (inspectionId: string) => {
     try {
       const reportUrl = new URL(`/api/institutional-inspections/${inspectionId}/report`, getApiUrl()).toString();
       const { openBrowserAsync } = await import('expo-web-browser');
@@ -143,13 +140,40 @@ export default function InstitutionalInspectionAssessmentScreen() {
   };
 
   const handleSubmit = async () => {
+    if (!institutionName.trim()) {
+      Alert.alert("Required", "Please enter institution name");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      const createResponse = await fetch(
+        new URL('/api/institutional-inspections', getApiUrl()).toString(),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            institutionName,
+            institutionAddress,
+            jurisdictionId: user?.jurisdiction?.unitId,
+            districtId: user?.jurisdiction?.unitId,
+            inspectionDate: new Date().toISOString(),
+            officerId: user?.id,
+          }),
+        }
+      );
+
+      if (!createResponse.ok) {
+        const error = await createResponse.json();
+        throw new Error(error.error || 'Failed to create inspection');
+      }
+
+      const inspection = await createResponse.json();
       const responsesArray = Object.values(responses);
       
-      const responseResult = await fetch(
-        new URL(`/api/institutional-inspections/${inspectionId}/responses`, getApiUrl()).toString(),
+      await fetch(
+        new URL(`/api/institutional-inspections/${inspection.id}/responses`, getApiUrl()).toString(),
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -157,13 +181,8 @@ export default function InstitutionalInspectionAssessmentScreen() {
         }
       );
 
-      if (!responseResult.ok) {
-        const error = await responseResult.json();
-        throw new Error(error.error || 'Failed to submit responses');
-      }
-
-      const submitResult = await fetch(
-        new URL(`/api/institutional-inspections/${inspectionId}/submit`, getApiUrl()).toString(),
+      await fetch(
+        new URL(`/api/institutional-inspections/${inspection.id}/submit`, getApiUrl()).toString(),
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -171,34 +190,38 @@ export default function InstitutionalInspectionAssessmentScreen() {
         }
       );
 
-      if (submitResult.ok) {
-        Alert.alert(
-          "Assessment Complete",
-          `Safety Classification: ${scorePreview?.riskClassification?.toUpperCase()}\nSafety Score: ${scorePreview?.totalScore}`,
-          [
-            {
-              text: "Download PDF Report",
-              onPress: () => {
-                handleDownloadReport();
-                navigation.popToTop();
-              },
-            },
-            {
-              text: "Done",
-              onPress: () => navigation.popToTop(),
-            },
-          ]
-        );
-      } else {
-        const error = await submitResult.json();
-        Alert.alert("Error", error.error || "Failed to submit");
-      }
+      Alert.alert(
+        "Assessment Complete",
+        `Safety Classification: ${scorePreview?.riskClassification?.toUpperCase()}\nSafety Score: ${scorePreview?.totalScore}`,
+        [
+          {
+            text: "Download PDF Report",
+            onPress: () => handleDownloadReport(inspection.id),
+          },
+          {
+            text: "New Assessment",
+            onPress: () => resetForm(),
+          },
+        ]
+      );
     } catch (error: any) {
       console.error("Submit error:", error);
       Alert.alert("Error", error.message || "Failed to submit assessment");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const resetForm = () => {
+    setInstitutionName("");
+    setInstitutionAddress("");
+    const initialResponses: Record<string, IndicatorResponse> = {};
+    pillars.forEach((pillar: Pillar) => {
+      pillar.indicators.forEach((ind: Indicator) => {
+        initialResponses[ind.id] = { indicatorId: ind.id, response: 'yes' };
+      });
+    });
+    setResponses(initialResponses);
   };
 
   if (isLoading) {
@@ -244,6 +267,24 @@ export default function InstitutionalInspectionAssessmentScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        <Card style={styles.institutionCard}>
+          <ThemedText style={styles.sectionTitle}>Institution Details</ThemedText>
+          <Input
+            label="Institution Name *"
+            placeholder="Enter institution name"
+            value={institutionName}
+            onChangeText={setInstitutionName}
+            style={styles.input}
+          />
+          <Input
+            label="Address"
+            placeholder="Enter address"
+            value={institutionAddress}
+            onChangeText={setInstitutionAddress}
+            style={styles.input}
+          />
+        </Card>
+
         {pillars.map((pillar) => (
           <View key={pillar.id} style={styles.pillarSection}>
             <View style={[styles.pillarHeader, { backgroundColor: theme.primary }]}>
@@ -308,7 +349,7 @@ export default function InstitutionalInspectionAssessmentScreen() {
             onPress={handleSubmit}
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Submitting..." : "Submit Assessment & Generate PDF"}
+            {isSubmitting ? "Submitting..." : "Submit & Generate PDF Report"}
           </Button>
         </View>
       </ScrollView>
@@ -360,6 +401,18 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.md,
+  },
+  institutionCard: {
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '600',
+    marginBottom: Spacing.md,
+  },
+  input: {
+    marginBottom: Spacing.sm,
   },
   pillarSection: {
     marginBottom: Spacing.lg,
