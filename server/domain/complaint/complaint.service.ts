@@ -59,6 +59,7 @@ interface LocationData {
  * Complaint submission data.
  */
 interface SubmissionData {
+  proposedComplaintCode?: string;
   complainantName: string;
   complainantMobile?: string;
   complainantEmail?: string;
@@ -101,8 +102,18 @@ export const complaintService = {
       return { success: false, error: "Complainant name is required", code: "REQUIRED_FIELD" };
     }
 
-    // Generate unique complaint code
-    const complaintCode = await complaintRepository.generateComplaintCode();
+    // Use proposed code or generate new one, ensure uniqueness
+    let complaintCode = data.proposedComplaintCode;
+    if (complaintCode) {
+      // Check if proposed code already exists
+      const existing = await complaintRepository.findByCode(complaintCode);
+      if (existing) {
+        // Code already exists, generate a new one
+        complaintCode = await complaintRepository.generateComplaintCode();
+      }
+    } else {
+      complaintCode = await complaintRepository.generateComplaintCode();
+    }
 
     // Determine jurisdiction from GPS (placeholder - would call geo service)
     const jurisdictionId = await this.mapLocationToJurisdiction(

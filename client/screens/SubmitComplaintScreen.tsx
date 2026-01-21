@@ -6,10 +6,10 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -22,13 +22,22 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 
+function generateComplaintId() {
+  const year = new Date().getFullYear();
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `COMP-${year}-${random}`;
+}
+
 export default function SubmitComplaintScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation();
+  
+  // Estimate tab bar height (safe area bottom + typical tab bar)
+  const tabBarHeight = insets.bottom + 60;
 
+  const [complaintId, setComplaintId] = useState(() => generateComplaintId());
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
@@ -104,6 +113,7 @@ export default function SubmitComplaintScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          proposedComplaintCode: complaintId,
           complainantName: name.trim(),
           complainantMobile: mobile.trim(),
           complainantEmail: email.trim() || undefined,
@@ -162,6 +172,24 @@ export default function SubmitComplaintScreen() {
           ]}
           keyboardShouldPersistTaps="handled"
         >
+          <Card style={styles.complaintIdCard}>
+            <View style={styles.complaintIdHeader}>
+              <ThemedText style={styles.complaintIdLabel}>COMPLAINT ID</ThemedText>
+              <Pressable
+                onPress={() => setComplaintId(generateComplaintId())}
+                style={[styles.refreshButton, { backgroundColor: theme.backgroundSecondary }]}
+              >
+                <Feather name="refresh-cw" size={16} color={theme.primary} />
+              </Pressable>
+            </View>
+            <ThemedText type="h2" style={[styles.complaintIdValue, { color: theme.primary }]}>
+              {complaintId}
+            </ThemedText>
+            <ThemedText style={styles.complaintIdHint}>
+              Save this ID to track your complaint status
+            </ThemedText>
+          </Card>
+
           <Card style={styles.infoCard}>
             <Feather name="info" size={20} color={theme.primary} />
             <ThemedText style={styles.infoText}>
@@ -271,6 +299,39 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: Spacing.lg,
+  },
+  complaintIdCard: {
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+    alignItems: "center",
+  },
+  complaintIdHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  complaintIdLabel: {
+    fontSize: 11,
+    letterSpacing: 1.5,
+    opacity: 0.6,
+  },
+  refreshButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  complaintIdValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginTop: Spacing.xs,
+    letterSpacing: 1,
+  },
+  complaintIdHint: {
+    fontSize: 12,
+    opacity: 0.6,
+    marginTop: Spacing.xs,
   },
   infoCard: {
     flexDirection: "row",

@@ -1063,6 +1063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/complaints/submit", async (req: Request, res: Response) => {
     try {
       const { 
+        proposedComplaintCode,
         complainantName, 
         complainantMobile, 
         complainantEmail,
@@ -1074,6 +1075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } = req.body;
 
       const result = await complaintService.submitComplaint({
+        proposedComplaintCode,
         complainantName,
         complainantMobile,
         complainantEmail,
