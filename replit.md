@@ -143,6 +143,7 @@ Key features:
 - **Test Officer**: officer@test.com / Officer@123
 
 ## Recent Changes
+- **Evidence Image Anti-Fraud Watermarking**: Camera-only image capture (max 3 images) with tamper-evident watermarks showing GPS coordinates, capture timestamp, and upload timestamp baked into images
 - **Complaint ID System Redesign**: District-based IDs (format: {DISTRICT_ABBR}{4-digit-seq}{MMYYYY}, e.g., DEL0001012026) with monthly sequence reset
 - **Shared Complaint Links**: Officers can create shareable links for pre-assigned district complaint forms with unique tokens
 - **PDF Acknowledgement**: Generates downloadable PDF receipts after complaint submission with tracking info
