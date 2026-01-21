@@ -88,6 +88,8 @@ import {
   complaintFormConfigs,
   complaintStatusWorkflows,
   institutionalInspectionPersonTypes,
+  institutionalInspectionPillars,
+  institutionalInspectionIndicators,
 } from "../shared/schema";
 import { desc, asc, count, sql, eq } from "drizzle-orm";
 
