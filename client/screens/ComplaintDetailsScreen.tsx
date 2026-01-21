@@ -6,7 +6,9 @@ import {
   RefreshControl,
   Pressable,
   Alert,
+  Share,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -290,9 +292,12 @@ export default function ComplaintDetailsScreen() {
         <Animated.View entering={FadeInDown.springify()}>
           <Card style={styles.headerCard}>
             <View style={styles.headerRow}>
-              <ThemedText type="h2" style={styles.complaintCode}>
-                {complaint.complaintCode}
-              </ThemedText>
+              <View>
+                <ThemedText style={styles.codeLabel}>Complaint ID</ThemedText>
+                <ThemedText type="h2" style={styles.complaintCode}>
+                  {complaint.complaintCode}
+                </ThemedText>
+              </View>
               <View style={[styles.statusBadge, { backgroundColor: statusColor + "20" }]}>
                 <ThemedText style={[styles.statusText, { color: statusColor }]}>
                   {complaint.status.toUpperCase()}
@@ -302,6 +307,37 @@ export default function ComplaintDetailsScreen() {
             <ThemedText style={styles.submittedAt}>
               Submitted on {new Date(complaint.submittedAt).toLocaleString()}
             </ThemedText>
+            
+            <View style={styles.shareRow}>
+              <Pressable 
+                style={[styles.shareButton, { backgroundColor: theme.backgroundSecondary }]}
+                onPress={async () => {
+                  await Clipboard.setStringAsync(complaint.complaintCode);
+                  Alert.alert("Copied", "Complaint ID copied to clipboard");
+                }}
+              >
+                <Feather name="copy" size={16} color={theme.primary} />
+                <ThemedText style={[styles.shareButtonText, { color: theme.primary }]}>
+                  Copy ID
+                </ThemedText>
+              </Pressable>
+              
+              <Pressable 
+                style={[styles.shareButton, { backgroundColor: theme.primary }]}
+                onPress={async () => {
+                  const trackingUrl = `Track complaint ${complaint.complaintCode} at your local food safety office`;
+                  await Share.share({
+                    message: `Food Safety Complaint\n\nComplaint ID: ${complaint.complaintCode}\nStatus: ${complaint.status}\n\n${trackingUrl}`,
+                    title: "Share Complaint Details",
+                  });
+                }}
+              >
+                <Feather name="share-2" size={16} color="#fff" />
+                <ThemedText style={[styles.shareButtonText, { color: "#fff" }]}>
+                  Share
+                </ThemedText>
+              </Pressable>
+            </View>
           </Card>
         </Animated.View>
 
@@ -442,6 +478,32 @@ const styles = StyleSheet.create({
   submittedAt: {
     fontSize: 12,
     opacity: 0.7,
+  },
+  codeLabel: {
+    fontSize: 11,
+    opacity: 0.6,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  shareRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    flex: 1,
+  },
+  shareButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
   section: {
     marginBottom: Spacing.md,
