@@ -453,9 +453,18 @@ export default function SubmitComplaintScreen() {
               Location
             </ThemedText>
             
+            {(!name.trim() || !mobile.trim() || !establishmentName.trim() || !description.trim()) ? (
+              <View style={[styles.locationDisabledNotice, { backgroundColor: theme.backgroundSecondary }]}>
+                <Feather name="info" size={16} color={theme.textSecondary} />
+                <ThemedText style={[styles.locationDisabledText, { color: theme.textSecondary }]}>
+                  Please fill in Name, Mobile, Establishment Name, and Description before capturing location
+                </ThemedText>
+              </View>
+            ) : null}
+
             <Button
               onPress={handleGetLocation}
-              disabled={isGettingLocation}
+              disabled={isGettingLocation || !name.trim() || !mobile.trim() || !establishmentName.trim() || !description.trim()}
               style={styles.locationButton}
             >
               {isGettingLocation ? "Getting Location..." : "Capture Current Location"}
@@ -666,6 +675,18 @@ const styles = StyleSheet.create({
   },
   locationButton: {
     marginBottom: Spacing.md,
+  },
+  locationDisabledNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.sm,
+    gap: Spacing.xs,
+  },
+  locationDisabledText: {
+    fontSize: 13,
+    flex: 1,
   },
   locationInfo: {
     flexDirection: "row",
