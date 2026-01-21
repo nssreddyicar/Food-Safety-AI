@@ -27,7 +27,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 import { generateAcknowledgementHTML, ComplaintAcknowledgementData } from "@/lib/complaint-acknowledgement-template";
 import EvidenceImageCapture, { EvidenceImageCaptureRef } from "@/components/EvidenceImageCapture";
-import { EvidenceImage } from "@/lib/image-watermark";
+import { EvidenceImage, ComplaintInfo } from "@/lib/image-watermark";
 import type { ComplaintsStackParamList } from "@/navigation/ComplaintsStackNavigator";
 
 type SubmitComplaintRouteProp = RouteProp<ComplaintsStackParamList, "SubmitComplaint">;
@@ -63,6 +63,7 @@ export default function SubmitComplaintScreen() {
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
+  const [establishmentName, setEstablishmentName] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -234,8 +235,8 @@ export default function SubmitComplaintScreen() {
         complaintCode: data.complaintCode,
         submittedAt: data.submittedAt || new Date().toISOString(),
         districtName: sharedLinkInfo?.districtAbbreviation || "Assigned District",
-        complaintType: complaintType,
-        complaintNature: complaintNature,
+        complaintType: data.complaintType || "Food Safety",
+        complaintNature: data.complaintNature || "General",
         address: address.trim() || undefined,
         trackingUrl,
       };
@@ -417,6 +418,15 @@ export default function SubmitComplaintScreen() {
               icon="mail"
               containerStyle={styles.inputSpacing}
             />
+
+            <Input
+              label="Establishment Name (Optional)"
+              placeholder="Enter the name of the establishment"
+              value={establishmentName}
+              onChangeText={setEstablishmentName}
+              icon="briefcase"
+              containerStyle={styles.inputSpacing}
+            />
           </Card>
 
           <Card style={styles.section}>
@@ -473,6 +483,11 @@ export default function SubmitComplaintScreen() {
             images={evidenceImages}
             onImagesChange={setEvidenceImages}
             currentLocation={location}
+            complaintInfo={{
+              complainantName: name.trim() || undefined,
+              establishmentName: establishmentName.trim() || undefined,
+              complainantMobile: mobile.trim() || undefined,
+            }}
             disabled={isSubmitting}
           />
 

@@ -6,6 +6,12 @@ export interface ImageMetadata {
   accuracy?: string;
 }
 
+export interface ComplaintInfo {
+  complainantName?: string;
+  establishmentName?: string;
+  complainantMobile?: string;
+}
+
 export interface EvidenceImage {
   id: string;
   uri: string;
@@ -34,12 +40,24 @@ export const formatCoordinates = (lat: string, lng: string): string => {
   return `${Math.abs(latNum).toFixed(6)}${latDir}, ${Math.abs(lngNum).toFixed(6)}${lngDir}`;
 };
 
-export function generateWatermarkLines(metadata: ImageMetadata): string[] {
-  return [
-    `Captured: ${formatDateTime(metadata.capturedAt)}`,
-    `Uploaded: ${formatDateTime(metadata.uploadedAt)}`,
-    `GPS: ${formatCoordinates(metadata.latitude, metadata.longitude)}`,
-  ];
+export function generateWatermarkLines(metadata: ImageMetadata, complaintInfo?: ComplaintInfo): string[] {
+  const lines: string[] = [];
+  
+  if (complaintInfo?.complainantName) {
+    lines.push(`Name: ${complaintInfo.complainantName}`);
+  }
+  if (complaintInfo?.establishmentName) {
+    lines.push(`Est: ${complaintInfo.establishmentName}`);
+  }
+  if (complaintInfo?.complainantMobile) {
+    lines.push(`Mobile: ${complaintInfo.complainantMobile}`);
+  }
+  
+  lines.push(`Captured: ${formatDateTime(metadata.capturedAt)}`);
+  lines.push(`Uploaded: ${formatDateTime(metadata.uploadedAt)}`);
+  lines.push(`GPS: ${formatCoordinates(metadata.latitude, metadata.longitude)}`);
+  
+  return lines;
 }
 
 export function generateUniqueId(): string {

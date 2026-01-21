@@ -12,6 +12,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import {
   EvidenceImage,
   ImageMetadata,
+  ComplaintInfo,
   generateWatermarkLines,
   generateUniqueId,
 } from "@/lib/image-watermark";
@@ -22,6 +23,7 @@ interface EvidenceImageCaptureProps {
   images: EvidenceImage[];
   onImagesChange: (images: EvidenceImage[]) => void;
   currentLocation: { latitude: string; longitude: string } | null;
+  complaintInfo?: ComplaintInfo;
   disabled?: boolean;
 }
 
@@ -33,11 +35,12 @@ interface WatermarkedImageViewProps {
   image: EvidenceImage;
   onRemove: () => void;
   viewShotRef: React.RefObject<ViewShot | null>;
+  complaintInfo?: ComplaintInfo;
 }
 
-function WatermarkedImageView({ image, onRemove, viewShotRef }: WatermarkedImageViewProps) {
+function WatermarkedImageView({ image, onRemove, viewShotRef, complaintInfo }: WatermarkedImageViewProps) {
   const { theme } = useTheme();
-  const watermarkLines = generateWatermarkLines(image.metadata);
+  const watermarkLines = generateWatermarkLines(image.metadata, complaintInfo);
 
   return (
     <View style={styles.imageContainer}>
@@ -72,7 +75,7 @@ function WatermarkedImageView({ image, onRemove, viewShotRef }: WatermarkedImage
 }
 
 const EvidenceImageCapture = forwardRef<EvidenceImageCaptureRef, EvidenceImageCaptureProps>(
-  ({ images, onImagesChange, currentLocation, disabled }, ref) => {
+  ({ images, onImagesChange, currentLocation, complaintInfo, disabled }, ref) => {
     const { theme } = useTheme();
     const viewShotRefs = useRef<(React.RefObject<ViewShot | null>)[]>([]);
 
@@ -206,6 +209,7 @@ const EvidenceImageCapture = forwardRef<EvidenceImageCaptureRef, EvidenceImageCa
                 image={image}
                 onRemove={() => handleRemoveImage(image.id)}
                 viewShotRef={viewShotRefs.current[index]}
+                complaintInfo={complaintInfo}
               />
             ))}
           </View>
