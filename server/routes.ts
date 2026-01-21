@@ -85,6 +85,8 @@ import {
   statisticsCards,
   dashboardSettings,
   reportSections,
+  complaintFormConfigs,
+  complaintStatusWorkflows,
 } from "../shared/schema";
 import { desc, asc, count, sql } from "drizzle-orm";
 
@@ -1406,6 +1408,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== ADMIN COMPLAINT FORM CONFIG API ====================
+  
+  // Create form field
+  app.post("/api/admin/complaint-form-config", async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(complaintFormConfigs).values(req.body).returning();
+      res.json(created);
+    } catch (error) {
+      console.error("Error creating form config:", error);
+      res.status(500).json({ error: "Failed to create form field" });
+    }
+  });
+
+  // Update form field
+  app.put("/api/admin/complaint-form-config/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const [updated] = await db
+        .update(complaintFormConfigs)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(sql`${complaintFormConfigs.id} = ${id}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating form config:", error);
+      res.status(500).json({ error: "Failed to update form field" });
+    }
+  });
+
+  // Delete form field
+  app.delete("/api/admin/complaint-form-config/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(complaintFormConfigs).where(sql`${complaintFormConfigs.id} = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting form config:", error);
+      res.status(500).json({ error: "Failed to delete form field" });
+    }
+  });
+
+  // ==================== ADMIN COMPLAINT STATUS WORKFLOW API ====================
+
+  // Get all status workflows
+  app.get("/api/admin/complaint-status-workflows", async (req: Request, res: Response) => {
+    try {
+      const workflows = await db
+        .select()
+        .from(complaintStatusWorkflows)
+        .orderBy(complaintStatusWorkflows.displayOrder);
+      res.json(workflows);
+    } catch (error) {
+      console.error("Error fetching workflows:", error);
+      res.status(500).json({ error: "Failed to fetch workflows" });
+    }
+  });
+
+  // Create status workflow
+  app.post("/api/admin/complaint-status-workflow", async (req: Request, res: Response) => {
+    try {
+      const [created] = await db.insert(complaintStatusWorkflows).values(req.body).returning();
+      res.json(created);
+    } catch (error) {
+      console.error("Error creating workflow:", error);
+      res.status(500).json({ error: "Failed to create workflow" });
+    }
+  });
+
+  // Update status workflow
+  app.put("/api/admin/complaint-status-workflow/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const [updated] = await db
+        .update(complaintStatusWorkflows)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(sql`${complaintStatusWorkflows.id} = ${id}`)
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating workflow:", error);
+      res.status(500).json({ error: "Failed to update workflow" });
+    }
+  });
+
+  // Delete status workflow
+  app.delete("/api/admin/complaint-status-workflow/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.delete(complaintStatusWorkflows).where(sql`${complaintStatusWorkflows.id} = ${id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting workflow:", error);
+      res.status(500).json({ error: "Failed to delete workflow" });
+    }
+  });
+
   // Basic validation for mobile app API routes
   app.use(/\/api\/.*/, (req, res, next) => {
     // Skip auth for routes already handled or public
@@ -2184,6 +2282,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       "server",
       "templates",
       "admin-action-dashboard.html",
+    );
+    const html = fs.readFileSync(templatePath, "utf-8");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  });
+
+  // Complaint Management Admin Page
+  app.get("/admin/complaints", (req: Request, res: Response) => {
+    const sessionToken = getSessionToken(req);
+    if (!sessionToken || !isValidSession(sessionToken)) {
+      return res.redirect("/admin");
+    }
+    const templatePath = path.resolve(
+      process.cwd(),
+      "server",
+      "templates",
+      "admin-complaints.html",
     );
     const html = fs.readFileSync(templatePath, "utf-8");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
