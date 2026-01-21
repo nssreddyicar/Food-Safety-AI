@@ -868,3 +868,235 @@ export const reportSections = pgTable("report_sections", {
 });
 
 export type ReportSection = typeof reportSections.$inferSelect;
+
+// =============================================================================
+// DYNAMIC COMPLAINT MANAGEMENT SYSTEM
+// =============================================================================
+// 
+// PURPOSE: Location-aware, evidence-supported, admin-controlled complaint system
+// 
+// DESIGN PRINCIPLES:
+// - All form fields are dynamic (admin-configured)
+// - Location data is immutable once submitted
+// - Evidence is traceable with metadata
+// - Jurisdiction auto-mapped from GPS coordinates
+// - Workflows are configurable, not hardcoded
+// =============================================================================
+
+/**
+ * Complaint Form Configuration - Admin-controlled form fields.
+ * 
+ * WHY: Allows Super Admin to configure which fields appear on complaint form.
+ * RULES:
+ * - Field visibility, validation, and order are admin-controlled
+ * - No hardcoded fields - all dynamic
+ * - Changes affect new complaints only (existing are preserved)
+ */
+export const complaintFormConfigs = pgTable("complaint_form_configs", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  fieldName: text("field_name").notNull(), // Internal name (e.g., "complainant_name")
+  fieldLabel: text("field_label").notNull(), // Display label (e.g., "Your Name")
+  fieldType: text("field_type").notNull(), // text, textarea, date, dropdown, phone, email, file, location
+  fieldGroup: text("field_group").notNull(), // complainant, incident, accused, evidence
+  displayOrder: integer("display_order").notNull().default(0),
+  isRequired: boolean("is_required").default(false),
+  isVisible: boolean("is_visible").default(true),
+  isVisibleToOfficer: boolean("is_visible_to_officer").default(true),
+  isVisibleToComplainant: boolean("is_visible_to_complainant").default(true),
+  isEditable: boolean("is_editable").default(true), // Can complainant edit after submit?
+  validationRules: jsonb("validation_rules"), // { minLength, maxLength, pattern, etc. }
+  dropdownOptions: jsonb("dropdown_options"), // For dropdown fields: [{value, label}]
+  defaultValue: text("default_value"),
+  helpText: text("help_text"), // Instructions for user
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type ComplaintFormConfig = typeof complaintFormConfigs.$inferSelect;
+
+/**
+ * Complaint Status Workflows - Admin-controlled status transitions.
+ * 
+ * WHY: Allows Super Admin to define allowed status transitions.
+ * RULES:
+ * - No hardcoded workflows
+ * - Each transition can have conditions
+ */
+export const complaintStatusWorkflows = pgTable("complaint_status_workflows", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  fromStatus: text("from_status").notNull(),
+  toStatus: text("to_status").notNull(),
+  transitionName: text("transition_name").notNull(), // e.g., "Assign to Officer"
+  requiredRole: text("required_role"), // Which role can perform this transition
+  requiresEvidence: boolean("requires_evidence").default(false),
+  requiresRemarks: boolean("requires_remarks").default(false),
+  isActive: boolean("is_active").default(true),
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type ComplaintStatusWorkflow = typeof complaintStatusWorkflows.$inferSelect;
+
+/**
+ * Complaints - Core complaint records with location data.
+ * 
+ * WHY: Stores citizen complaints with GPS location and jurisdiction mapping.
+ * RULES:
+ * - Location data is IMMUTABLE once submitted
+ * - Jurisdiction auto-assigned from GPS
+ * - formData stores dynamic field values as JSON
+ */
+export const complaints = pgTable("complaints", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  complaintCode: text("complaint_code").notNull().unique(), // Public tracking code
+  
+  // Complainant Details (core fields, additional in formData)
+  complainantName: text("complainant_name").notNull(),
+  complainantMobile: text("complainant_mobile"),
+  complainantEmail: text("complainant_email"),
+  
+  // Location Data (IMMUTABLE after submission)
+  latitude: text("latitude"),
+  longitude: text("longitude"),
+  locationAccuracy: text("location_accuracy"), // meters
+  locationTimestamp: timestamp("location_timestamp"),
+  locationSource: text("location_source").notNull().default("manual"), // gps, manual
+  locationAddress: text("location_address"), // Reverse geocoded or manual
+  nearbyLandmark: text("nearby_landmark"),
+  
+  // Incident Details
+  incidentDate: timestamp("incident_date"),
+  incidentDescription: text("incident_description"),
+  
+  // Dynamic Form Data (stores all admin-configured fields)
+  formData: jsonb("form_data"), // { fieldName: value, ... }
+  
+  // Jurisdiction (auto-mapped from GPS or manual)
+  jurisdictionId: varchar("jurisdiction_id"),
+  jurisdictionName: text("jurisdiction_name"), // Snapshot at submission time
+  
+  // Status & Assignment
+  status: text("status").notNull().default("submitted"),
+  assignedOfficerId: varchar("assigned_officer_id"),
+  assignedAt: timestamp("assigned_at"),
+  
+  // Resolution
+  resolvedAt: timestamp("resolved_at"),
+  resolutionRemarks: text("resolution_remarks"),
+  
+  // Audit Fields
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  submittedVia: text("submitted_via").default("mobile"), // mobile, web, offline
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type Complaint = typeof complaints.$inferSelect;
+
+/**
+ * Complaint Evidence - Uploaded proofs with metadata.
+ * 
+ * WHY: Stores photos, videos, documents as evidence with GPS metadata.
+ * RULES:
+ * - All uploads are traceable
+ * - GPS metadata captured if available
+ * - Evidence cannot be deleted (audit requirement)
+ */
+export const complaintEvidence = pgTable("complaint_evidence", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  complaintId: varchar("complaint_id").notNull(),
+  
+  // File Details
+  filename: text("filename").notNull(),
+  originalName: text("original_name").notNull(),
+  fileType: text("file_type").notNull(), // image, video, audio, document
+  mimeType: text("mime_type").notNull(),
+  fileSize: integer("file_size"), // bytes
+  fileUrl: text("file_url").notNull(),
+  
+  // GPS Metadata (from file EXIF or capture time)
+  latitude: text("latitude"),
+  longitude: text("longitude"),
+  captureTimestamp: timestamp("capture_timestamp"),
+  
+  // Upload Context
+  uploadedBy: text("uploaded_by").notNull(), // complainant, officer
+  uploadedByOfficerId: varchar("uploaded_by_officer_id"),
+  description: text("description"),
+  
+  // Audit
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  isDeleted: boolean("is_deleted").default(false), // Soft delete only
+});
+
+export type ComplaintEvidence = typeof complaintEvidence.$inferSelect;
+
+/**
+ * Complaint History - Audit trail for all changes.
+ * 
+ * WHY: Legal requirement - all changes must be logged.
+ * RULES:
+ * - Records are APPEND-ONLY
+ * - Never delete or modify history
+ * - Stores before/after for status changes
+ */
+export const complaintHistory = pgTable("complaint_history", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  complaintId: varchar("complaint_id").notNull(),
+  
+  // Change Details
+  action: text("action").notNull(), // status_change, assigned, evidence_added, remark_added
+  fromStatus: text("from_status"),
+  toStatus: text("to_status"),
+  remarks: text("remarks"),
+  
+  // Evidence (if action added evidence)
+  evidenceId: varchar("evidence_id"),
+  
+  // Actor
+  performedBy: text("performed_by").notNull(), // system, officer, complainant
+  officerId: varchar("officer_id"),
+  officerName: text("officer_name"),
+  
+  // Location (for field actions)
+  latitude: text("latitude"),
+  longitude: text("longitude"),
+  
+  // Audit
+  performedAt: timestamp("performed_at").defaultNow(),
+  ipAddress: text("ip_address"),
+});
+
+export type ComplaintHistory = typeof complaintHistory.$inferSelect;
+
+/**
+ * Complaint Settings - System-wide complaint configuration.
+ * 
+ * WHY: Admin-controlled global settings for complaint system.
+ */
+export const complaintSettings = pgTable("complaint_settings", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  settingKey: text("setting_key").notNull().unique(),
+  settingValue: text("setting_value"),
+  settingType: text("setting_type").notNull(), // boolean, number, string, json
+  description: text("description"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type ComplaintSetting = typeof complaintSettings.$inferSelect;
